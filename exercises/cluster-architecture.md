@@ -20,12 +20,14 @@
 > 📖  
 > [Reference > API Access Control > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)  
 > [Reference > API Access Control > Certificate Signing Requests](https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/)  
-> [Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)  
-> [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)  
+> [Tasks > Access Application in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)  
+> [Tasks > Configure Pods and Containers > Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)  
 
 ### View the client certificate that the kubelet uses to authenticate to the Kubernetes API
 
-> 🔗 [PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/) · [TLS bootstrapping](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/)
+> 🔗 
+> [Getting started > Best practices > PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)
+> [Reference > API Access Control > TLS bootstrapping](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/)
 
 <details><summary>show</summary>
 <p>
