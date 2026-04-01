@@ -94,7 +94,7 @@ k get csr sandra -o jsonpath='{.status.certificate}' | base64 -d > sandra.crt
 
 ### Add that new user `sandra` to your local kubeconfig using the kubectl config command
 
-> 🔗 [Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+> 🔗 [Tasks > Access Application in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
 
 <details><summary>show</summary>
 <p>
@@ -121,7 +121,7 @@ kubectl config use-context sandra
 
 ### Create a role the will allow users to get, watch, and list pods and container logs
 
-> 🔗 [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+> 🔗 [Reference > API Access Control > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
 <details><summary>show</summary>
 <p>
@@ -159,7 +159,7 @@ kubectl apply -f role.yml
 
 ### Create a role binding that binds to a role named pod-reader, applies to a user named `dev`
 
-> 🔗 [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+> 🔗 [Reference > API Access Control > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
 <details><summary>show</summary>
 <p>
