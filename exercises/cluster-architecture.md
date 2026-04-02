@@ -203,7 +203,7 @@ kubectl auth can-i create pods --namespace=default --as=dev
 
 ### Create a new role named `sa-creator` that will allow creating service accounts.
 
-> 🔗 [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+> 🔗 [Reference > API Access Control > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
 <details><summary>show</summary>
 <p>
@@ -218,7 +218,7 @@ kubectl create role sa-creator --verb=create --resource=sa
 
 ### Create a role binding that is associated with the previous `sa-creator` role, named `sa-creator-binding` that will bind to the user `sandra`
 
-> 🔗 [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+> 🔗 [Reference > API Access Control > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
 <details><summary>show</summary>
 <p>
@@ -236,7 +236,7 @@ kubectl auth can-i create sa --as sandra
 
 ### Create a role named `deployment-reader` in the `cka-20834` namespace, and allow it to get and list deployments.
 
-> 🔗 [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+> 🔗 [Reference > API Access Control > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
 <details><summary>show</summary>
 <p>
@@ -254,7 +254,7 @@ k -n cka-20834 create role deployment-reader --verb=get,list --resource=deploy -
 
 ### Create a role binding named `deployment-reader-binding` in the `cka-20834` namespace that will bind the `deployment-reader` role to the service account `demo-sa`
 
-> 🔗 [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+> 🔗 [Reference > API Access Control > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
 <details><summary>show</summary>
 <p>
@@ -277,7 +277,7 @@ kubectl auth can-i list deployments --as=system:serviceaccount:cka-20834:demo-sa
 
 ### Create a service account and pod that does NOT mount the service account token
 
-> 🔗 [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)
+> 🔗 [Tasks > Configure Pods and Containers > Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)
 
 <details><summary>show</summary>
 <p>
