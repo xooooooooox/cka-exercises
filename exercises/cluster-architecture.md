@@ -21,11 +21,11 @@
 > [Reference > API Access Control > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)  
 > [Reference > API Access Control > Certificate Signing Requests](https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/)  
 > [Tasks > Access Application in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)  
-> [Tasks > Configure Pods and Containers > Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)  
+> [Tasks > Configure Pods and Containers > Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)
 
 ### View the client certificate that the kubelet uses to authenticate to the Kubernetes API
 
-> 🔗 
+> 🔗
 > [Getting started > Best practices > PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)
 > [Reference > API Access Control > TLS bootstrapping](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/)
 
@@ -340,11 +340,14 @@ cat: /var/run/secrets/kubernetes.io/serviceaccount/token: No such file or direct
 
 ## 2. Prepare underlying infrastructure for installing a Kubernetes cluster
 
-> 📖 [PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/) · [Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/) · [Kubernetes API health endpoints](https://kubernetes.io/docs/reference/using-api/health-checks/)
+> 📖
+>- [Getting started > Best practices > PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)
+>- [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstraping clusters with kubeadm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
+>- [Reference > API Overview > Kubernetes API health endpoints](https://kubernetes.io/docs/reference/using-api/health-checks/)
 
 ### List the services on your Linux operating system that are associated with Kubernetes
 
-> 🔗 [Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstraping clusters with kubecm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
 
 <details><summary>show</summary>
 <p>
@@ -358,7 +361,7 @@ systemctl list-unit-files --type service --all | grep kube
 
 ### List the status of the kubelet service running on the Kubernetes node
 
-> 🔗 [Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstraping clusters with kubecm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
 
 <details><summary>show</summary>
 <p>
@@ -372,7 +375,7 @@ systemctl status kubelet
 
 ### Get the status of the control plane components (cluster health)
 
-> 🔗 [Kubernetes API health endpoints](https://kubernetes.io/docs/reference/using-api/health-checks/)
+> 🔗 [Reference > API Overview > Kubernetes API health endpoints](https://kubernetes.io/docs/reference/using-api/health-checks/)
 
 <details><summary>show</summary>
 <p>
@@ -400,14 +403,12 @@ curl -k https://localhost:6443/healthz?verbose
 kubectl get --raw='/healthz?verbose'
 ```
 
-[Kubernetes API Health Endpoints](https://kubernetes.io/docs/reference/using-api/health-checks/)
-
 </p>
 </details>
 
 ### Perform the command to list all API resources in your Kubernetes cluster
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line toole (kubectl cheatsheet) > Kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -421,7 +422,7 @@ kubectl api-resources
 
 ### Restart kubelet on the node
 
-> 🔗 [Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstraping clusters with kubeadm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
 
 <details><summary>show</summary>
 <p>
@@ -439,7 +440,9 @@ sudo systemctl restart kubelet
 
 ## 3. Create and manage Kubernetes clusters using kubeadm
 
-> 📖 [Creating a cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/) · [Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> 📖
+> [Getting started > Production environment > Installing Kubernetes with deployment tolls > Bootstraping clusters with kubeadm > Creating a cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/)
+> [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
 ### Upgrade the control plane components using kubeadm. When completed, check that everything, including kubelet and kubectl is upgrade to version 1.31.6
 
