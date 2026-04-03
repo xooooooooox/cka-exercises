@@ -342,12 +342,12 @@ cat: /var/run/secrets/kubernetes.io/serviceaccount/token: No such file or direct
 
 > 📖
 >- [Getting started > Best practices > PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)
->- [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstraping clusters with kubeadm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
+>- [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
 >- [Reference > API Overview > Kubernetes API health endpoints](https://kubernetes.io/docs/reference/using-api/health-checks/)
 
 ### List the services on your Linux operating system that are associated with Kubernetes
 
-> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstraping clusters with kubecm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
 
 <details><summary>show</summary>
 <p>
@@ -361,7 +361,7 @@ systemctl list-unit-files --type service --all | grep kube
 
 ### List the status of the kubelet service running on the Kubernetes node
 
-> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstraping clusters with kubecm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
 
 <details><summary>show</summary>
 <p>
@@ -408,7 +408,7 @@ kubectl get --raw='/healthz?verbose'
 
 ### Perform the command to list all API resources in your Kubernetes cluster
 
-> 🔗 [Reference > Command line toole (kubectl cheatsheet) > Kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -422,7 +422,7 @@ kubectl api-resources
 
 ### Restart kubelet on the node
 
-> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstraping clusters with kubeadm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
 
 <details><summary>show</summary>
 <p>
@@ -441,12 +441,12 @@ sudo systemctl restart kubelet
 ## 3. Create and manage Kubernetes clusters using kubeadm
 
 > 📖
-> [Getting started > Production environment > Installing Kubernetes with deployment tolls > Bootstraping clusters with kubeadm > Creating a cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/)
+> [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Creating a cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/)
 > [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
 ### Upgrade the control plane components using kubeadm. When completed, check that everything, including kubelet and kubectl is upgrade to version 1.31.6
 
-> 🔗 [Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
 <details><summary>show</summary>
 <p>
@@ -483,7 +483,7 @@ kubeadm upgrade plan
 
 ### Upgrade kubeadm to version 1.18.6
 
-> 🔗 [Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
 <details><summary>show</summary>
 <p>
@@ -497,7 +497,7 @@ sudo apt install -y kubeadm --allow-change-held-packages kubeadm=1.18.6-00
 
 ### Plan and upgrade the control plane components with kubeadm to version 1.18.6
 
-> 🔗 [Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
 <details><summary>show</summary>
 <p>
@@ -513,7 +513,7 @@ sudo kubeadm upgrade apply v1.18.6
 
 ### Update kubelet to version 1.18.6
 
-> 🔗 [Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
 <details><summary>show</summary>
 <p>
@@ -527,7 +527,7 @@ sudo apt install kubelet=1.18.6-00
 
 ### Update kubectl to version 1.18.6
 
-> 🔗 [Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
 <details><summary>show</summary>
 <p>
@@ -541,7 +541,7 @@ sudo apt install kubectl=1.18.6-00
 
 ### Upgrade the kubelet configuration on a worker node
 
-> 🔗 [Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
 <details><summary>show</summary>
 <p>
@@ -557,11 +557,14 @@ sudo kubeadm upgrade node
 
 ## 4. Manage the lifecycle of Kubernetes clusters
 
-> 📖 [Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/) · [Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/) · [kubectl Cheat Sheet](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
+> 📖
+> [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> [Tasks > Access Applications in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+> [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
 
 ### Setup autocomplete for k8s commands
 
-> 🔗 [kubectl Cheat Sheet - kubectl autocomplete](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#kubectl-autocomplete)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: kubectl autocomplete](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#kubectl-autocomplete)
 
 <details><summary>show</summary>
 <p>
@@ -576,7 +579,7 @@ echo "source <(kubectl completion bash)" >> ~/.bashrc
 
 ### Setup alias for kubectl
 
-> 🔗 [kubectl Cheat Sheet - kubectl autocomplete](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#kubectl-autocomplete)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: kubectl autocomplete](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#kubectl-autocomplete)
 
 <details><summary>show</summary>
 <p>
@@ -593,7 +596,7 @@ source ~/.bashrc
 
 ### Show kubeconfig settings
 
-> 🔗 [Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+> 🔗 [Tasks > Access Applications in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
 
 <details><summary>show</summary>
 <p>
@@ -607,7 +610,7 @@ kubectl config view
 
 ### Use multiple kubeconfig files at the same time
 
-> 🔗 [Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+> 🔗 [Tasks > Access Applications in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
 
 <details><summary>show</summary>
 <p>
@@ -621,7 +624,9 @@ KUBECONFIG=~/.kube/config:~/.kube/kubconfig2
 
 ### Permanently save the namespace `ggcka-s2` for all subsequent kubectl commands in that context.
 
-> 🔗 [Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/) · [kubectl Cheat Sheet - kubectl context and configuration](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#kubectl-context-and-configuration)
+> 🔗
+> [Tasks > Access Applications in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+> [Reference > Command line tool (kubectl) > kubectl Quick Reference: kubectl context and configuration](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#kubectl-context-and-configuration)
 
 <details><summary>show</summary>
 <p>
@@ -635,7 +640,7 @@ kubectl config set-context --current --namespace=ggcka-s2
 
 ### Set a context utilizing a specific `cluster-admin` user in `default` namespace
 
-> 🔗 [Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+> 🔗 [Tasks > Access Applications in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
 
 <details><summary>show</summary>
 <p>
@@ -653,7 +658,7 @@ kubectl config use-context gce
 
 ### List all nodes in the cluster
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -669,7 +674,7 @@ kubectl get nodes -o wide
 
 ### Describe nodes with verbose output
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -683,7 +688,7 @@ kubectl describe nodes
 
 ### Get the external IP of all nodes
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -697,7 +702,7 @@ kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="ExternalIP
 
 ### Create a new namespace
 
-> 🔗 [Namespaces Walkthrough](https://kubernetes.io/docs/tasks/administer-cluster/namespaces-walkthrough/)
+> 🔗 [Tasks > Administer a Cluster > Share a Cluster with Namespaces > Namespaces Walkthrough](https://kubernetes.io/docs/tasks/administer-cluster/namespaces-walkthrough/)
 
 <details><summary>show</summary>
 <p>
@@ -711,7 +716,7 @@ kubectl create namespace web
 
 ### List all the namespaces that exist in the cluster
 
-> 🔗 [Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
+> 🔗 [Concepts > Overview > Working with Kubernetes Objects > Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
 
 <details><summary>show</summary>
 <p>
@@ -725,7 +730,7 @@ kubectl get namespaces
 
 ### List all services in the kube-system namespace
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -739,7 +744,7 @@ kubectl get svc -n kube-system
 
 ### List the pods in all namespaces
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -755,7 +760,7 @@ k get po -A
 
 ### List all pods in the `default` namespace, with more details
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -769,7 +774,7 @@ kubectl -n default get pods -o wide
 
 ### List all pods in the default namespace
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -785,7 +790,7 @@ k -n default get po
 
 ### List a deployment named `nginx-deployment`
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -801,7 +806,7 @@ kubectl -n default get deploy nginx-deployment
 
 ### Get the pod YAML from a pod named `nginx`
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -817,7 +822,7 @@ k -n default get po -o yaml
 
 ### Get information about the pod, including details about potential issues (e.g. pod hasn't started)
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -831,7 +836,7 @@ kubectl describe po nginx
 
 ### Get pod logs from a pod named `nginx`
 
-> 🔗 [kubectl Cheat Sheet - Interacting with running Pods](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Interacting with running Pods](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods)
 
 <details><summary>show</summary>
 <p>
@@ -845,7 +850,7 @@ kubectl logs nginx
 
 ### Output a pod's YAML without cluster specific information
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -859,7 +864,7 @@ kubectl get pod my-pod -o yaml
 
 ### List services in the default namespace, sorted by name
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -875,7 +880,7 @@ k -n default get svc --sort.by=.metadata.name
 
 ### List all the services created in your Kubernetes cluster, across all namespaces
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -889,7 +894,9 @@ kubectl get svc -A
 
 ### Create a pod which runs an nginx container
 
-> 🔗 [Pods](https://kubernetes.io/docs/concepts/workloads/pods/) · [kubectl Cheat Sheet - Creating objects](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#creating-objects)
+> 🔗
+> [Concepts > Workloads > Pods](https://kubernetes.io/docs/concepts/workloads/pods/)
+> [Reference > Command line tool (kubectl) > kubectl Quick Reference: Creating objects](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#creating-objects)
 
 <details><summary>show</summary>
 <p>
@@ -905,7 +912,7 @@ kubectl run nginx2 --image=nginx --restart=Never --dry-run -o yaml | kubectl cre
 
 ### Delete a pod
 
-> 🔗 [kubectl Cheat Sheet - Deleting resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#deleting-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Deleting resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#deleting-resources)
 
 <details><summary>show</summary>
 <p>
@@ -919,7 +926,9 @@ kubectl delete po nginx
 
 ### Use the imperative command to create a pod named nginx-pod with the image nginx, but save it to a YAML file named pod.yaml instead of creating it
 
-> 🔗 [kubectl Usage Conventions](https://kubernetes.io/docs/reference/kubectl/conventions/) · [kubectl Cheat Sheet - Creating objects](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#creating-objects)
+> 🔗
+> [Reference > Command line tool (kubectl) > kubectl Usage Conventions](https://kubernetes.io/docs/reference/kubectl/conventions/)
+> [Reference > Command line tool (kubectl) > kubectl Quick Reference: Creating objects](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#creating-objects)
 
 <details><summary>show</summary>
 <p>
@@ -933,7 +942,7 @@ kubectl run nginx --image nginx-pod --dry-run=client -o yaml > pod.yaml
 
 ### Create a deployment with two replica pods from YAML
 
-> 🔗 [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+> 🔗 [Concepts > Workloads > Workload Management > Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
 
 <details><summary>show</summary>
 <p>
@@ -986,7 +995,7 @@ kubectl delete deploy nginx
 
 ### Add an annotation to a deployment
 
-> 🔗 [Annotations](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/)
+> 🔗 [Concepts > Overview > Working with Kubernetes Objects > Annotations](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/)
 
 <details><summary>show</summary>
 <p>
@@ -1000,7 +1009,7 @@ kubectl annotate deploy nginx mycompany.com/someannotation="chad"
 
 ### Add a label to a pod
 
-> 🔗 [Labels and Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)
+> 🔗 [Concepts > Overview > Working with Kubernetes Objects > Labels and Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)
 
 <details><summary>show</summary>
 <p>
@@ -1014,7 +1023,7 @@ kubectl label pods nginx env=prod
 
 ### Show labels for all pods in the cluster
 
-> 🔗 [Labels and Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)
+> 🔗 [Concepts > Overview > Working with Kubernetes Objects > Labels and Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)
 
 <details><summary>show</summary>
 <p>
@@ -1030,7 +1039,7 @@ kubectl get po -L env
 
 ### List all pods that are in the running state using field selectors
 
-> 🔗 [Field Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/)
+> 🔗 [Concepts > Overview > Working with Kubernetes Objects > Field Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/)
 
 <details><summary>show</summary>
 <p>
@@ -1044,7 +1053,7 @@ kubectl get po --field-selector status.phase=Running
 
 ### List all services in the default namespace using field selectors
 
-> 🔗 [Field Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/)
+> 🔗 [Concepts > Overview > Working with Kubernetes Objects > Field Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/)
 
 <details><summary>show</summary>
 <p>
@@ -1058,7 +1067,7 @@ kubectl get svc --field-selector metadata.namespace=default
 
 ### List all API resources in your Kubernetes cluster
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -1072,7 +1081,7 @@ kubectl api-resources
 
 ### Drain a node for maintenance named `node1.mylabserver.com`
 
-> 🔗 [Safely Drain a Node](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/)
+> 🔗 [Tasks > Administer a Cluster > Safely Drain a Node](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/)
 
 <details><summary>show</summary>
 <p>
@@ -1086,7 +1095,7 @@ kubectl drain node1.mylabserver.com --ignore-daemonsets --force
 
 ### Put the node `node1.mylabserver.com` back into service, so pods can be scheduled to it
 
-> 🔗 [Safely Drain a Node](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/)
+> 🔗 [Tasks > Administer a Cluster > Safely Drain a Node](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/)
 
 <details><summary>show</summary>
 <p>
@@ -1100,7 +1109,7 @@ kubectl uncordon node1.mylabserver.com
 
 ### Look up the value for the key `cluster.name` in the etcd cluster and backup etcd
 
-> 🔗 [Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
+> 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
 
 <details><summary>show</summary>
 <p>
@@ -1124,7 +1133,7 @@ ETCDCTL_API=3 etcdctl snapshot save /home/cloud_user/etcd_backup.db \
 
 ### Reset etcd and remove all data from the etcd
 
-> 🔗 [Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
+> 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
 
 <details><summary>show</summary>
 <p>
@@ -1140,7 +1149,7 @@ sudo rm -rf /var/lib/etcd
 
 ### Restore an etcd store from backup.
 
-> 🔗 [Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
+> 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
 
 <details><summary>show</summary>
 <p>
@@ -1174,7 +1183,9 @@ ETCDCTL_API=3 etcdctl get cluster.name \
 
 ## 5. Implement and configure a highly-available control plane
 
-> 📖 [Options for Highly Available Topology](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ha-topology/) · [Creating Highly Available Clusters with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/)
+> 📖
+> [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Options for Highly Available Topology](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ha-topology/)
+> [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Creating Highly Available Clusters with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/)
 
 _原文档暂无此考点的练习。_
 
@@ -1182,7 +1193,9 @@ _原文档暂无此考点的练习。_
 
 ## 6. Use Helm and Kustomize to install cluster components
 
-> 📖 [Managing Kubernetes Objects Using Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/) · [Helm Documentation](https://helm.sh/docs/)
+> 📖
+> [Tasks > Manage Kubernetes Objects > Managing Kubernetes Objects Using Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)
+> [Helm Documentation](https://helm.sh/docs/)
 
 _原文档暂无此考点的练习。_
 
@@ -1190,7 +1203,10 @@ _原文档暂无此考点的练习。_
 
 ## 7. Understand extension interfaces (CNI, CSI, CRI, etc.)
 
-> 📖 [Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/) · [Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/architecture/cri/) · [Container Storage Interface (CSI)](https://kubernetes-csi.github.io/docs/)
+> 📖
+> [Concepts > Extending Kubernetes > Compute, Storage, and Networking Extensions > Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
+> [Concepts > Cluster Architecture > Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/architecture/cri/)
+> [Container Storage Interface (CSI)](https://kubernetes-csi.github.io/docs/)
 
 _原文档暂无此考点的练习。_
 
@@ -1198,6 +1214,8 @@ _原文档暂无此考点的练习。_
 
 ## 8. Understand CRDs, install and configure operators
 
-> 📖 [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) · [Operator Pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
+> 📖
+> [Concepts > Extending Kubernetes > Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
+> [Concepts > Extending Kubernetes > Operator Pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 
 _原文档暂无此考点的练习。_

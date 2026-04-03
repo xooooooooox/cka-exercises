@@ -17,7 +17,9 @@
 
 ## 1. Understand connectivity between Pods
 
-> 📖 [Cluster Networking](https://kubernetes.io/docs/concepts/cluster-administration/networking/) · [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
+> 📖
+> [Concepts > Cluster Administration > Cluster Networking](https://kubernetes.io/docs/concepts/cluster-administration/networking/)
+> [Concepts > Services, Load Balancing, and Networking > DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
 
 *原文档暂无此考点的练习。*
 
@@ -25,7 +27,7 @@
 
 ## 2. Define and enforce Network Policies
 
-> 📖 [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+> 📖 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
 
 *原文档暂无此考点的练习。*
 
@@ -33,7 +35,9 @@
 
 ## 3. Use ClusterIP, NodePort, LoadBalancer service types and endpoints
 
-> 📖 [Service](https://kubernetes.io/docs/concepts/services-networking/service/) · [Connecting Applications with Services](https://kubernetes.io/docs/tutorials/services/connect-applications-service/)
+> 📖
+> [Concepts > Services, Load Balancing, and Networking > Service](https://kubernetes.io/docs/concepts/services-networking/service/)
+> [Tutorials > Services > Connecting Applications with Services](https://kubernetes.io/docs/tutorials/services/connect-applications-service/)
 
 *原文档暂无此考点的练习。*
 
@@ -41,7 +45,7 @@
 
 ## 4. Use the Gateway API to manage Ingress traffic
 
-> 📖 [Gateway API](https://kubernetes.io/docs/concepts/services-networking/gateway/)
+> 📖 [Concepts > Services, Load Balancing, and Networking > Gateway API](https://kubernetes.io/docs/concepts/services-networking/gateway/)
 
 *原文档暂无此考点的练习。*
 
@@ -49,7 +53,9 @@
 
 ## 5. Know how to use Ingress controllers and Ingress resources
 
-> 📖 [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) · [Ingress Controllers](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)
+> 📖
+> [Concepts > Services, Load Balancing, and Networking > Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+> [Concepts > Services, Load Balancing, and Networking > Ingress Controllers](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)
 
 *原文档暂无此考点的练习。*
 
@@ -57,6 +63,8 @@
 
 ## 6. Understand and use CoreDNS
 
-> 📖 [Using CoreDNS for Service Discovery](https://kubernetes.io/docs/tasks/administer-cluster/coredns/) · [Debugging DNS Resolution](https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/)
+> 📖
+> [Tasks > Administer a Cluster > Using CoreDNS for Service Discovery](https://kubernetes.io/docs/tasks/administer-cluster/coredns/)
+> [Tasks > Administer a Cluster > Debugging DNS Resolution](https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/)
 
 *原文档暂无此考点的练习。*

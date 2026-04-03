@@ -14,7 +14,9 @@
 
 ## 1. Implement storage classes and dynamic volume provisioning
 
-> 📖 [Storage Classes](https://kubernetes.io/docs/concepts/storage/storage-classes/) · [Dynamic Volume Provisioning](https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/)
+> 📖
+> [Concepts > Storage > Storage Classes](https://kubernetes.io/docs/concepts/storage/storage-classes/)
+> [Concepts > Storage > Dynamic Volume Provisioning](https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/)
 
 *原文档暂无此考点的练习。*
 
@@ -22,7 +24,9 @@
 
 ## 2. Configure volume types, access modes and reclaim policies
 
-> 📖 [Volumes](https://kubernetes.io/docs/concepts/storage/volumes/) · [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
+> 📖
+> [Concepts > Storage > Volumes](https://kubernetes.io/docs/concepts/storage/volumes/)
+> [Concepts > Storage > Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 
 *原文档暂无此考点的练习。*
 
@@ -30,6 +34,8 @@
 
 ## 3. Manage persistent volumes and persistent volume claims
 
-> 📖 [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/) · [Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/)
+> 📖
+> [Concepts > Storage > Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
+> [Tasks > Configure Pods and Containers > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/)
 
 *原文档暂无此考点的练习。*

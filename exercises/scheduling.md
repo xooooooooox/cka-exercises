@@ -14,11 +14,13 @@
 
 ## 1. Understand application deployments and how to perform rolling update and rollbacks
 
-> 📖 [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) · [kubectl Cheat Sheet](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
+> 📖
+> [Concepts > Workloads > Workload Management > Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+> [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
 
 ### Create a deployment from a YAML file named deploy.yml
 
-> 🔗 [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+> 🔗 [Concepts > Workloads > Workload Management > Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
 
 <details><summary>show</summary>
 <p>
@@ -36,7 +38,7 @@ kubectl apply -f deploy.yml
 
 ### Describe a pod named nginx
 
-> 🔗 [kubectl Cheat Sheet - Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
 <details><summary>show</summary>
 <p>
@@ -54,7 +56,7 @@ k describe po nginx
 
 ### Delete a pod named nginx
 
-> 🔗 [kubectl Cheat Sheet - Deleting resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#deleting-resources)
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Deleting resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#deleting-resources)
 
 <details><summary>show</summary>
 <p>
@@ -68,7 +70,7 @@ kubectl delete po nginx
 
 ### Create a deployment named nginx and use the image nginx
 
-> 🔗 [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+> 🔗 [Concepts > Workloads > Workload Management > Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
 
 <details><summary>show</summary>
 <p>
@@ -82,7 +84,9 @@ kubectl create deploy nginx --image=nginx
 
 ### Create the YAML specification for a deployment named nginx, outputting to a file named deploy.yml
 
-> 🔗 [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) · [kubectl Usage Conventions](https://kubernetes.io/docs/reference/kubectl/conventions/)
+> 🔗
+> [Concepts > Workloads > Workload Management > Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+> [Reference > Command line tool (kubectl) > kubectl Usage Conventions](https://kubernetes.io/docs/reference/kubectl/conventions/)
 
 <details><summary>show</summary>
 <p>
@@ -96,7 +100,7 @@ kubectl create deployment nginx --image=nginx --dry-run -o yaml > deploy.yml
 
 ### Update the `nginx` deployment to use at new image tag `1.27.4-alpine-slim`
 
-> 🔗 [Deployments - Updating a Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment)
+> 🔗 [Concepts > Workloads > Workload Management > Deployments: Updating a Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment)
 
 <details><summary>show</summary>
 <p>
@@ -119,11 +123,13 @@ k get deploy nginx -o yaml | grep image:
 
 ## 2. Use ConfigMaps and Secrets to configure applications
 
-> 📖 [ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/) · [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
+> 📖
+> [Concepts > Configuration > ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/)
+> [Concepts > Configuration > Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
 
 ### Create a configmap named `my-configmap` with two values, one single line and one multi-line
 
-> 🔗 [ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/)
+> 🔗 [Concepts > Configuration > ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/)
 
 <details><summary>show</summary>
 <p>
@@ -154,7 +160,7 @@ kubectl describe cm my-configmap
 
 ### Use the configMap `my-configmap` in a deployment named `my-nginx-deployment` that uses the image `nginx:latest` mounting the configMap as a volume
 
-> 🔗 [ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/)
+> 🔗 [Concepts > Configuration > ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/)
 
 <details><summary>show</summary>
 <p>
@@ -192,7 +198,7 @@ spec:
 
 ### Use the configMap `my-configmap` as an environment variable in a deployment named `mynginx-deploy` that uses the image `nginx-latest`, passing in the single line value as an environment variable named `SINGLE_VALUE` and the multi-line value as `MULTI_VALUE`
 
-> 🔗 [ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/)
+> 🔗 [Concepts > Configuration > ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/)
 
 <details><summary>show</summary>
 <p>
@@ -234,7 +240,7 @@ spec:
 
 ### Create a secret via yaml that contains two base64 encoded values
 
-> 🔗 [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
+> 🔗 [Concepts > Configuration > Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
 
 <details><summary>show</summary>
 <p>
@@ -264,7 +270,7 @@ kubectl create -f secretl.yml
 
 ### Using kubectl, create a secret named `admin-pass` from the string `SuperSecureP@ssw0rd`
 
-> 🔗 [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
+> 🔗 [Concepts > Configuration > Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
 
 <details><summary>show</summary>
 <p>
@@ -279,7 +285,7 @@ kubectl create secret generic admin-pass --from-literal=password=SuperSecureP@ss
 
 ### Inject the secret `admin-pass` into a deployment named `admin-deploy` as an environment variable named `PASSWORD`
 
-> 🔗 [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
+> 🔗 [Concepts > Configuration > Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
 
 <details><summary>show</summary>
 <p>
@@ -315,7 +321,7 @@ spec:
 
 ### Use the secret `admin-pass` inside a deployment named `secret-deploy` mounting the secret inside the pod at `/etc/secret/password`
 
-> 🔗 [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
+> 🔗 [Concepts > Configuration > Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
 
 <details><summary>show</summary>
 <p>
@@ -355,7 +361,9 @@ spec:
 
 ## 3. Configure workload autoscaling
 
-> 📖 [Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) · [Vertical Pod Autoscaling](https://kubernetes.io/docs/concepts/workloads/autoscaling/)
+> 📖
+> [Tasks > Run Applications > Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
+> [Concepts > Workloads > Autoscaling Workloads](https://kubernetes.io/docs/concepts/workloads/autoscaling/)
 
 *原文档暂无此考点的练习。*
 
@@ -363,7 +371,10 @@ spec:
 
 ## 4. Understand the primitives used to create robust, self-healing, application deployments
 
-> 📖 [ReplicaSet](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/) · [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) · [DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/)
+> 📖
+> [Concepts > Workloads > Workload Management > ReplicaSet](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/)
+> [Concepts > Workloads > Workload Management > Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+> [Concepts > Workloads > Workload Management > DaemonSets](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/)
 
 *原文档暂无此考点的练习。*
 
@@ -371,11 +382,13 @@ spec:
 
 ## 5. Configure Pod admission and scheduling (limits, node affinity, etc.)
 
-> 📖 [Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/) · [Resource Management for Pods and Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+> 📖
+> [Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)
+> [Concepts > Configuration > Resource Management for Pods and Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
 
 ### Apply the label "disk=ssd" to a node. Create a pod named "fast" using the nginx image and make sure that it selects a node based on the label "disk=ssd"
 
-> 🔗 [Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)
+> 🔗 [Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)
 
 <details><summary>show</summary>
 <p>
@@ -411,7 +424,7 @@ spec:
 
 ### Edit the "fast" pod (created above), changing the node selector to "disk=slow." Notice that the pod cannot be changed, and the YAML was saved to a temporary location. Take the YAML in /tmp/ and apply it by force to delete and recreate the pod using a single imperative command
 
-> 🔗 [Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)
+> 🔗 [Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)
 
 <details><summary>show</summary>
 <p>
@@ -453,7 +466,7 @@ k replace -f /tmp/kubectl-edit-136974717.yaml --force
 
 ### Create a new pod named "ssd-pod" using the nginx image. Use node affinity to select nodes based on a weight of 1 to nodes labeled "disk=ssd". If the selection criteria don't match, it can also choose nodes that have the label "kubernetes.io/os=linux"
 
-> 🔗 [Assigning Pods to Nodes - Node affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
+> 🔗 [Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes: Node affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#node-affinity)
 
 <details><summary>show command</summary>
 <p>
@@ -508,7 +521,7 @@ spec:
 
 ### Create a pod named "limited" with the image "httpd" and set the resource requests to 1 CPU and "100Mi" for memory
 
-> 🔗 [Resource Management for Pods and Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
+> 🔗 [Concepts > Configuration > Resource Management for Pods and Containers](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
 
 <details><summary>show</summary>
 <p>
