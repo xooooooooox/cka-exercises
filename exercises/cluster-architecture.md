@@ -443,111 +443,219 @@ sudo systemctl restart kubelet
 > 📖
 > [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Creating a cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/)
 > [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> [Tasks > Administer a Cluster > Administration with kubeadm > Changing The Kubernetes Package Repository](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/change-package-repository/)
+> [Releases > Version Skew Policy](https://kubernetes.io/releases/version-skew-policy/)
 
-### Upgrade the control plane components using kubeadm. When completed, check that everything, including kubelet and kubectl is upgrade to version 1.31.6
+> **Note:**
+> - **不能跳 minor version**: *"Skipping MINOR versions when upgrading is unsupported."* — [Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> - **可以跳 patch version**: *"Upgrade components to the most recent patch version of the target minor version."* — [Version Skew Policy](https://kubernetes.io/releases/version-skew-policy/)。例如 1.34.2 可以直接升到 1.35.3，无需先经过 1.35.0
+> - **Minor version upgrade** (e.g. 1.34 → 1.35): 必须更换 apt 源到新版本的 channel
+> - **Patch version upgrade** (e.g. 1.35.3 → 1.35.5): 不需要更换 apt 源，直接安装新版本即可
+> - 升级顺序: 先升级 kubeadm → 再 `kubeadm upgrade apply` → 最后升级 kubelet 和 kubectl
+> - 必须先升级 control plane，再升级 worker nodes
 
-> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+### Upgrade the control plane node from v1.34.x to v1.35.3 (minor version upgrade)
 
-<details><summary>show</summary>
-<p>
-
-```bash
-# list the control plane components at their current version and target version
-kubeadm upgrade plan
-
-# apply the upgrade to 1.31.6
-kubeadm upgrade apply v1.31.6
-
-# optionally upgrade kubeadm
-# this is if you get the message "Specified version to upgrade to "v1.31.6" is higher than the kubeadm version "v1.31.0". Upgrade kubeadm first using the tool you used to install kubeadm"
-
-# Download the public signing key for the Kubernetes package repositories
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-
-# Add the appropriate Kubernetes apt repository
-# This overwrites any existing configuration in /etc/apt/sources.list.d/kubernetes.list
-echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
-
-# update kubeadm to version 1.31.6-1.1
-sudo apt install -y kubeadm=1.31.6-1.1
-
-# try again to upgrade the control plane components using kubeadm
-kubeadm upgrade apply v1.31.6 -y
-
-# run kubeadm upgrade plan again to verify that everything is upgraded to 1.31.6
-kubeadm upgrade plan
-```
-
-</p>
-</details>
-
-### Upgrade kubeadm to version 1.18.6
-
-> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> 🔗 
+> [Tasks > Administer a Cluster > Administration with kubeadm > Changing The Kubernetes Package Repository](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/change-package-repository/#switching-to-another-kubernetes-package-repository)
+> [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
 <details><summary>show</summary>
 <p>
 
 ```bash
-sudo apt install -y kubeadm --allow-change-held-packages kubeadm=1.18.6-00
-```
+# === Step 1: Upgrade kubeadm ===
 
-</p>
-</details>
+# For a minor version upgrade, edit the apt source to point to the new version channel:
+# Change v1.34 to v1.35 in /etc/apt/sources.list.d/kubernetes.list
+# From: deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.34/deb/ /
+# To:   deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /
+sudo sed -i 's/v1\.34/v1.35/g' /etc/apt/sources.list.d/kubernetes.list
 
-### Plan and upgrade the control plane components with kubeadm to version 1.18.6
+# Determine which version to upgrade to
+sudo apt-get update
+sudo apt-cache madison kubeadm
 
-> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+# Install kubeadm v1.35.3
+sudo apt-mark unhold kubeadm
+sudo apt-get install -y kubeadm='1.35.3-*'
+sudo apt-mark hold kubeadm
 
-<details><summary>show</summary>
-<p>
+# Verify
+kubeadm version
 
-```bash
+# === Step 2: Plan and apply the upgrade ===
+
 sudo kubeadm upgrade plan
 
-sudo kubeadm upgrade apply v1.18.6
+sudo kubeadm upgrade apply v1.35.3
+
+# === Step 3: Drain the control plane node ===
+
+kubectl drain <cp-node> --ignore-daemonsets
+
+# === Step 4: Upgrade kubelet and kubectl ===
+
+sudo apt-mark unhold kubelet kubectl
+sudo apt-get update
+sudo apt-get install -y kubelet='1.35.3-*' kubectl='1.35.3-*'
+sudo apt-mark hold kubelet kubectl
+
+# === Step 5: Restart kubelet ===
+
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+# === Step 6: Uncordon the node ===
+
+kubectl uncordon <cp-node>
+
+# === Verify ===
+
+kubectl get nodes
 ```
 
 </p>
 </details>
 
-### Update kubelet to version 1.18.6
+### Upgrade a worker node from v1.34.x to v1.35.3 (minor version upgrade)
 
-> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
-
-<details><summary>show</summary>
-<p>
-
-```bash
-sudo apt install kubelet=1.18.6-00
-```
-
-</p>
-</details>
-
-### Update kubectl to version 1.18.6
-
-> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> 🔗
+> [Tasks > Administer a Cluster > Administration with kubeadm > Changing The Kubernetes Package Repository](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/change-package-repository/#switching-to-another-kubernetes-package-repository)
+> [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
 <details><summary>show</summary>
 <p>
 
 ```bash
-sudo apt install kubectl=1.18.6-00
-```
+# === On the worker node ===
 
-</p>
-</details>
+# Step 1: Update apt repo and upgrade kubeadm (same as control plane)
+sudo sed -i 's/v1\.34/v1.35/g' /etc/apt/sources.list.d/kubernetes.list
 
-### Upgrade the kubelet configuration on a worker node
+sudo apt-mark unhold kubeadm
+sudo apt-get update
+sudo apt-get install -y kubeadm='1.35.3-*'
+sudo apt-mark hold kubeadm
 
-> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
-
-<details><summary>show</summary>
-<p>
-
-```bash
+# Step 2: Upgrade the local kubelet configuration
 sudo kubeadm upgrade node
+
+# === On the control plane node ===
+
+# Step 3: Drain the worker node
+kubectl drain <worker-node> --ignore-daemonsets
+
+# === Back on the worker node ===
+
+# Step 4: Upgrade kubelet and kubectl
+sudo apt-mark unhold kubelet kubectl
+sudo apt-get update
+sudo apt-get install -y kubelet='1.35.3-*' kubectl='1.35.3-*'
+sudo apt-mark hold kubelet kubectl
+
+# Step 5: Restart kubelet
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+# === On the control plane node ===
+
+# Step 6: Uncordon the worker node
+kubectl uncordon <worker-node>
+
+# Verify
+kubectl get nodes
+```
+
+</p>
+</details>
+
+### Upgrade the control plane node from v1.35.3 to v1.35.5 (patch version upgrade)
+
+> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# For a patch version upgrade, no need to change the apt repository
+
+# Step 1: Upgrade kubeadm
+sudo apt-mark unhold kubeadm
+sudo apt-get update
+sudo apt-get install -y kubeadm='1.35.5-*'
+sudo apt-mark hold kubeadm
+
+# Step 2: Plan and apply
+sudo kubeadm upgrade plan
+sudo kubeadm upgrade apply v1.35.5
+
+# Step 3: Drain the control plane node
+kubectl drain <cp-node> --ignore-daemonsets
+
+# Step 4: Upgrade kubelet and kubectl
+sudo apt-mark unhold kubelet kubectl
+sudo apt-get update
+sudo apt-get install -y kubelet='1.35.5-*' kubectl='1.35.5-*'
+sudo apt-mark hold kubelet kubectl
+
+# Step 5: Restart kubelet
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+# Step 6: Uncordon
+kubectl uncordon <cp-node>
+
+# Verify
+kubectl get nodes
+```
+
+</p>
+</details>
+
+### Upgrade a worker node from v1.35.3 to v1.35.5 (patch version upgrade)
+
+> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# === On the worker node ===
+
+# Step 1: Upgrade kubeadm (no apt repo change needed for patch version)
+sudo apt-mark unhold kubeadm
+sudo apt-get update
+sudo apt-get install -y kubeadm='1.35.5-*'
+sudo apt-mark hold kubeadm
+
+# Step 2: Upgrade the local kubelet configuration
+sudo kubeadm upgrade node
+
+# === On the control plane node ===
+
+# Step 3: Drain the worker node
+kubectl drain <worker-node> --ignore-daemonsets
+
+# === Back on the worker node ===
+
+# Step 4: Upgrade kubelet and kubectl
+sudo apt-mark unhold kubelet kubectl
+sudo apt-get update
+sudo apt-get install -y kubelet='1.35.5-*' kubectl='1.35.5-*'
+sudo apt-mark hold kubelet kubectl
+
+# Step 5: Restart kubelet
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+
+# === On the control plane node ===
+
+# Step 6: Uncordon the worker node
+kubectl uncordon <worker-node>
+
+# Verify
+kubectl get nodes
 ```
 
 </p>
@@ -686,15 +794,20 @@ kubectl describe nodes
 </p>
 </details>
 
-### Get the external IP of all nodes
+### Get the internal IP of all nodes
 
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+
+> **Note:** `ExternalIP` 仅在云托管集群 (GKE, EKS, AKS) 中存在。kubeadm 集群（包括 CKA 考试环境）的 `status.addresses` 通常只有 `InternalIP` 和 `Hostname`。
 
 <details><summary>show</summary>
 <p>
 
 ```bash
-kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="ExternalIP")].address}'
+kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'
+
+# or, using yq
+kubectl get nodes -o yaml | yq '.items[].status.addresses[] | select(.type == "InternalIP") | .address'
 ```
 
 </p>
@@ -1107,31 +1220,37 @@ kubectl uncordon node1.mylabserver.com
 </p>
 </details>
 
-### Look up the value for the key `cluster.name` in the etcd cluster and backup etcd
+### Backup etcd
 
 > 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
+
+> **Note:** 在 kubeadm 集群中，etcd 以 **static pod** 运行（非 systemd service）。证书路径可从 etcd pod spec 或 manifest 中获取。
 
 <details><summary>show</summary>
 <p>
 
 ```bash
-ETCDCTL_API=3 etcdctl get cluster.name \
---endpoints=https://10.0.1.101:2379 \
---cacert=/home/cloud_user/etcd-certs/etcd-ca.pem \
---cert=/home/cloud_user/etcd-certs/etcd-server.crt \
---key=/home/cloud_user/etcd-certs/etcd-server.key
+# find cert paths from the etcd static pod manifest
+cat /etc/kubernetes/manifests/etcd.yaml | grep -E "cert-file|key-file|trusted-ca"
 
-ETCDCTL_API=3 etcdctl snapshot save /home/cloud_user/etcd_backup.db \
---endpoints=https://10.0.1.101:2379 \
---cacert=/home/cloud_user/etcd-certs/etcd-ca.pem \
---cert=/home/cloud_user/etcd-certs/etcd-server.crt \
---key=/home/cloud_user/etcd-certs/etcd-server.key
+# or from the running pod
+kubectl -n kube-system describe pod etcd-<cp-node> | grep -A 20 "Command"
+
+# backup etcd
+ETCDCTL_API=3 etcdctl snapshot save /opt/etcd_backup.db \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key
+
+# verify the snapshot
+ETCDCTL_API=3 etcdctl snapshot status /opt/etcd_backup.db --write-table
 ```
 
 </p>
 </details>
 
-### Reset etcd and remove all data from the etcd
+### Reset etcd and remove all data
 
 > 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
 
@@ -1139,41 +1258,61 @@ ETCDCTL_API=3 etcdctl snapshot save /home/cloud_user/etcd_backup.db \
 <p>
 
 ```bash
-sudo systemctl stop etcd
+# stop kube-apiserver and etcd by moving their static pod manifests out
+sudo mv /etc/kubernetes/manifests/kube-apiserver.yaml /etc/kubernetes/manifests/etcd.yaml /tmp/
 
+# wait for pods to terminate
+sudo crictl ps | grep -E "etcd|kube-apiserver"
+
+# remove the etcd data directory
 sudo rm -rf /var/lib/etcd
 ```
 
 </p>
 </details>
 
-### Restore an etcd store from backup.
+### Restore an etcd store from backup
 
 > 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
+
+> **Note:** etcd 3.5+ 中 `etcdctl snapshot restore` 已废弃，应使用 `etcdutl snapshot restore`。
 
 <details><summary>show</summary>
 <p>
 
 ```bash
-# spin up a temporary etcd cluster and save the data from the backup file to a new directory (/var/lib/etcd)
-sudo ETCDCTL_API=3 etcdctl snapshot restore /home/cloud_user/etcd_backup.db \
---initial-cluster etcd-restore=https://10.0.1.101:2380 \
---initial-advertise-peer-urls https://10.0.1.101:2380 \
---name etcd-restore \
---data-dir /var/lib/etcd
+# === Step 1: Stop kube-apiserver and etcd ===
 
-# set ownership of the new data directory
-sudo chown -R etcd:etcd /var/lib/etcd
+sudo mv /etc/kubernetes/manifests/kube-apiserver.yaml /etc/kubernetes/manifests/etcd.yaml /tmp/
 
-# start etcd
-sudo systemctl start etcd
+# wait for pods to terminate
+sudo crictl ps | grep -E "etcd|kube-apiserver"
 
-# Verify the data was restored
-ETCDCTL_API=3 etcdctl get cluster.name \
---endpoints=https://10.0.1.101:2379 \
---cacert=/home/cloud_user/etcd-certs/etcd-ca.pem \
---cert=/home/cloud_user/etcd-certs/etcd-server.crt \
---key=/home/cloud_user/etcd-certs/etcd-server.key
+# === Step 2: Restore the snapshot ===
+
+sudo etcdutl snapshot restore /opt/etcd_backup.db \
+  --data-dir /var/lib/etcd-restored
+
+# === Step 3: Replace the data directory ===
+
+sudo rm -rf /var/lib/etcd
+sudo mv /var/lib/etcd-restored /var/lib/etcd
+
+# === Step 4: Move manifests back to restart static pods ===
+
+sudo mv /tmp/kube-apiserver.yaml /tmp/etcd.yaml /etc/kubernetes/manifests/
+
+# === Step 5: Verify ===
+
+# wait for pods to come back
+kubectl get pods -n kube-system -w
+
+# verify etcd is healthy
+ETCDCTL_API=3 etcdctl endpoint health \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key
 ```
 
 </p>
