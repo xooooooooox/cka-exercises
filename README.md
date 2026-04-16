@@ -10,13 +10,13 @@ Exercises sourced from [chadmcrowell/CKA-Exercises](https://github.com/chadmcrow
 
 | Domain | Weight | Exercises |
 |--------|--------|-----------|
-| [Cluster Architecture, Installation and Configuration](exercises/cluster-architecture.md) | 25% | 56 |
+| [Cluster Architecture, Installation and Configuration](exercises/cluster-architecture.md) | 25% | 61 |
 | [Workloads & Scheduling](exercises/scheduling.md) | 15% | 17 |
-| [Services & Networking](exercises/networking.md) | 20% | 0 |
+| [Services & Networking](exercises/networking.md) | 20% | 15 |
 | [Storage](exercises/storage.md) | 10% | 0 |
 | [Troubleshooting](exercises/troubleshooting.md) | 30% | 10 |
 
-> Services & Networking and Storage exercises are yet to be added.
+> Storage exercises are yet to be added.
 
 ## Project Structure
 

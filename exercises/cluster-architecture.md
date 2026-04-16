@@ -1344,10 +1344,156 @@ _原文档暂无此考点的练习。_
 
 > 📖
 > [Concepts > Extending Kubernetes > Compute, Storage, and Networking Extensions > Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
-> [Concepts > Cluster Architecture > Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/architecture/cri/)
+> [Concepts > Containers > Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/containers/cri/)
 > [Container Storage Interface (CSI)](https://kubernetes-csi.github.io/docs/)
 
-_原文档暂无此考点的练习。_
+### Identify the container runtime and CRI endpoint on a node
+
+> 🔗 [Concepts > Containers > Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/containers/cri/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# check the CONTAINER-RUNTIME column
+kubectl get nodes -o wide
+
+# view the runtime endpoint from kubelet arguments
+ps aux | grep kubelet | grep container-runtime-endpoint
+
+# or check the kubelet config
+cat /var/lib/kubelet/config.yaml | grep containerRuntimeEndpoint
+
+# if crictl is available, check runtime info
+sudo crictl info | head -20
+```
+
+</p>
+</details>
+
+### Inspect CNI plugin configuration on a node
+
+> 🔗 [Concepts > Extending Kubernetes > Compute, Storage, and Networking Extensions > Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# list CNI configuration files
+ls /etc/cni/net.d/
+
+# view the CNI config
+cat /etc/cni/net.d/*.conflist
+
+# list installed CNI binaries
+ls /opt/cni/bin/
+
+# identify the CNI plugin pods in kube-system namespace
+kubectl get pods -n kube-system | grep -iE "calico|flannel|cilium|weave"
+
+# or check the CNI plugin daemonset
+kubectl get ds -n kube-system
+```
+
+</p>
+</details>
+
+### Verify the CNI plugin is working by testing cross-node pod connectivity
+
+> 🔗 [Concepts > Extending Kubernetes > Compute, Storage, and Networking Extensions > Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
+
+> **Why this works:** CNI 插件负责三项核心功能：为 pod 分配 IP、配置 pod 网络命名空间、建立跨节点路由（overlay 或 BGP）。如果两个 pod 在**不同节点**上能通过 pod IP 直接通信，说明 CNI 的这三项功能均正常工作。注意：如果 pods 在同一节点上，它们通过本地网桥通信，无法验证跨节点路由。
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# list available nodes
+kubectl get nodes
+
+# create web pod on one node
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web
+spec:
+  nodeName: <node-1>   # replace with an actual node name
+  containers:
+  - name: web
+    image: nginx
+EOF
+
+# create test pod on a different node
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test
+spec:
+  nodeName: <node-2>   # replace with a different node name
+  containers:
+  - name: test
+    image: busybox
+    command: ["sleep", "3600"]
+EOF
+
+# verify pods are on different nodes
+kubectl get pods -o wide
+
+# get the IP of the web pod (note: use "pod web" singular, not "pods")
+WEB_IP=$(kubectl get pod web -o jsonpath='{.status.podIP}')
+
+# or, using yq
+WEB_IP=$(kubectl get pod web -o yaml | yq '.status.podIP')
+
+# verify cross-node connectivity
+kubectl exec test -- wget -O- -T3 http://$WEB_IP
+```
+
+</p>
+</details>
+
+### List CSI drivers installed in the cluster and inspect storage classes
+
+> 🔗 [Concepts > Storage > Storage Classes](https://kubernetes.io/docs/concepts/storage/storage-classes/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# list all CSI drivers
+kubectl get csidriver
+
+# list storage classes and their provisioners
+kubectl get sc
+
+# show provisioner for each storage class
+kubectl get sc -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.provisioner}{"\n"}{end}'
+
+# find the default storage class
+kubectl get sc -o jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}'
+
+# describe a specific storage class to see reclaimPolicy, volumeBindingMode, etc.
+kubectl describe sc <storage-class-name>
+```
+
+</p>
+</details>
+
+### Troubleshoot a pod stuck in ContainerCreating due to CNI misconfiguration
+
+> 🔗 [Concepts > Extending Kubernetes > Compute, Storage, and Networking Extensions > Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
+
+*此为场景练习，无固定答案。关键步骤：*
+
+```
+1. kubectl describe pod <pod> — 查看 Events 中的 CNI 错误信息
+2. ssh 到对应 node，检查 /etc/cni/net.d/ 配置文件是否存在
+3. 检查 /opt/cni/bin/ 中 CNI 二进制文件是否完整（需有 loopback 等基础插件）
+4. journalctl -u kubelet — 查看 kubelet 日志中的 CNI 相关错误
+5. kubectl get pods -n kube-system — 确认 CNI 插件的 DaemonSet pods 正常运行
+```
 
 ---
 
