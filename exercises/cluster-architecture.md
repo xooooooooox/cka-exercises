@@ -341,9 +341,64 @@ cat: /var/run/secrets/kubernetes.io/serviceaccount/token: No such file or direct
 ## 2. Prepare underlying infrastructure for installing a Kubernetes cluster
 
 > 📖
+>- [Getting started > Production environment > Container Runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/)
 >- [Getting started > Best practices > PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)
 >- [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Configuring each kubelet in your cluster using kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/kubelet-integration/)
 >- [Reference > API Overview > Kubernetes API health endpoints](https://kubernetes.io/docs/reference/using-api/health-checks/)
+
+### Install and configure containerd as the container runtime
+
+> 🔗
+> [Getting started > Production environment > Container Runtimes](https://kubernetes.io/docs/setup/production-environment/container-runtimes/)
+> [containerd > Getting started](https://github.com/containerd/containerd/blob/main/docs/getting-started.md)
+
+> **Note:** CKA 考试中 CRI 通常已预装，但理解安装过程有助于排查问题。必须使用 systemd cgroup driver（与 kubelet 一致）。
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# === Step 1: Enable IPv4 forwarding (required by Kubernetes) ===
+# ref: https://kubernetes.io/docs/setup/production-environment/container-runtimes/#prerequisite-ipv4-forwarding-optional
+
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.ipv4.ip_forward = 1
+EOF
+
+sudo sysctl --system
+
+# verify
+sysctl net.ipv4.ip_forward
+
+# Note: overlay 和 br_netfilter 内核模块、bridge-nf-call-iptables 等设置
+# 取决于所使用的 CNI 插件，请参考对应 CNI 文档（如 Calico、Flannel）
+# 部分 CNI 插件会自动配置这些参数
+
+# === Step 2: Install containerd ===
+# ref: https://github.com/containerd/containerd/blob/main/docs/getting-started.md
+
+sudo apt-get update
+sudo apt-get install -y containerd
+
+# === Step 3: Configure containerd to use systemd cgroup driver ===
+# ref: https://kubernetes.io/docs/setup/production-environment/container-runtimes/#containerd-systemd
+
+sudo mkdir -p /etc/containerd
+containerd config default | sudo tee /etc/containerd/config.toml
+
+# set SystemdCgroup = true (must match kubelet's cgroup driver)
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+
+sudo systemctl restart containerd
+sudo systemctl enable containerd
+
+# === Verify ===
+
+sudo systemctl status containerd
+```
+
+</p>
+</details>
 
 ### List the services on your Linux operating system that are associated with Kubernetes
 
@@ -441,6 +496,7 @@ sudo systemctl restart kubelet
 ## 3. Create and manage Kubernetes clusters using kubeadm
 
 > 📖
+> [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Installing kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
 > [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Creating a cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/)
 > [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 > [Tasks > Administer a Cluster > Administration with kubeadm > Changing The Kubernetes Package Repository](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/change-package-repository/)
@@ -453,6 +509,105 @@ sudo systemctl restart kubelet
 > - **Patch version upgrade** (e.g. 1.35.3 → 1.35.5): 不需要更换 apt 源，直接安装新版本即可
 > - 升级顺序: 先升级 kubeadm → 再 `kubeadm upgrade apply` → 最后升级 kubelet 和 kubectl
 > - 必须先升级 control plane，再升级 worker nodes
+
+### Install kubeadm, kubelet, and kubectl packages
+
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Installing kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# install prerequisites
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+
+# add the Kubernetes apt repository signing key
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.35/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+# add the Kubernetes apt repository
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.35/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+# install kubeadm, kubelet, kubectl
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+
+# hold packages to prevent unintended upgrades
+sudo apt-mark hold kubelet kubeadm kubectl
+
+# enable kubelet (it will restart in a crash loop until kubeadm init is run)
+sudo systemctl enable --now kubelet
+```
+
+</p>
+</details>
+
+### Initialize a Kubernetes control plane with kubeadm
+
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Creating a cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# === Prerequisites (on all nodes) ===
+# - CRI installed and running (containerd — see Section 2 exercise)
+# - kubeadm, kubelet, kubectl installed (see exercise above)
+# - swap disabled: sudo swapoff -a
+
+# === On the control plane node ===
+
+# initialize the cluster
+# --apiserver-advertise-address: API server 监听的 IP（多网卡环境必须指定，否则自动选择默认网关接口）
+# --pod-network-cidr: CNI 插件使用的 pod 网段（需与后续安装的 CNI 配置匹配）
+sudo kubeadm init \
+  --apiserver-advertise-address=<cp-node-ip> \
+  --pod-network-cidr=10.244.0.0/16
+
+# set up kubeconfig for the current user (follow the output instructions)
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# verify the control plane components
+kubectl get nodes           # should show NotReady (no CNI yet)
+kubectl get pods -n kube-system
+
+# install a CNI plugin (e.g., Calico — see Section 7 exercises for details)
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.3/manifests/calico.yaml
+
+# verify node is now Ready
+kubectl get nodes
+```
+
+</p>
+</details>
+
+### Join a worker node to the cluster using kubeadm
+
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Creating a cluster with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# === On the control plane: generate a join command ===
+
+kubeadm token create --print-join-command
+
+# === On the worker node (as root) ===
+# Prerequisites: CRI, kubeadm, kubelet installed; swap disabled
+
+# run the join command from above
+sudo kubeadm join <cp-endpoint>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
+
+# === On the control plane: verify ===
+
+kubectl get nodes       # new worker node should appear and become Ready
+```
+
+</p>
+</details>
 
 ### Upgrade the control plane node from v1.34.x to v1.35.3 (minor version upgrade)
 
@@ -1398,6 +1553,148 @@ kubectl get ds -n kube-system
 </p>
 </details>
 
+### Install a CNI plugin on a cluster where networking is not yet configured
+
+> 🔗 [Concepts > Extending Kubernetes > Compute, Storage, and Networking Extensions > Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
+
+> **Note:** `kubeadm init` 完成后，节点状态为 `NotReady`，CoreDNS pods 为 `Pending`，因为尚未安装 CNI 插件。CKA 考试中通常会指定使用哪个 CNI 插件及其 manifest URL。常见选项：Calico、Flannel、Cilium。
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# check node status — should be NotReady without CNI
+kubectl get nodes
+
+# check CoreDNS pods — should be Pending (waiting for CNI)
+kubectl get pods -n kube-system -l k8s-app=kube-dns
+
+# install Calico CNI (use the URL specified in the exam question)
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.3/manifests/calico.yaml
+
+# wait for Calico pods to be running
+kubectl get pods -n kube-system -l k8s-app=calico-node -w
+
+# verify nodes are now Ready
+kubectl get nodes
+
+# verify CoreDNS pods are now Running
+kubectl get pods -n kube-system -l k8s-app=kube-dns
+```
+
+</p>
+</details>
+
+### Install Calico CNI and customize the pod CIDR to match the cluster configuration
+
+> 🔗 [Concepts > Extending Kubernetes > Compute, Storage, and Networking Extensions > Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
+
+> **Scenario:** 使用 `kubeadm init --pod-network-cidr=10.10.0.0/16` 初始化集群，但 Calico 默认 CIDR 是 `192.168.0.0/16`，需要在安装前修改 manifest 使其匹配。
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# download the manifest first (don't apply directly)
+curl -O https://raw.githubusercontent.com/projectcalico/calico/v3.29.3/manifests/calico.yaml
+
+# find the CIDR setting
+grep -n "CALICO_IPV4POOL_CIDR" calico.yaml
+
+# uncomment and modify CALICO_IPV4POOL_CIDR to match --pod-network-cidr
+# the default is commented out with value 192.168.0.0/16, change to 10.10.0.0/16
+sed -i 's|# - name: CALICO_IPV4POOL_CIDR|- name: CALICO_IPV4POOL_CIDR|' calico.yaml
+sed -i 's|#   value: "192.168.0.0/16"|  value: "10.10.0.0/16"|' calico.yaml
+
+# verify the change
+grep -A1 "CALICO_IPV4POOL_CIDR" calico.yaml
+
+# apply the modified manifest
+kubectl apply -f calico.yaml
+
+# verify
+kubectl get pods -n kube-system -l k8s-app=calico-node
+kubectl get nodes
+```
+
+</p>
+</details>
+
+### Change the Calico encapsulation mode from IPIP to VXLAN
+
+> 🔗 [Concepts > Extending Kubernetes > Compute, Storage, and Networking Extensions > Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
+
+> **Note:** IPIP vs VXLAN 区别：
+> - **IPIP**: IP-in-IP 封装，开销更低（20 bytes），但只支持 IPv4，某些云环境不支持
+> - **VXLAN**: UDP 封装，开销略高（50 bytes），但兼容性更好，支持 IPv4/IPv6
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# === Method 1: Modify manifest before install ===
+
+# in calico.yaml, find and change encapsulation settings:
+grep -n "CALICO_IPV4POOL_IPIP\|CALICO_IPV4POOL_VXLAN" calico.yaml
+
+# set CALICO_IPV4POOL_IPIP value to "Never"
+# set CALICO_IPV4POOL_VXLAN value to "Always"
+
+# === Method 2: Modify running Calico via IPPool resource ===
+
+# view current IPPool
+kubectl get ippool default-ipv4-ippool -o yaml
+
+# patch to switch from IPIP to VXLAN
+kubectl patch ippool default-ipv4-ippool --type merge \
+  -p '{"spec":{"ipipMode":"Never","vxlanMode":"Always"}}'
+
+# verify
+kubectl get ippool default-ipv4-ippool -o yaml | grep -E "ipipMode|vxlanMode"
+```
+
+</p>
+</details>
+
+### Configure MTU for the Calico CNI plugin
+
+> 🔗 [Concepts > Extending Kubernetes > Compute, Storage, and Networking Extensions > Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
+
+> **Note:** MTU 需要根据封装模式和底层网络调整：
+> - 底层网络 MTU 1500 + IPIP → pod MTU 1480 (1500 - 20)
+> - 底层网络 MTU 1500 + VXLAN → pod MTU 1450 (1500 - 50)
+> - 无封装（同子网直连） → pod MTU 1500
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# === Before install: modify calico.yaml ===
+
+# find the MTU setting in the manifest
+grep -n "veth_mtu" calico.yaml
+
+# modify to desired value (e.g., 1450 for VXLAN)
+
+# === After install: modify ConfigMap ===
+
+# check current MTU
+kubectl -n kube-system get cm calico-config -o yaml | grep veth_mtu
+
+# edit the ConfigMap
+kubectl -n kube-system edit cm calico-config
+# change veth_mtu to desired value
+
+# restart calico pods to apply
+kubectl -n kube-system rollout restart daemonset calico-node
+
+# verify MTU on a pod's network interface
+kubectl exec <pod> -- ip link show eth0 | grep mtu
+```
+
+</p>
+</details>
+
 ### Verify the CNI plugin is working by testing cross-node pod connectivity
 
 > 🔗 [Concepts > Extending Kubernetes > Compute, Storage, and Networking Extensions > Network Plugins](https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/)
@@ -1458,11 +1755,13 @@ kubectl exec test -- wget -O- -T3 http://$WEB_IP
 
 > 🔗 [Concepts > Storage > Storage Classes](https://kubernetes.io/docs/concepts/storage/storage-classes/)
 
+> **Note:** `kubectl get csidriver` 可能返回空。这是正常的——只有实现了 CSI 规范并注册 `CSIDriver` 对象的驱动才会显示（如 `ebs.csi.aws.com`、`nfs.csi.k8s.io`）。使用旧式 out-of-tree provisioner（如 `nfs-subdir-external-provisioner`）或 in-tree provisioner（如 `kubernetes.io/aws-ebs`）的集群不会有 CSIDriver 资源。StorageClass 的 `provisioner` 字段可以是 CSI driver，也可以是非 CSI provisioner。
+
 <details><summary>show</summary>
 <p>
 
 ```bash
-# list all CSI drivers
+# list all CSI drivers (may be empty if no CSI drivers are installed)
 kubectl get csidriver
 
 # list storage classes and their provisioners
@@ -1471,8 +1770,11 @@ kubectl get sc
 # show provisioner for each storage class
 kubectl get sc -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.provisioner}{"\n"}{end}'
 
+# or, using yq
+kubectl get sc -o yaml | yq '.items[] | .metadata.name + " " + .provisioner'
+
 # find the default storage class
-kubectl get sc -o jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}'
+kubectl get sc | grep '(default)'
 
 # describe a specific storage class to see reclaimPolicy, volumeBindingMode, etc.
 kubectl describe sc <storage-class-name>
