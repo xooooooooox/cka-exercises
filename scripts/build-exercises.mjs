@@ -20,14 +20,15 @@ const DOMAINS = [
 ];
 
 function classifyTag(title) {
-  if (/^\[CKA\s*真题/.test(title)) return 'cka-zhenti';
+  if (/^\[CKA\s+Past\s+Exam/i.test(title)) return 'cka-past-exam';
   if (/^\[Killer\.sh\s*A-/i.test(title)) return 'killersh-a';
   if (/^\[Killer\.sh\s*B-/i.test(title)) return 'killersh-b';
   return 'general';
 }
 
 function extractPoints(title) {
-  const m = title.match(/-\s*(\d+)\s*分/);
+  // Supports "- 4 pts" (current) and "- 4分" (legacy Chinese form)
+  const m = title.match(/-\s*(\d+)\s*(?:pts?\b|分)/);
   return m ? parseInt(m[1], 10) : null;
 }
 

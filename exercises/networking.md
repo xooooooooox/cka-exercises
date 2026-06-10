@@ -245,7 +245,7 @@ kubectl run restricted -n netpol-test --rm -it --image=busybox --labels="app=res
 </p>
 </details>
 
-### [CKA 真题 - 7分] Create allow-port-from-namespace NetworkPolicy in internal namespace allowing same-namespace pods access on port 9000
+### [CKA Past Exam - 7 pts] Create allow-port-from-namespace NetworkPolicy in internal namespace allowing same-namespace pods access on port 9000
 
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
 
@@ -284,7 +284,7 @@ kubectl describe networkpolicy allow-port-from-namespace -n internal
 </p>
 </details>
 
-### [CKA 真题 - 7分] Create NetworkPolicy allowing pods in my-app namespace to egress to big-corp namespace on port 8080
+### [CKA Past Exam - 7 pts] Create NetworkPolicy allowing pods in my-app namespace to egress to big-corp namespace on port 8080
 
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
 
@@ -322,7 +322,7 @@ EOF
 </p>
 </details>
 
-### [CKA 真题 - 7分] Allow pods from internal namespace to access port 9200 in big-corp namespace
+### [CKA Past Exam - 7 pts] Allow pods from internal namespace to access port 9200 in big-corp namespace
 
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
 
@@ -436,7 +436,7 @@ kubectl get endpoints web-np
 5. 修复 selector 或 pod labels 后验证: kubectl get endpoints <svc>
 ```
 
-### [CKA 真题 - 7分] Reconfigure front-end deployment to add named port http (80/TCP) and expose via NodePort service front-end-svc
+### [CKA Past Exam - 7 pts] Reconfigure front-end deployment to add named port http (80/TCP) and expose via NodePort service front-end-svc
 
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Service](https://kubernetes.io/docs/concepts/services-networking/service/)
 
@@ -689,7 +689,7 @@ curl -H "Host: bar.example.com" http://$INGRESS_IP/
 </p>
 </details>
 
-### [CKA 真题 - 7分] Create Ingress "pong" in ing-internal namespace routing /hi to service hi:5678
+### [CKA Past Exam - 7 pts] Create Ingress "pong" in ing-internal namespace routing /hi to service hi:5678
 
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
 

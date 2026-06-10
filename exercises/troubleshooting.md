@@ -42,7 +42,7 @@
 
 *此为场景练习，无固定答案。关键步骤：`systemctl status kubelet`、`journalctl -u kubelet`、检查 `/etc/systemd/system/kubelet.service.d/10-kubeadm.conf` 配置。*
 
-### [CKA 真题 - 13分] Restore wk8s-node-0 from NotReady status, ensure kubelet persists across reboot
+### [CKA Past Exam - 13 pts] Restore wk8s-node-0 from NotReady status, ensure kubelet persists across reboot
 
 > 🔗 [Tasks > Monitoring, Logging, and Debugging > Troubleshoot Clusters](https://kubernetes.io/docs/tasks/debug/debug-cluster/)
 
@@ -164,7 +164,7 @@ kubectl top node
 </p>
 </details>
 
-### [CKA 真题 - 5分] Find the pod with label name=cpu-user consuming the most CPU, write its name to a file
+### [CKA Past Exam - 5 pts] Find the pod with label name=cpu-user consuming the most CPU, write its name to a file
 
 > 🔗 [Tasks > Monitoring, Logging, and Debugging > Resource metrics pipeline](https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/)
 
@@ -372,7 +372,7 @@ kubectl logs deploy/log-test
 </p>
 </details>
 
-### [CKA 真题 - 5分] Filter foobar pod logs for "unable-access-website" and write matching lines to file
+### [CKA Past Exam - 5 pts] Filter foobar pod logs for "unable-access-website" and write matching lines to file
 
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Interacting with running Pods](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods)
 

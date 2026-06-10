@@ -336,7 +336,7 @@ cat: /var/run/secrets/kubernetes.io/serviceaccount/token: No such file or direct
 </p>
 </details>
 
-### [CKA 真题 - 4分] Create deployment-clusterrole, ServiceAccount cicd-token in app-team1, and bind them
+### [CKA Past Exam - 4 pts] Create deployment-clusterrole, ServiceAccount cicd-token in app-team1, and bind them
 
 > 🔗 [Reference > Access Authn Authz > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
@@ -855,7 +855,7 @@ kubectl get nodes
 </p>
 </details>
 
-### [CKA 真题 - 7分] Upgrade only the master node from v1.x.x to v1.(x+1).x, skipping etcd upgrade
+### [CKA Past Exam - 7 pts] Upgrade only the master node from v1.x.x to v1.(x+1).x, skipping etcd upgrade
 
 > 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
@@ -1569,7 +1569,7 @@ ETCDCTL_API=3 etcdctl endpoint health \
 </p>
 </details>
 
-### [CKA 真题 - 4分] Drain node ek8s-node-1 so all pods are evicted
+### [CKA Past Exam - 4 pts] Drain node ek8s-node-1 so all pods are evicted
 
 > 🔗 [Tasks > Administer a Cluster > Safely Drain a Node](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/)
 
@@ -1603,7 +1603,7 @@ kubectl get pods -A -o wide --field-selector spec.nodeName=ek8s-node-1
 </p>
 </details>
 
-### [CKA 真题 - 7分] Backup etcd to /srv/data/etcd-snapshot.db and restore from /var/lib/backup/etcd-snapshot-previous.db
+### [CKA Past Exam - 7 pts] Backup etcd to /srv/data/etcd-snapshot.db and restore from /var/lib/backup/etcd-snapshot-previous.db
 
 > 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
 
@@ -1659,7 +1659,7 @@ kubectl get nodes
 </p>
 </details>
 
-### [CKA 真题 - 4分] Count Ready nodes excluding those with NoSchedule taints, write count to file
+### [CKA Past Exam - 4 pts] Count Ready nodes excluding those with NoSchedule taints, write count to file
 
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
 

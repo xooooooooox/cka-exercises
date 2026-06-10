@@ -17,12 +17,12 @@ Certified Kubernetes Administrator (CKA) 考试准备，基于 [CKA Curriculum v
 | [Troubleshooting](exercises/troubleshooting.md) | 30% | 24 |
 
 练习标签说明：
-- **[CKA 真题]** — 历年真题，按考试大纲归类到对应章节
+- **[CKA Past Exam]** — 历年真题，按考试大纲归类到对应章节
 - **[Killer.sh A-Qn / B-Qn]** — killer.sh CKA 模拟考题（Simulator A & B），统一归在每个文件末尾的专门章节。原版 PDF 见 [`assets/`](assets/)
 
 ## 🎯 在线练习页面
 
-[`docs/`](docs/) 下是一个静态 SPA，提供浏览+测验两种模式，覆盖全部 ~205 道题。支持按考点 / 标签（CKA 真题 / Killer.sh A / B / 通用）/ 收藏 / 未完成多维过滤。测验模式可随机抽题、设置 30/60/120 分钟限时、自我打分、生成会话总结。
+[`docs/`](docs/) 下是一个静态 SPA，提供浏览 / 测验 / 文档树 三种模式，覆盖全部 ~205 道题。支持按考点 / 标签（CKA Past Exam / Killer.sh A / B / 通用）/ 收藏 / 未完成多维过滤。测验模式可随机抽题、设置 30/60/120 分钟限时、自我打分、生成会话总结。Docs 模式镜像 kubernetes.io 导航树，每个文档页反向链接关联的题目。
 
 **在线地址：** 推送到 `main` 后 GitHub Pages 自动部署到 `https://<owner>.github.io/cka-exercises/`（需在仓库 Settings → Pages → Source 选择 GitHub Actions）。
 

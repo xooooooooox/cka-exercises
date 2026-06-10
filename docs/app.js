@@ -11,7 +11,7 @@ const State = {
   mode: 'browse',
   filters: {
     domains: new Set(),          // all selected by default
-    tags: new Set(['general', 'cka-zhenti', 'killersh-a', 'killersh-b']),
+    tags: new Set(['general', 'cka-past-exam', 'killersh-a', 'killersh-b']),
     search: '',
     onlyBookmarks: false,
     onlyUndone: false,
@@ -67,7 +67,7 @@ function el(tag, props = {}, ...children) {
 
 const TAG_LABEL = {
   'general': 'General',
-  'cka-zhenti': 'CKA 真题',
+  'cka-past-exam': 'CKA Past Exam',
   'killersh-a': 'Killer.sh A',
   'killersh-b': 'Killer.sh B',
 };
@@ -179,7 +179,7 @@ function renderFilterBar() {
   document.getElementById('filter-reset').addEventListener('click', () => {
     State.filters = {
       domains: new Set(State.data.domains.map(d => d.key)),
-      tags: new Set(['general', 'cka-zhenti', 'killersh-a', 'killersh-b']),
+      tags: new Set(['general', 'cka-past-exam', 'killersh-a', 'killersh-b']),
       search: '', onlyBookmarks: false, onlyUndone: false, revealSolutions: false,
     };
     renderFilterBar();
@@ -293,7 +293,7 @@ function renderExerciseCard(ex, opts = {}) {
     meta.appendChild(el('span', { class: 'qnum-pill', title: `Question ${ex.numberInDomain} in ${ex.domain.title.split(',')[0]}` }, `Q${ex.numberInDomain}`));
   }
   meta.appendChild(tagPill(ex.tag));
-  if (ex.points != null) meta.appendChild(el('span', { class: 'points-pill' }, `${ex.points} 分`));
+  if (ex.points != null) meta.appendChild(el('span', { class: 'points-pill' }, `${ex.points} pts`));
   meta.appendChild(el('span', { class: 'id-pill' }, ex.id));
   meta.appendChild(el('span', {}, `${ex.domain.title.split(',')[0]} · ${ex.section.kind === 'killersh' ? 'Killer.sh' : `§${ex.section.number} ${ex.section.title}`}`));
   if (ex.solveOn) {

@@ -440,7 +440,7 @@ kubectl exec projected-pod -- cat /etc/projected/db-password
 </p>
 </details>
 
-### [CKA 真题 - 4分] Create PV "app-config" with 2Gi capacity, ReadWriteMany, hostPath /srv/app-config
+### [CKA Past Exam - 4 pts] Create PV "app-config" with 2Gi capacity, ReadWriteMany, hostPath /srv/app-config
 
 > 🔗 [Concepts > Storage > Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 
@@ -781,7 +781,7 @@ kubectl exec readonly-pod -- sh -c 'echo "new data" > /data/write-test.txt'
 </p>
 </details>
 
-### [CKA 真题 - 7分] Create PVC pv-volume (10Mi, csi-hostpath-sc), mount in web-server pod, then expand to 70Mi with --record
+### [CKA Past Exam - 7 pts] Create PVC pv-volume (10Mi, csi-hostpath-sc), mount in web-server pod, then expand to 70Mi with --record
 
 > 🔗 [Tasks > Configure Pods and Containers > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/)
 

@@ -119,7 +119,7 @@ k get deploy nginx -o yaml | grep image:
 </p>
 </details>
 
-### [CKA 真题 - 4分] Scale the existing loadbalancer deployment to 6 replicas
+### [CKA Past Exam - 4 pts] Scale the existing loadbalancer deployment to 6 replicas
 
 > 🔗 [Concepts > Workloads > Workload Management > Deployments: Scaling a Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#scaling-a-deployment)
 
@@ -775,7 +775,7 @@ kubectl get pods -l app=probed-app -w
 </p>
 </details>
 
-### [CKA 真题 - 4分] Create a Pod "kucc1" with four containers: nginx, redis, memcached, consul
+### [CKA Past Exam - 4 pts] Create a Pod "kucc1" with four containers: nginx, redis, memcached, consul
 
 > 🔗 [Concepts > Workloads > Pods](https://kubernetes.io/docs/concepts/workloads/pods/)
 
@@ -824,7 +824,7 @@ kubectl describe pod kucc1 | grep -A2 "Image:"
 </p>
 </details>
 
-### [CKA 真题 - 7分] Add busybox sidecar container to legacy-app pod sharing /var/log via emptyDir
+### [CKA Past Exam - 7 pts] Add busybox sidecar container to legacy-app pod sharing /var/log via emptyDir
 
 > 🔗 [Concepts > Workloads > Pods > Sidecar Containers](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/)
 
@@ -1080,7 +1080,7 @@ k get po
 </p>
 </details>
 
-### [CKA 真题 - 4分] Schedule Pod nginx-kusc00401 to nodes labeled disk=spinning using nodeSelector
+### [CKA Past Exam - 4 pts] Schedule Pod nginx-kusc00401 to nodes labeled disk=spinning using nodeSelector
 
 > 🔗 [Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)
 

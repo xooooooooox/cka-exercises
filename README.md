@@ -1,6 +1,6 @@
 # CKA Exam Exercises
 
-[中文版](README_CN.md)
+[Chinese version](README_CN.md)
 
 Certified Kubernetes Administrator (CKA) exam preparation, based on [CKA Curriculum v1.35](https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.35.pdf).
 
@@ -17,12 +17,12 @@ Exercises sourced from [chadmcrowell/CKA-Exercises](https://github.com/chadmcrow
 | [Troubleshooting](exercises/troubleshooting.md) | 30% | 24 |
 
 Exercise tags:
-- **[CKA 真题]** — historical exam questions integrated under the relevant curriculum sections
+- **[CKA Past Exam]** — historical CKA exam questions integrated under the relevant curriculum sections (sourced from past-exam collections circulating in study communities)
 - **[Killer.sh A-Qn / B-Qn]** — questions from the killer.sh CKA simulator (Simulator A & B), grouped in a dedicated section at the end of each file. Source PDFs are in [`assets/`](assets/).
 
 ## 🎯 Practice Web App
 
-A static SPA in [`docs/`](docs/) gives you searchable browse + quiz-mode practice across all ~205 exercises. Filter by domain, tag (CKA 真题 / Killer.sh A / B / general), bookmarks, or undone state. Quiz mode pulls random questions with optional time limits (30/60/120 min), self-graded scoring, and end-of-session summary.
+A static SPA in [`docs/`](docs/) gives you searchable browse / quiz / docs-tree practice across all ~205 exercises. Filter by domain, tag (CKA Past Exam / Killer.sh A / B / general), bookmarks, or undone state. Quiz mode pulls random questions with optional time limits (30 / 60 / 120 min), self-graded scoring, and end-of-session summary. Docs mode mirrors the kubernetes.io navigation hierarchy and reverse-links each page to the exercises that drill it.
 
 **Live site:** Pushed to `main`, GitHub Pages serves the app at `https://<owner>.github.io/cka-exercises/` (enable in repo Settings → Pages → Source = GitHub Actions).
 
