@@ -57,8 +57,13 @@ Progress (✓ Done, ⭐ Bookmark, theme) persists in `localStorage`. Markdown is
 │   ├── storage.md                      # Storage (10%)
 │   └── troubleshooting.md              # Troubleshooting (30%)
 └── scripts/
-    └── build-exercises.mjs             # MD → JSON extractor
+    ├── build-exercises.mjs             # MD → JSON extractor (runs on every build / Pages deploy)
+    ├── apply-enriched-tasks.mjs        # one-shot: enrich killer.sh task bodies from PDF Q&A
+    ├── apply-killersh-polish.mjs       # one-shot: add docs hints + shorten titles for killer.sh
+    └── k8s-docs-map.json               # kubernetes.io breadcrumb → URL lookup (used by polish script)
 ```
+
+The two `apply-*.mjs` scripts are idempotent one-shots kept as provenance for how the killer.sh exercises were enriched. Only `build-exercises.mjs` runs in CI.
 
 ## Pre-exam Setup
 

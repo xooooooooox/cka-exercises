@@ -428,10 +428,10 @@ cat /opt/KUTR00101/foobar
 
 > 📚 Source PDFs: [`assets/CKA Simulator A Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20A%20Kubernetes%201.35%20-%20Killer%20Shell.pdf) | [`assets/CKA Simulator B Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20B%20Kubernetes%201.35%20-%20Killer%20Shell.pdf)
 
-### [Killer.sh A-Q7] Write bash scripts using kubectl top for node and pod resource usage
-
-
+### [Killer.sh A-Q7] kubectl top: scripts for node + pod resource usage
 > 🔗 [Tasks > Monitoring, Logging, and Debugging > Resource metrics pipeline](https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/)
+> [Tasks > Monitoring, Logging, and Debugging > Tools for Monitoring Resources](https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-usage-monitoring/)
+> [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
 
 > 🖥 Solve on: `ssh cka5774`
 
@@ -472,9 +472,7 @@ chmod +x /opt/course/7/node.sh /opt/course/7/pod.sh
 </p>
 </details>
 
-### [Killer.sh A-Q17] Find the containerd container for a Pod via crictl, dump info and logs
-
-
+### [Killer.sh A-Q17] crictl: find Pod's container, dump info + logs
 > 🔗 [Tasks > Monitoring, Logging, and Debugging > Debugging Kubernetes Nodes With Crictl](https://kubernetes.io/docs/tasks/debug/debug-cluster/crictl/)
 
 > 🖥 Solve on: `ssh cka2556`
@@ -527,10 +525,9 @@ crictl logs <id> > /opt/course/17/pod-container.log
 </p>
 </details>
 
-### [Killer.sh B-Q5] kubectl sorting scripts (creationTimestamp and uid)
-
-
+### [Killer.sh B-Q5] kubectl sort: by creationTimestamp and uid
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Formatting output](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#formatting-output)
+> [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
 
 > 🖥 Solve on: `ssh cka8448`
 
@@ -566,10 +563,9 @@ chmod +x /opt/course/5/find_pods.sh /opt/course/5/find_pods_uid.sh
 </p>
 </details>
 
-### [Killer.sh B-Q6] Fix broken kubelet ExecStart path, then create a Pod
-
-
+### [Killer.sh B-Q6] Kubelet: fix broken ExecStart path, then create Pod
 > 🔗 [Tasks > Monitoring, Logging, and Debugging > Troubleshoot Clusters](https://kubernetes.io/docs/tasks/debug/debug-cluster/)
+> [Setup > Production environment > Bootstrapping clusters with kubeadm > Troubleshooting kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/troubleshooting-kubeadm/)
 
 > 🖥 Solve on: `ssh cka1024`
 
@@ -620,10 +616,9 @@ k run success --image=nginx:1-alpine
 </p>
 </details>
 
-### [Killer.sh B-Q9] Temporarily disable kube-scheduler, manually schedule a Pod, then restore
-
-
+### [Killer.sh B-Q9] Scheduler: disable + manually schedule a Pod + restore
 > 🔗 [Concepts > Scheduling, Preemption and Eviction > Kubernetes Scheduler](https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/)
+> [Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)
 
 > 🖥 Solve on: `ssh cka5248`
 
@@ -678,10 +673,10 @@ k get pod manual-schedule2 -o wide
 </p>
 </details>
 
-### [Killer.sh B-Q15] Cluster event logging script + capture pod-kill vs container-kill events
-
-
+### [Killer.sh B-Q15] Events: log script + diff pod-kill vs container-kill
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> [Tasks > Monitoring, Logging, and Debugging > Debugging Kubernetes Nodes With Crictl](https://kubernetes.io/docs/tasks/debug/debug-cluster/crictl/)
+> [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
 
 > 🖥 Solve on: `ssh cka6016`
 

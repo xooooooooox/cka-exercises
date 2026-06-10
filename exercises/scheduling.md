@@ -1134,10 +1134,9 @@ kubectl get pod nginx-kusc00401 -o wide
 >
 > CKA 报名后 killer.sh 提供两次模拟考试（Simulator A & B），各 17 题。下文整理了与本章节（工作负载与调度）相关的题目。
 
-### [Killer.sh A-Q3] Scale down a StatefulSet
-
-
+### [Killer.sh A-Q3] StatefulSet: scale down to 1 replica
 > 🔗 [Concepts > Workloads > Workload Management > StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
+> [Tasks > Run Applications > Scale a StatefulSet](https://kubernetes.io/docs/tasks/run-application/scale-stateful-set/)
 
 > 🖥 Solve on: `ssh cka3962`
 
@@ -1167,10 +1166,10 @@ k -n project-h800 get pod -l app=o3db
 </p>
 </details>
 
-### [Killer.sh A-Q4] Find Pods most likely to be evicted first under pressure (QoS)
-
-
+### [Killer.sh A-Q4] QoS: find BestEffort Pods evicted first under pressure
 > 🔗 [Tasks > Configure Pods and Containers > Configure Quality of Service for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/)
+> [Concepts > Workloads > Pods > Pod Quality of Service Classes](https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/)
+> [Concepts > Scheduling, Preemption and Eviction > Node-pressure Eviction](https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/)
 
 > 🖥 Solve on: `ssh cka2556`
 
@@ -1202,10 +1201,9 @@ cat /opt/course/4/pods-terminated-first.txt
 </p>
 </details>
 
-### [Killer.sh A-Q5] Configure HPA via Kustomize, override maxReplicas in prod overlay
-
-
+### [Killer.sh A-Q5] Kustomize HPA: replace external autoscaler, override maxReplicas in prod
 > 🔗 [Tasks > Run Applications > Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
+> [Tasks > Manage Kubernetes Objects > Declarative Management of Kubernetes Objects Using Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)
 
 > 🖥 Solve on: `ssh cka5774`
 
@@ -1281,10 +1279,9 @@ k -n api-gateway-prod delete cm horizontal-scaling-config
 </p>
 </details>
 
-### [Killer.sh A-Q11] Create a DaemonSet that runs on all nodes including controlplane
-
-
+### [Killer.sh A-Q11] DaemonSet: run on all nodes including controlplane
 > 🔗 [Concepts > Workloads > Workload Management > DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/)
+> [Concepts > Scheduling, Preemption and Eviction > Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 
 > 🖥 Solve on: `ssh cka2556`
 
@@ -1347,10 +1344,10 @@ k -n project-tiger get ds,pod -o wide   # one pod per node
 </p>
 </details>
 
-### [Killer.sh A-Q12] Deployment with multi-container Pods + podAntiAffinity to spread one per node
-
-
+### [Killer.sh A-Q12] podAntiAffinity: Deployment with multi-container Pods, one per node
 > 🔗 [Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes: Inter-pod affinity and anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity)
+> [Concepts > Workloads > Workload Management > Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
+> [Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)
 
 > 🖥 Solve on: `ssh cka2556`
 
@@ -1411,9 +1408,7 @@ spec:
 </p>
 </details>
 
-### [Killer.sh B-Q4] Pod becomes Ready only when an upstream Service is reachable
-
-
+### [Killer.sh B-Q4] Readiness probe: Pod ready only when Service reachable
 > 🔗 [Tasks > Configure Pods and Containers > Configure Liveness, Readiness and Startup Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
 
 > 🖥 Solve on: `ssh cka3200`
@@ -1472,10 +1467,9 @@ k get pod ready-if-service-ready    # should become READY 1/1
 </p>
 </details>
 
-### [Killer.sh B-Q11] Create namespace, mount Secret as file + env vars
-
-
+### [Killer.sh B-Q11] Secrets: mount as file + env vars
 > 🔗 [Concepts > Configuration > Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
+> [Tasks > Inject Data Into Applications > Distribute Credentials Securely Using Secrets](https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/)
 
 > 🖥 Solve on: `ssh cka2560`
 
@@ -1547,10 +1541,9 @@ spec:
 </p>
 </details>
 
-### [Killer.sh B-Q12] Schedule Pod only on controlplane nodes (no new labels)
-
-
+### [Killer.sh B-Q12] Tolerations: schedule Pod only on controlplane (no new labels)
 > 🔗 [Concepts > Scheduling, Preemption and Eviction > Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
+> [Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)
 
 > 🖥 Solve on: `ssh cka5248`
 
@@ -1595,10 +1588,9 @@ k get pod pod1 -o wide   # should land on controlplane
 </p>
 </details>
 
-### [Killer.sh B-Q13] Multi-container Pod sharing emptyDir volume with downward API env
-
-
+### [Killer.sh B-Q13] Multi-container Pod: shared emptyDir + downward API env
 > 🔗 [Tasks > Inject Data Into Applications > Expose Pod Information to Containers Through Environment Variables](https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/)
+> [Tasks > Access Applications in a Cluster > Communicate Between Containers in the Same Pod Using a Shared Volume](https://kubernetes.io/docs/tasks/access-application-cluster/communicate-containers-same-pod-shared-volume/)
 
 > 🖥 Solve on: `ssh cka3200`
 

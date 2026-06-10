@@ -203,20 +203,29 @@ function renderSidebar(visibleExercises) {
     const doneEx = dom.sections.reduce(
       (s, sec) => s + sec.exercises.filter(e => isDone(e.id)).length, 0);
     const domEl = el('details', { class: 'tree-domain', open: true });
-    const summary = el('summary', {}, dom.title.replace(/ \(.+?\)/, ''), el('small', { class: 'muted' }, ` ${doneEx}/${totalEx}`));
-    domEl.appendChild(summary);
+    domEl.appendChild(el('summary', {},
+      el('span', { class: 'label' }, dom.title.replace(/ \(.+?\)/, '')),
+      el('small', { class: 'muted' }, `${doneEx}/${totalEx}`),
+    ));
 
     for (const sec of dom.sections) {
       const exs = bySec.get(sec.number);
       if (!exs) continue;
       const secEl = el('details', { class: 'tree-section', open: false });
       const secLabel = sec.kind === 'killersh' ? '🎯 ' + sec.title : `${sec.number}. ${sec.title}`;
-      secEl.appendChild(el('summary', {}, secLabel, el('small', {}, ` ${exs.length}`)));
+      secEl.appendChild(el('summary', {},
+        el('span', { class: 'label' }, secLabel),
+        el('small', {}, `${exs.length}`),
+      ));
       for (const ex of exs) {
         const btn = el('button', {
           class: 'tree-exercise' + (isDone(ex.id) ? ' done' : '') + (isBookmark(ex.id) ? ' bookmarked' : ''),
           title: ex.title,
-        }, ex.title);
+          'data-id': ex.id,
+        },
+          el('span', { class: 'qnum' }, `Q${ex.numberInDomain}`),
+          el('span', { class: 'label' }, ex.title),
+        );
         btn.addEventListener('click', () => {
           document.getElementById('card-' + ex.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
@@ -245,9 +254,12 @@ function renderSidebarProgress() {
 }
 
 function renderExerciseCard(ex, opts = {}) {
+  // opts:
+  //   openSolution  bool — start with solution visible (browse: from filter; quiz: from solutionsHidden)
+  //   inlineToggle  bool — show the inline "Show solution" toggle button (default true)
   const card = el('div', { class: 'exercise-card', id: 'card-' + ex.id });
   if (isDone(ex.id)) card.classList.add('done');
-  if (State.filters.revealSolutions || opts.openSolution) card.classList.add('solution-open');
+  if (opts.openSolution) card.classList.add('solution-open');
 
   // Header
   const tools = el('div', { class: 'exercise-tools' });
@@ -257,8 +269,9 @@ function renderExerciseCard(ex, opts = {}) {
     if (isDone(ex.id)) card.classList.add('done'); else card.classList.remove('done');
     doneBtn.textContent = isDone(ex.id) ? '✓ Done' : '☐ Done';
     renderSidebarProgress();
-    const sideBtn = document.querySelectorAll('.tree-exercise');
-    sideBtn.forEach(b => { if (b.title === ex.title) b.classList.toggle('done', isDone(ex.id)); });
+    document
+      .querySelectorAll(`.tree-exercise[data-id="${ex.id}"]`)
+      .forEach(b => b.classList.toggle('done', isDone(ex.id)));
   });
   const bmBtn = el('button', { type: 'button', title: 'Toggle bookmark' }, isBookmark(ex.id) ? '⭐' : '☆');
   bmBtn.addEventListener('click', () => {
@@ -274,6 +287,9 @@ function renderExerciseCard(ex, opts = {}) {
 
   // Meta line
   const meta = el('div', { class: 'exercise-meta' });
+  if (ex.numberInDomain != null) {
+    meta.appendChild(el('span', { class: 'qnum-pill', title: `Question ${ex.numberInDomain} in ${ex.domain.title.split(',')[0]}` }, `Q${ex.numberInDomain}`));
+  }
   meta.appendChild(tagPill(ex.tag));
   if (ex.points != null) meta.appendChild(el('span', { class: 'points-pill' }, `${ex.points} 分`));
   meta.appendChild(el('span', { class: 'id-pill' }, ex.id));
@@ -283,10 +299,18 @@ function renderExerciseCard(ex, opts = {}) {
   }
   card.appendChild(meta);
 
-  // Docs link
-  if (ex.docsLink) {
-    const docs = el('div', { class: 'exercise-docs' },
-      el('a', { href: ex.docsLink, target: '_blank', rel: 'noopener' }, `📖 ${ex.docsLinkText || ex.docsLink}`));
+  // Docs links — one row per link, primary gets the 📖 icon
+  const links = (ex.docsLinks && ex.docsLinks.length) ? ex.docsLinks
+              : ex.docsLink ? [{ text: ex.docsLinkText || ex.docsLink, url: ex.docsLink }]
+              : [];
+  if (links.length) {
+    const docs = el('div', { class: 'exercise-docs' });
+    links.forEach((lnk, i) => {
+      docs.appendChild(el('div', { class: 'exercise-docs-row' },
+        el('span', { class: 'exercise-docs-icon' }, i === 0 ? '📖' : '↳'),
+        el('a', { href: lnk.url, target: '_blank', rel: 'noopener' }, lnk.text),
+      ));
+    });
     card.appendChild(docs);
   }
 
@@ -320,17 +344,25 @@ function renderExerciseCard(ex, opts = {}) {
 
   // Solution toggle + body
   if (ex.solution) {
-    const toggle = el('div', { class: 'solution-toggle', role: 'button' }, 'Show solution');
-    toggle.addEventListener('click', () => {
-      card.classList.toggle('solution-open');
-      toggle.textContent = card.classList.contains('solution-open') ? 'Hide solution' : 'Show solution';
-    });
-    card.appendChild(toggle);
+    const showInlineToggle = opts.inlineToggle !== false;
+    let toggle;
+    if (showInlineToggle) {
+      toggle = el('button', { type: 'button', class: 'solution-toggle', 'aria-expanded': 'false' }, 'Show solution');
+      toggle.addEventListener('click', () => {
+        const open = card.classList.toggle('solution-open');
+        toggle.textContent = open ? 'Hide solution' : 'Show solution';
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+      card.appendChild(toggle);
+    }
     const solHtml = renderMarkdown(ex.solution);
     const solDiv = el('div', { class: 'exercise-solution', html: solHtml });
     card.appendChild(solDiv);
     attachCopyButtons(solDiv);
-    if (card.classList.contains('solution-open')) toggle.textContent = 'Hide solution';
+    if (toggle && card.classList.contains('solution-open')) {
+      toggle.textContent = 'Hide solution';
+      toggle.setAttribute('aria-expanded', 'true');
+    }
   }
 
   return card;
@@ -360,7 +392,7 @@ function renderBrowse() {
       main.appendChild(el('h3', { class: 'muted', style: { marginTop: '12px' } }, label));
       currentSection = ex.section.number;
     }
-    main.appendChild(renderExerciseCard(ex));
+    main.appendChild(renderExerciseCard(ex, { openSolution: State.filters.revealSolutions }));
   }
 }
 
@@ -447,14 +479,19 @@ function renderQuizCard() {
 
   const card = document.getElementById('quiz-card');
   card.innerHTML = '';
-  card.appendChild(renderExerciseCard(ex, { openSolution: !q.solutionsHidden || q.revealed.has(ex.id) }));
+  const solutionOpen = !q.solutionsHidden || q.revealed.has(ex.id);
+  // In "Always visible" mode the inline toggle still lets you collapse for self-test.
+  // In "Hidden until I click Reveal" mode the dedicated Reveal button controls visibility;
+  // hide the inline toggle until the user has clicked Reveal (then it becomes a collapse button).
+  const showInlineToggle = !q.solutionsHidden || q.revealed.has(ex.id);
+  card.appendChild(renderExerciseCard(ex, { openSolution: solutionOpen, inlineToggle: showInlineToggle }));
 
   const flagBtn = document.getElementById('quiz-flag');
   flagBtn.textContent = q.flagged.has(ex.id) ? '🚩 Flagged' : '🚩 Flag';
   flagBtn.classList.toggle('active', q.flagged.has(ex.id));
 
   const revealBtn = document.getElementById('quiz-reveal');
-  revealBtn.hidden = !q.solutionsHidden;
+  revealBtn.hidden = !q.solutionsHidden || q.revealed.has(ex.id);
 
   document.getElementById('quiz-prev').disabled = q.idx === 0;
 }

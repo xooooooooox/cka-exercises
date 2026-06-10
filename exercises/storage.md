@@ -863,10 +863,9 @@ kubectl get pvc pv-volume
 
 > 📚 Source PDFs: [`assets/CKA Simulator A Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20A%20Kubernetes%201.35%20-%20Killer%20Shell.pdf) | [`assets/CKA Simulator B Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20B%20Kubernetes%201.35%20-%20Killer%20Shell.pdf)
 
-### [Killer.sh A-Q6] PV + PVC + Deployment volume mount
-
-
+### [Killer.sh A-Q6] PV/PVC: create + mount in Deployment
 > 🔗 [Tasks > Configure Pods and Containers > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/)
+> [Concepts > Storage > Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 
 > 🖥 Solve on: `ssh cka7968`
 
@@ -941,10 +940,9 @@ k apply -f safari.yaml
 </p>
 </details>
 
-### [Killer.sh B-Q10] StorageClass with WaitForFirstConsumer + Retain, use PVC in Job
-
-
+### [Killer.sh B-Q10] StorageClass: WaitForFirstConsumer + Retain, PVC in Job
 > 🔗 [Concepts > Storage > Storage Classes](https://kubernetes.io/docs/concepts/storage/storage-classes/)
+> [Concepts > Storage > Dynamic Volume Provisioning](https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/)
 
 > 🖥 Solve on: `ssh cka6016`
 

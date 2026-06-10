@@ -844,10 +844,9 @@ kubectl exec dnsutils -- nslookup myservice.mycompany.local
 
 > 📚 Source PDFs: [`assets/CKA Simulator A Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20A%20Kubernetes%201.35%20-%20Killer%20Shell.pdf) | [`assets/CKA Simulator B Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20B%20Kubernetes%201.35%20-%20Killer%20Shell.pdf)
 
-### [Killer.sh A-Q13] Replace Ingress with Gateway API HTTPRoute including header-based routing
-
-
+### [Killer.sh A-Q13] Gateway API: replace Ingress with HTTPRoute + header routing
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Gateway API](https://kubernetes.io/docs/concepts/services-networking/gateway/)
+> [Gateway API SIG > Documentation](https://gateway-api.sigs.k8s.io/)
 
 > 🖥 Solve on: `ssh cka7968`
 
@@ -945,10 +944,9 @@ curl -H "User-Agent: mobile" http://r500.gateway:30080/auto
 </p>
 </details>
 
-### [Killer.sh A-Q15] NetworkPolicy with multiple egress rules — separate rules form OR, not AND
-
-
+### [Killer.sh A-Q15] NetworkPolicy: multi-egress (separate rules = OR pitfall)
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+> [Tasks > Administer a Cluster > Declare Network Policy](https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/)
 
 > 🖥 Solve on: `ssh cka7968`
 
@@ -1007,10 +1005,10 @@ spec:
 </p>
 </details>
 
-### [Killer.sh A-Q16] Update CoreDNS to resolve custom-domain alongside cluster.local
-
-
+### [Killer.sh A-Q16] CoreDNS: add custom-domain alongside cluster.local
 > 🔗 [Tasks > Administer a Cluster > Using CoreDNS for Service Discovery](https://kubernetes.io/docs/tasks/administer-cluster/coredns/)
+> [Tasks > Administer a Cluster > Customizing DNS Service](https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/)
+> [Concepts > Services, Load Balancing, and Networking > DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
 
 > 🖥 Solve on: `ssh cka5774`
 
@@ -1079,10 +1077,9 @@ k exec -it bb -- nslookup kubernetes.default.svc.cluster.local
 </p>
 </details>
 
-### [Killer.sh B-Q1] Build correct FQDNs for Service, Headless Service, Pod, Pod-by-IP
-
-
+### [Killer.sh B-Q1] DNS FQDNs: Service / headless / Pod / Pod-by-IP
 > 🔗 [Concepts > Services, Load Balancing, and Networking > DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
+> [Concepts > Services, Load Balancing, and Networking > Service](https://kubernetes.io/docs/concepts/services-networking/service/)
 
 > 🖥 Solve on: `ssh cka6016`
 

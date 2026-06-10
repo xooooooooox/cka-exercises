@@ -1,0 +1,194 @@
+{
+  "Accessing the Kubernetes API from a Pod": {
+    "breadcrumb": "Tasks > Run Applications > Accessing the Kubernetes API from a Pod",
+    "url": "https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/"
+  },
+  "Assigning Pods to Nodes": {
+    "breadcrumb": "Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes",
+    "url": "https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/"
+  },
+  "Certificate Management with kubeadm": {
+    "breadcrumb": "Tasks > Administer a Cluster > Administration with kubeadm > Certificate Management with kubeadm",
+    "url": "https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/"
+  },
+  "Certificates best practices": {
+    "breadcrumb": "Setup > Best practices > PKI certificates and requirements",
+    "url": "https://kubernetes.io/docs/setup/best-practices/certificates/"
+  },
+  "Cluster Access with kubeconfig": {
+    "breadcrumb": "Concepts > Configuration > Organize Cluster Access Using kubeconfig Files",
+    "url": "https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/"
+  },
+  "Cluster Networking": {
+    "breadcrumb": "Concepts > Cluster Administration > Cluster Networking",
+    "url": "https://kubernetes.io/docs/concepts/cluster-administration/networking/"
+  },
+  "Configure Access to Multiple Clusters": {
+    "breadcrumb": "Tasks > Access Applications in a Cluster > Configure Access to Multiple Clusters",
+    "url": "https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/"
+  },
+  "Configure a Pod to use storage": {
+    "breadcrumb": "Tasks > Configure Pods and Containers > Configure a Pod to Use a PersistentVolume for Storage",
+    "url": "https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/"
+  },
+  "Configure Probes": {
+    "breadcrumb": "Tasks > Configure Pods and Containers > Configure Liveness, Readiness and Startup Probes",
+    "url": "https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/"
+  },
+  "Configure Service Accounts for Pods": {
+    "breadcrumb": "Tasks > Configure Pods and Containers > Configure Service Accounts for Pods",
+    "url": "https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/"
+  },
+  "Create static Pods": {
+    "breadcrumb": "Tasks > Configure Pods and Containers > Create static Pods",
+    "url": "https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/"
+  },
+  "Custom Resources": {
+    "breadcrumb": "Concepts > Extending Kubernetes > Custom Resources",
+    "url": "https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/"
+  },
+  "Customizing DNS Service": {
+    "breadcrumb": "Tasks > Administer a Cluster > Customizing DNS Service",
+    "url": "https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/"
+  },
+  "DaemonSet": {
+    "breadcrumb": "Concepts > Workloads > Workload Management > DaemonSet",
+    "url": "https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/"
+  },
+  "Debug with crictl": {
+    "breadcrumb": "Tasks > Monitoring, Logging, and Debugging > Debugging Kubernetes Nodes With Crictl",
+    "url": "https://kubernetes.io/docs/tasks/debug/debug-cluster/crictl/"
+  },
+  "Declare Network Policy": {
+    "breadcrumb": "Tasks > Administer a Cluster > Declare Network Policy",
+    "url": "https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/"
+  },
+  "Deployments": {
+    "breadcrumb": "Concepts > Workloads > Workload Management > Deployments",
+    "url": "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/"
+  },
+  "Distribute Credentials Securely": {
+    "breadcrumb": "Tasks > Inject Data Into Applications > Distribute Credentials Securely Using Secrets",
+    "url": "https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/"
+  },
+  "DNS for Services and Pods": {
+    "breadcrumb": "Concepts > Services, Load Balancing, and Networking > DNS for Services and Pods",
+    "url": "https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/"
+  },
+  "Dynamic Volume Provisioning": {
+    "breadcrumb": "Concepts > Storage > Dynamic Volume Provisioning",
+    "url": "https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/"
+  },
+  "Gateway API": {
+    "breadcrumb": "Concepts > Services, Load Balancing, and Networking > Gateway API",
+    "url": "https://kubernetes.io/docs/concepts/services-networking/gateway/"
+  },
+  "Gateway API Documentation": {
+    "breadcrumb": "Gateway API SIG > Documentation",
+    "url": "https://gateway-api.sigs.k8s.io/"
+  },
+  "Helm Docs": {
+    "breadcrumb": "Helm > Documentation",
+    "url": "https://helm.sh/docs/"
+  },
+  "Horizontal Pod Autoscaling": {
+    "breadcrumb": "Tasks > Run Applications > Horizontal Pod Autoscaling",
+    "url": "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/"
+  },
+  "kubeadm join": {
+    "breadcrumb": "Reference > Setup tools reference > Kubeadm > kubeadm join",
+    "url": "https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-join/"
+  },
+  "kubectl Quick Reference": {
+    "breadcrumb": "Reference > Command line tool (kubectl) > kubectl Quick Reference",
+    "url": "https://kubernetes.io/docs/reference/kubectl/cheatsheet/"
+  },
+  "Kubernetes Components": {
+    "breadcrumb": "Concepts > Overview > Components of Kubernetes",
+    "url": "https://kubernetes.io/docs/concepts/overview/components/"
+  },
+  "Kubernetes Scheduler": {
+    "breadcrumb": "Concepts > Scheduling, Preemption and Eviction > Kubernetes Scheduler",
+    "url": "https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/"
+  },
+  "Kustomize": {
+    "breadcrumb": "Tasks > Manage Kubernetes Objects > Declarative Management of Kubernetes Objects Using Kustomize",
+    "url": "https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/"
+  },
+  "Namespaces": {
+    "breadcrumb": "Concepts > Overview > Working with Kubernetes Objects > Namespaces",
+    "url": "https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/"
+  },
+  "Network Policies": {
+    "breadcrumb": "Concepts > Services, Load Balancing, and Networking > Network Policies",
+    "url": "https://kubernetes.io/docs/concepts/services-networking/network-policies/"
+  },
+  "Node-pressure Eviction": {
+    "breadcrumb": "Concepts > Scheduling, Preemption and Eviction > Node-pressure Eviction",
+    "url": "https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/"
+  },
+  "Operating etcd clusters for Kubernetes": {
+    "breadcrumb": "Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes",
+    "url": "https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/"
+  },
+  "Persistent Volumes": {
+    "breadcrumb": "Concepts > Storage > Persistent Volumes",
+    "url": "https://kubernetes.io/docs/concepts/storage/persistent-volumes/"
+  },
+  "Pod Info via Env": {
+    "breadcrumb": "Tasks > Inject Data Into Applications > Expose Pod Information to Containers Through Environment Variables",
+    "url": "https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/"
+  },
+  "Pod Quality of Service Classes": {
+    "breadcrumb": "Concepts > Workloads > Pods > Pod Quality of Service Classes",
+    "url": "https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/"
+  },
+  "Scale a StatefulSet": {
+    "breadcrumb": "Tasks > Run Applications > Scale a StatefulSet",
+    "url": "https://kubernetes.io/docs/tasks/run-application/scale-stateful-set/"
+  },
+  "Secrets": {
+    "breadcrumb": "Concepts > Configuration > Secrets",
+    "url": "https://kubernetes.io/docs/concepts/configuration/secret/"
+  },
+  "Service": {
+    "breadcrumb": "Concepts > Services, Load Balancing, and Networking > Service",
+    "url": "https://kubernetes.io/docs/concepts/services-networking/service/"
+  },
+  "Shared Volume Between Containers": {
+    "breadcrumb": "Tasks > Access Applications in a Cluster > Communicate Between Containers in the Same Pod Using a Shared Volume",
+    "url": "https://kubernetes.io/docs/tasks/access-application-cluster/communicate-containers-same-pod-shared-volume/"
+  },
+  "StatefulSets": {
+    "breadcrumb": "Concepts > Workloads > Workload Management > StatefulSets",
+    "url": "https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/"
+  },
+  "Storage Classes": {
+    "breadcrumb": "Concepts > Storage > Storage Classes",
+    "url": "https://kubernetes.io/docs/concepts/storage/storage-classes/"
+  },
+  "Taints and Tolerations": {
+    "breadcrumb": "Concepts > Scheduling, Preemption and Eviction > Taints and Tolerations",
+    "url": "https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/"
+  },
+  "TLS bootstrapping": {
+    "breadcrumb": "Reference > Access Authn Authz > TLS bootstrapping",
+    "url": "https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/"
+  },
+  "Tools for Monitoring Resources": {
+    "breadcrumb": "Tasks > Monitoring, Logging, and Debugging > Tools for Monitoring Resources",
+    "url": "https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-usage-monitoring/"
+  },
+  "Troubleshooting kubeadm": {
+    "breadcrumb": "Setup > Production environment > Bootstrapping clusters with kubeadm > Troubleshooting kubeadm",
+    "url": "https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/troubleshooting-kubeadm/"
+  },
+  "Upgrading kubeadm clusters": {
+    "breadcrumb": "Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters",
+    "url": "https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/"
+  },
+  "Using RBAC Authorization": {
+    "breadcrumb": "Reference > Access Authn Authz > Using RBAC Authorization",
+    "url": "https://kubernetes.io/docs/reference/access-authn-authz/rbac/"
+  }
+}

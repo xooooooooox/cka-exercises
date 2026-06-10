@@ -43,9 +43,10 @@ function parseExercise(titleLine, body) {
   // Find `> 🔗` line, then scan consecutive blockquote lines for [text](url).
   // Supports both:
   //   > 🔗 [text](url)            (single-line)
-  //   > 🔗\n> [text](url)         (multi-line block)
-  let docsLink = null;
-  let docsLinkText = null;
+  //   > 🔗\n> [text](url)         (multi-line block, often with multiple links)
+  // Now collects ALL links in the block into docsLinks[]; keeps docsLink /
+  // docsLinkText as aliases of the first for back-compat.
+  const docsLinks = [];
   let docsBlockStart = -1;
   let docsBlockEnd = -1;
 
@@ -58,16 +59,13 @@ function parseExercise(titleLine, body) {
   for (let i = 0; i < lines.length; i++) {
     if (/^>\s*🔗/.test(lines[i])) {
       docsBlockStart = lineStarts[i];
-      // Scan this line + subsequent blockquote lines for [text](url)
-      const linkRe = /\[([^\]]+)\]\(([^)]+)\)/;
+      const linkRe = /\[([^\]]+)\]\(([^)]+)\)/g;
       let j = i;
       while (j < lines.length && /^>/.test(lines[j])) {
-        if (docsLink == null) {
-          const m = lines[j].match(linkRe);
-          if (m) {
-            docsLinkText = m[1];
-            docsLink = m[2];
-          }
+        let m;
+        linkRe.lastIndex = 0;
+        while ((m = linkRe.exec(lines[j])) !== null) {
+          docsLinks.push({ text: m[1], url: m[2] });
         }
         j++;
       }
@@ -75,6 +73,8 @@ function parseExercise(titleLine, body) {
       break;
     }
   }
+  const docsLink = docsLinks.length ? docsLinks[0].url : null;
+  const docsLinkText = docsLinks.length ? docsLinks[0].text : null;
 
   // Task = text after docs block (or start) and before first <details> block.
   const detailsStart = body.indexOf('<details');
@@ -113,7 +113,7 @@ function parseExercise(titleLine, body) {
   // If no <details>, the task body itself often ends with italic guidance
   // like "*此为场景练习，无固定答案。关键步骤：…*" — keep the task as-is.
 
-  return { task, solution, docsLink, docsLinkText, solveOn };
+  return { task, solution, docsLink, docsLinkText, docsLinks, solveOn };
 }
 
 function parseFile(file, domainInfo) {
@@ -176,6 +176,7 @@ function parseFile(file, domainInfo) {
         points,
         docsLink: parsed.docsLink,
         docsLinkText: parsed.docsLinkText,
+        docsLinks: parsed.docsLinks,
         solveOn: parsed.solveOn,
         task: parsed.task,
         solution: parsed.solution,
@@ -203,6 +204,18 @@ const result = {
     sections: parseFile(d.file, d),
   })),
 };
+
+// Post-pass: assign a per-domain question number (1..N) in the order they
+// appear in the source file. `numberInDomain` is what the SPA shows as `Qn`.
+for (const dom of result.domains) {
+  let n = 0;
+  for (const sec of dom.sections) {
+    for (const ex of sec.exercises) {
+      n += 1;
+      ex.numberInDomain = n;
+    }
+  }
+}
 
 fs.mkdirSync(path.join(ROOT, 'docs'), { recursive: true });
 fs.writeFileSync(OUTPUT, JSON.stringify(result, null, 2) + '\n');

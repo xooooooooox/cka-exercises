@@ -2662,9 +2662,8 @@ kubectl logs deploy/<operator-name> -n <operator-namespace>
 > CKA 报名后 killer.sh 提供两次模拟考试（Simulator A & B），各 17 题，难度高于真实考试。下文整理了与本章节（集群架构）相关的题目，完整解答见 PDF。
 
 ### [Killer.sh A-Q1] Contexts: extract info from kubeconfig file
-
-
 > 🔗 [Tasks > Access Applications in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+> [Concepts > Configuration > Organize Cluster Access Using kubeconfig Files](https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/)
 
 > 🖥 Solve on: `ssh cka9412`
 
@@ -2703,10 +2702,9 @@ k --kubeconfig /opt/course/1/kubeconfig config view --raw \
 </p>
 </details>
 
-### [Killer.sh A-Q2] Install cert-manager via Helm, create ClusterIssuer with CRL distribution point
-
-
+### [Killer.sh A-Q2] Helm: install cert-manager + ClusterIssuer with CRL
 > 🔗 [Concepts > Extending Kubernetes > Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
+> [Helm > Documentation](https://helm.sh/docs/)
 
 > 🖥 Solve on: `ssh cka7968`
 
@@ -2759,10 +2757,10 @@ k -n cert-manager get pods
 </p>
 </details>
 
-### [Killer.sh A-Q8] Update Kubernetes version and join new node to cluster
-
-
+### [Killer.sh A-Q8] kubeadm join: upgrade node + join to cluster
 > 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Adding Linux worker nodes](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/adding-linux-nodes/)
+> [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+> [Reference > Setup tools reference > Kubeadm > kubeadm join](https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-join/)
 
 > 🖥 Solve on: `ssh cka3962`
 
@@ -2811,10 +2809,9 @@ k get nodes  # node should appear as Ready
 </p>
 </details>
 
-### [Killer.sh A-Q9] Contact Kubernetes API from inside a Pod using a ServiceAccount
-
-
+### [Killer.sh A-Q9] API from Pod: query Secrets via ServiceAccount token
 > 🔗 [Tasks > Run Applications > Accessing the Kubernetes API from a Pod](https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/)
+> [Tasks > Configure Pods and Containers > Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)
 
 > 🖥 Solve on: `ssh cka9412`
 
@@ -2864,10 +2861,9 @@ k -n project-swan cp api-contact:/tmp/result.json /opt/course/9/result.json
 </p>
 </details>
 
-### [Killer.sh A-Q10] Create ServiceAccount with Role + RoleBinding for create-only on Secrets and ConfigMaps
-
-
+### [Killer.sh A-Q10] RBAC: SA + create-only Role for Secrets/ConfigMaps
 > 🔗 [Reference > Access Authn Authz > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+> [Tasks > Configure Pods and Containers > Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)
 
 > 🖥 Solve on: `ssh cka3962`
 
@@ -2903,9 +2899,7 @@ k -n project-hamster auth can-i delete secret --as=system:serviceaccount:project
 </p>
 </details>
 
-### [Killer.sh A-Q14] Check kube-apiserver certificate expiration and prepare renewal command
-
-
+### [Killer.sh A-Q14] Certs: check apiserver expiry + prep kubeadm renew
 > 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Certificate Management with kubeadm](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/)
 
 > 🖥 Solve on: `ssh cka9412`
@@ -2948,10 +2942,9 @@ chmod +x /opt/course/14/kubeadm-renew-certs.sh
 </p>
 </details>
 
-### [Killer.sh B-Q2] Create a Static Pod on controlplane and expose via NodePort Service
-
-
+### [Killer.sh B-Q2] Static Pod: create on controlplane + NodePort Service
 > 🔗 [Tasks > Configure Pods and Containers > Create static Pods](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/)
+> [Concepts > Services, Load Balancing, and Networking > Service](https://kubernetes.io/docs/concepts/services-networking/service/)
 
 > 🖥 Solve on: `ssh cka2560`
 
@@ -3004,10 +2997,9 @@ k expose pod my-static-pod-cka2560 --name=static-pod-service --type=NodePort --p
 </p>
 </details>
 
-### [Killer.sh B-Q3] Inspect kubelet client and server certificate Issuer and Extended Key Usage
-
-
+### [Killer.sh B-Q3] Kubelet certs: inspect client + server Issuer / EKU
 > 🔗 [Reference > Access Authn Authz > PKI Certificates and Requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)
+> [Reference > Access Authn Authz > TLS bootstrapping](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-tls-bootstrapping/)
 
 > 🖥 Solve on: `ssh cka5248`
 
@@ -3064,9 +3056,7 @@ EOF
 </p>
 </details>
 
-### [Killer.sh B-Q7] Etcd version check and snapshot
-
-
+### [Killer.sh B-Q7] etcd: version check + snapshot save
 > 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
 
 > 🖥 Solve on: `ssh cka2560`
@@ -3106,10 +3096,9 @@ etcdctl snapshot status /opt/course/7/etcd-snapshot.db --write-out=table
 </p>
 </details>
 
-### [Killer.sh B-Q8] Identify how each controlplane component is started/installed
-
-
+### [Killer.sh B-Q8] Controlplane: identify how each component is started
 > 🔗 [Concepts > Overview > Components of Kubernetes](https://kubernetes.io/docs/concepts/overview/components/)
+> [Tasks > Configure Pods and Containers > Create static Pods](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/)
 
 > 🖥 Solve on: `ssh cka8448`
 
@@ -3160,10 +3149,10 @@ EOF
 </p>
 </details>
 
-### [Killer.sh B-Q14] Discover cluster topology and configuration
-
-
+### [Killer.sh B-Q14] Cluster info: discover topology + configuration
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
+> [Concepts > Cluster Administration > Cluster Networking](https://kubernetes.io/docs/concepts/cluster-administration/networking/)
+> [Tasks > Configure Pods and Containers > Create static Pods](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/)
 
 > 🖥 Solve on: `ssh cka8448`
 
@@ -3225,10 +3214,10 @@ EOF
 </p>
 </details>
 
-### [Killer.sh B-Q16] List namespaced API resources and find Namespace with most Roles
-
-
+### [Killer.sh B-Q16] api-resources: list namespaced + find ns with most Roles
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+> [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
+> [Concepts > Overview > Working with Kubernetes Objects > Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/)
 
 > 🖥 Solve on: `ssh cka3200`
 
@@ -3264,10 +3253,10 @@ echo "project-miami with 300 roles" > /opt/course/16/crowded-namespace.txt
 </p>
 </details>
 
-### [Killer.sh B-Q17] Install operator via Kustomize, debug missing RBAC, add CR
-
-
+### [Killer.sh B-Q17] Operator: install via Kustomize, fix RBAC, add CR
 > 🔗 [Concepts > Extending Kubernetes > Operator Pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
+> [Reference > Access Authn Authz > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+> [Tasks > Manage Kubernetes Objects > Declarative Management of Kubernetes Objects Using Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)
 
 > 🖥 Solve on: `ssh cka6016`
 

@@ -57,8 +57,13 @@ npm run serve   # 自动重新构建 docs/exercises.json 后启动 :8080
 │   ├── storage.md                      # 存储 (10%)
 │   └── troubleshooting.md              # 故障排查 (30%)
 └── scripts/
-    └── build-exercises.mjs             # 把 markdown 抽取为 JSON
+    ├── build-exercises.mjs             # MD → JSON 转换（每次构建 / Pages 部署都会运行）
+    ├── apply-enriched-tasks.mjs        # 一次性脚本: 从 PDF Q&A 补全 killer.sh task body
+    ├── apply-killersh-polish.mjs       # 一次性脚本: 给 killer.sh 加 docs 链接 + 重写标题
+    └── k8s-docs-map.json               # kubernetes.io 面包屑 → URL 查找表（polish 脚本使用）
 ```
+
+两个 `apply-*.mjs` 是幂等的一次性脚本，保留作为 killer.sh 数据加工的可追溯记录。CI 中只运行 `build-exercises.mjs`。
 
 ## 考前准备
 
