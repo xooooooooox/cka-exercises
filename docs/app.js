@@ -19,6 +19,7 @@ const State = {
   },
   quiz: null,                    // { ids, idx, status: Map<id, 'got'|'missed'|'skipped'>, flagged: Set, revealed: Set, deadline, solutionsHidden }
   quizTimerHandle: null,
+  docs: null,                    // { tree, leaves: Map<url, leaf>, selectedUrl }
 };
 
 // ---------- Storage ----------
@@ -27,6 +28,7 @@ const KEY = {
   bookmark: 'cka:bookmark',
   theme: 'cka:theme',
   lastQuiz: 'cka:lastQuiz',
+  docsLastUrl: 'cka:docs:lastUrl',
 };
 function storageGet(k, fallback) {
   try { const v = localStorage.getItem(k); return v == null ? fallback : JSON.parse(v); }
@@ -600,18 +602,313 @@ function finishQuiz() {
   }
 }
 
+// ---------- Docs mode ----------
+
+const KNOWN_TOP_BUCKETS = new Set([
+  'Concepts', 'Tasks', 'Tutorials', 'Reference', 'Setup', 'Getting started',
+]);
+// Preferred display order at the top level
+const TOP_BUCKET_ORDER = [
+  'Concepts', 'Tasks', 'Tutorials', 'Reference', 'Setup', 'Getting started', 'External',
+];
+
+function makeNode(name) {
+  return { name, children: new Map(), leaf: null, count: 0 };
+}
+
+function buildDocsTree(allExercises) {
+  // 1. Aggregate by URL: pick longest breadcrumb, accumulate referencing exercises
+  const byUrl = new Map();
+  for (const ex of allExercises) {
+    for (const lnk of (ex.docsLinks || [])) {
+      let entry = byUrl.get(lnk.url);
+      if (!entry) {
+        entry = { url: lnk.url, text: lnk.text, exerciseIds: [] };
+        byUrl.set(lnk.url, entry);
+      } else if (lnk.text && lnk.text.length > entry.text.length) {
+        entry.text = lnk.text;
+      }
+      entry.exerciseIds.push(ex.id);
+    }
+  }
+
+  // 2. Insert into tree
+  const root = makeNode('root');
+  for (const entry of byUrl.values()) {
+    let segments;
+    if (entry.text.includes(' > ')) {
+      segments = entry.text.split(' > ').map(s => s.trim()).filter(Boolean);
+      // Re-bucket unknown top-level under External
+      if (!KNOWN_TOP_BUCKETS.has(segments[0])) {
+        segments = ['External', ...segments];
+      }
+    } else {
+      // No breadcrumb at all (e.g. plain "Helm Documentation: …" labels)
+      const labelTop = entry.text.split(':')[0].trim() || 'Other';
+      segments = ['External', labelTop, entry.text];
+    }
+    // Walk into tree
+    let cursor = root;
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      if (!cursor.children.has(seg)) cursor.children.set(seg, makeNode(seg));
+      cursor = cursor.children.get(seg);
+    }
+    cursor.leaf = {
+      url: entry.url,
+      fullBreadcrumb: segments.join(' > '),
+      leafTitle: segments[segments.length - 1],
+      breadcrumbSegments: segments,
+      exerciseIds: [...new Set(entry.exerciseIds)],
+    };
+  }
+
+  // 3. Post-pass to compute leaf-counts on internal nodes.
+  // A node may have BOTH its own leaf AND children (e.g. a parent doc page that
+  // also has child doc pages like "Pods" containing "Pod QoS Classes").
+  function computeCount(node) {
+    let total = node.leaf ? 1 : 0;
+    for (const child of node.children.values()) total += computeCount(child);
+    node.count = total;
+    return total;
+  }
+  computeCount(root);
+
+  return root;
+}
+
+function collectLeaves(node, out) {
+  if (node.leaf) out.set(node.leaf.url, node.leaf);
+  for (const child of node.children.values()) collectLeaves(child, out);
+}
+
+function sortTopLevelEntries(entries) {
+  const orderIndex = new Map(TOP_BUCKET_ORDER.map((k, i) => [k, i]));
+  return entries.sort((a, b) => {
+    const ai = orderIndex.has(a[0]) ? orderIndex.get(a[0]) : 1000;
+    const bi = orderIndex.has(b[0]) ? orderIndex.get(b[0]) : 1000;
+    if (ai !== bi) return ai - bi;
+    return a[0].localeCompare(b[0]);
+  });
+}
+
+function renderDocsTree() {
+  const root = document.getElementById('docs-tree-root');
+  root.innerHTML = '';
+  const tree = State.docs.tree;
+  const stats = document.getElementById('docs-stats');
+  stats.textContent = `${tree.count} pages · ${State.allExercises.length} exercises`;
+
+  // Build the top-level entries in preferred order
+  const topEntries = sortTopLevelEntries([...tree.children.entries()]);
+  for (const [name, child] of topEntries) {
+    root.appendChild(renderDocsNode(child, 0, /* defaultOpen */ name === 'Concepts' || name === 'Tasks'));
+  }
+
+  // Wire search
+  const searchInput = document.getElementById('docs-search');
+  searchInput.value = '';
+  searchInput.removeEventListener('input', docsSearchHandler);
+  searchInput.addEventListener('input', docsSearchHandler);
+}
+
+function renderLeafButton(leaf, displayLabel) {
+  const btn = el('button', {
+    class: 'docs-leaf',
+    type: 'button',
+    'data-url': leaf.url,
+    title: leaf.fullBreadcrumb,
+  },
+    el('span', { class: 'label' }, displayLabel || leaf.leafTitle),
+    el('span', { class: 'ex-count' }, String(leaf.exerciseIds.length)),
+  );
+  btn.addEventListener('click', () => selectDocsLeaf(leaf.url));
+  return btn;
+}
+
+function renderDocsNode(node, depth, defaultOpen) {
+  // Pure leaf (no children) → button
+  if (node.leaf && node.children.size === 0) {
+    return renderLeafButton(node.leaf);
+  }
+
+  // Has children (and possibly also its own leaf) → details
+  const details = el('details', {
+    class: 'docs-node',
+    'data-depth': String(depth),
+    open: defaultOpen ? true : null,
+  });
+  details.appendChild(el('summary', {},
+    el('span', { class: 'label' }, node.name),
+    el('span', { class: 'count' }, `${node.count}`),
+  ));
+
+  // If this node is also a documented page itself, surface it as the first leaf
+  // inside, labeled with "(overview)" so users know it's the parent page.
+  if (node.leaf) {
+    details.appendChild(renderLeafButton(node.leaf, `${node.name} (overview)`));
+  }
+
+  // Sort children: leaves first alphabetically, then internal nodes alphabetically
+  const childEntries = [...node.children.entries()].sort((a, b) => {
+    const aPureLeaf = !!a[1].leaf && a[1].children.size === 0;
+    const bPureLeaf = !!b[1].leaf && b[1].children.size === 0;
+    if (aPureLeaf !== bPureLeaf) return aPureLeaf ? -1 : 1;
+    return a[0].localeCompare(b[0]);
+  });
+  for (const [, child] of childEntries) {
+    details.appendChild(renderDocsNode(child, depth + 1, /* defaultOpen */ false));
+  }
+  return details;
+}
+
+function selectDocsLeaf(url) {
+  const leaf = State.docs.leaves.get(url);
+  if (!leaf) return;
+  State.docs.selectedUrl = url;
+  storageSet(KEY.docsLastUrl, url);
+
+  // Highlight active in tree
+  document.querySelectorAll('.docs-leaf.active').forEach(b => b.classList.remove('active'));
+  const active = document.querySelector(`.docs-leaf[data-url="${CSS.escape(url)}"]`);
+  if (active) {
+    active.classList.add('active');
+    // Open all ancestor <details>
+    let parent = active.parentElement;
+    while (parent && parent.id !== 'docs-tree-root') {
+      if (parent.tagName === 'DETAILS') parent.open = true;
+      parent = parent.parentElement;
+    }
+    active.scrollIntoView({ block: 'nearest' });
+  }
+
+  renderDocsDetail(leaf);
+}
+
+function renderDocsDetail(leaf) {
+  const main = document.getElementById('docs-detail');
+  main.innerHTML = '';
+
+  // Title
+  main.appendChild(el('h2', {}, leaf.leafTitle));
+
+  // Breadcrumb
+  const bc = el('div', { class: 'breadcrumb' });
+  for (const seg of leaf.breadcrumbSegments) bc.appendChild(el('span', {}, seg));
+  main.appendChild(bc);
+
+  // Open on kubernetes.io
+  main.appendChild(el('a', {
+    class: 'open-link',
+    href: leaf.url,
+    target: '_blank',
+    rel: 'noopener',
+  }, '📖 ', el('span', {}, leafOpenTarget(leaf.url))));
+
+  // Linked exercises
+  const exs = leaf.exerciseIds
+    .map(id => State.byId.get(id))
+    .filter(Boolean)
+    // Sort by domain then numberInDomain
+    .sort((a, b) => {
+      const ad = a.domain.key, bd = b.domain.key;
+      if (ad !== bd) return ad.localeCompare(bd);
+      return (a.numberInDomain || 0) - (b.numberInDomain || 0);
+    });
+
+  main.appendChild(el('div', { class: 'section-label' }, `Exercises (${exs.length})`));
+  const ul = el('ul', { class: 'docs-ex-list' });
+  for (const ex of exs) {
+    const li = document.createElement('li');
+    const btn = el('button', { type: 'button', title: ex.fullTitle || ex.title },
+      el('span', { class: 'qnum-pill' }, `Q${ex.numberInDomain}`),
+      tagPill(ex.tag),
+      el('span', { class: 'ex-title' }, ex.title),
+    );
+    btn.addEventListener('click', () => {
+      setMode('browse');
+      setTimeout(() => {
+        document.getElementById('card-' + ex.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+    });
+    li.appendChild(btn);
+    ul.appendChild(li);
+  }
+  main.appendChild(ul);
+}
+
+function leafOpenTarget(url) {
+  try {
+    const u = new URL(url);
+    return `Open on ${u.hostname}`;
+  } catch {
+    return 'Open in new tab';
+  }
+}
+
+function docsSearchHandler(ev) {
+  const q = ev.target.value.trim().toLowerCase();
+  const root = document.getElementById('docs-tree-root');
+  if (!q) {
+    // Reset: clear all .search-hidden, restore default open state
+    root.querySelectorAll('.search-hidden').forEach(n => n.classList.remove('search-hidden'));
+    return;
+  }
+  // For each leaf, decide visibility
+  const matchedLeaves = new Set();
+  for (const leaf of State.docs.leaves.values()) {
+    if (leaf.leafTitle.toLowerCase().includes(q) || leaf.fullBreadcrumb.toLowerCase().includes(q)) {
+      matchedLeaves.add(leaf.url);
+    }
+  }
+  // Hide all by default, then unhide matched leaves and their ancestors; open ancestors
+  root.querySelectorAll('.docs-leaf').forEach(btn => {
+    const url = btn.getAttribute('data-url');
+    if (matchedLeaves.has(url)) {
+      btn.classList.remove('search-hidden');
+      // Open ancestor details
+      let parent = btn.parentElement;
+      while (parent && parent.id !== 'docs-tree-root') {
+        if (parent.tagName === 'DETAILS') { parent.open = true; parent.classList.remove('search-hidden'); }
+        parent = parent.parentElement;
+      }
+    } else {
+      btn.classList.add('search-hidden');
+    }
+  });
+  // Hide internal nodes that have no visible descendant
+  root.querySelectorAll('.docs-node').forEach(node => {
+    const anyVisible = node.querySelector('.docs-leaf:not(.search-hidden)');
+    if (!anyVisible) node.classList.add('search-hidden');
+    else node.classList.remove('search-hidden');
+  });
+}
+
 // ---------- Mode switching ----------
 function setMode(mode) {
   State.mode = mode;
   document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-  document.getElementById('view-browse').classList.toggle('active', mode === 'browse');
-  document.getElementById('view-quiz').classList.toggle('active', mode === 'quiz');
-  document.getElementById('view-browse').hidden = mode !== 'browse';
-  document.getElementById('view-quiz').hidden = mode !== 'quiz';
+  for (const id of ['view-browse', 'view-quiz', 'view-docs']) {
+    const want = mode === id.replace(/^view-/, '');
+    document.getElementById(id).classList.toggle('active', want);
+    document.getElementById(id).hidden = !want;
+  }
   if (mode === 'quiz' && !document.getElementById('quiz-domain-list').firstChild) {
     renderQuizSetup();
   }
   if (mode === 'browse') renderBrowse();
+  if (mode === 'docs') {
+    if (!State.docs) {
+      State.docs = { tree: buildDocsTree(State.allExercises), leaves: null, selectedUrl: null };
+      // Flatten leaves for quick lookup
+      const leaves = new Map();
+      collectLeaves(State.docs.tree, leaves);
+      State.docs.leaves = leaves;
+      renderDocsTree();
+      const lastUrl = storageGet(KEY.docsLastUrl, null);
+      if (lastUrl && leaves.has(lastUrl)) selectDocsLeaf(lastUrl);
+    }
+  }
 }
 
 // ---------- Theme ----------

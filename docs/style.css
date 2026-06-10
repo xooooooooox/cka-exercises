@@ -394,3 +394,218 @@ footer { padding: 12px 20px; border-top: 1px solid var(--border); background: va
   .mode-tabs { display: flex; }
   .brand strong { display: none; }
 }
+
+/* ============================================================ */
+/* 📖 Docs view — kubernetes.io subset tree + detail             */
+/* ============================================================ */
+
+.docs-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  min-height: calc(100vh - 110px);
+}
+
+.docs-tree {
+  border-right: 1px solid var(--border);
+  background: var(--bg-elev);
+  padding: 12px 14px;
+  overflow-y: auto;
+  max-height: calc(100vh - 56px);
+  position: sticky;
+  top: 56px;
+}
+.docs-tree-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0 12px;
+  position: sticky;
+  top: 0;
+  background: var(--bg-elev);
+  z-index: 2;
+}
+.docs-tree-toolbar input {
+  width: 100%;
+}
+#docs-stats {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tree node (internal — has children) */
+.docs-node {
+  margin: 1px 0;
+}
+.docs-node > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px;
+}
+.docs-node > summary::-webkit-details-marker { display: none; }
+.docs-node > summary::before {
+  content: "▸";
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  width: 10px;
+  font-size: 10px;
+}
+.docs-node[open] > summary::before { content: "▾"; }
+.docs-node > summary:hover { background: var(--bg); }
+.docs-node > summary > .label {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.docs-node > summary > .count {
+  flex-shrink: 0;
+  color: var(--fg-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.docs-node[data-depth="0"] > summary { font-weight: 600; }
+.docs-node[data-depth="1"] > summary { color: var(--fg); }
+.docs-node[data-depth="2"] > summary { color: var(--fg-muted); }
+
+/* Indentation for nested nodes */
+.docs-node .docs-node,
+.docs-node .docs-leaf {
+  margin-left: 14px;
+}
+
+/* Tree leaf (docs page) */
+.docs-leaf {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 8px 3px 22px;
+  border: none; background: none;
+  width: calc(100% - 14px);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--fg);
+  font: inherit;
+}
+.docs-leaf:hover { background: var(--bg); color: var(--accent); }
+.docs-leaf.active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+.docs-leaf .label {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.docs-leaf .ex-count {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-code);
+  color: var(--fg-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.docs-leaf.active .ex-count {
+  background: rgba(255,255,255,0.25);
+  color: var(--accent-fg);
+}
+.docs-leaf.search-hidden,
+.docs-node.search-hidden { display: none; }
+
+/* Detail pane */
+.docs-detail {
+  padding: 24px 28px;
+  overflow-y: auto;
+  max-height: calc(100vh - 56px);
+}
+.docs-detail h2 { margin: 0 0 8px; font-size: 22px; }
+.docs-detail .breadcrumb {
+  font-size: 13px;
+  color: var(--fg-muted);
+  margin-bottom: 14px;
+}
+.docs-detail .breadcrumb span + span::before {
+  content: "›";
+  margin: 0 6px;
+  color: var(--border);
+}
+.docs-detail .open-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  text-decoration: none;
+  color: var(--fg);
+}
+.docs-detail .open-link:hover {
+  background: var(--border);
+  text-decoration: none;
+}
+.docs-detail .open-link::after {
+  content: "↗";
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+.docs-detail .section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--fg-muted);
+  margin: 28px 0 10px;
+}
+
+/* Linked-exercise list */
+.docs-ex-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.docs-ex-list button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+}
+.docs-ex-list button:hover {
+  background: var(--bg-code);
+  border-color: var(--accent);
+}
+.docs-ex-list .ex-title {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Mobile: collapse tree under the detail */
+@media (max-width: 768px) {
+  .docs-layout {
+    grid-template-columns: 1fr;
+  }
+  .docs-tree {
+    position: relative;
+    max-height: 40vh;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    top: 0;
+  }
+  .docs-detail {
+    max-height: none;
+  }
+}

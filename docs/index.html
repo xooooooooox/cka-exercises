@@ -17,6 +17,7 @@
     <nav class="mode-tabs" role="tablist">
       <button data-mode="browse" class="mode-tab active" type="button">📚 Browse</button>
       <button data-mode="quiz" class="mode-tab" type="button">🎯 Quiz</button>
+      <button data-mode="docs" class="mode-tab" type="button">📖 Docs</button>
     </nav>
     <div class="header-right">
       <span id="quiz-timer" hidden></span>
@@ -150,6 +151,22 @@
         <button id="quiz-restart" type="button" class="primary">▶ New quiz</button>
       </div>
     </section>
+  </div>
+
+  <!-- Docs mode -->
+  <div id="view-docs" class="view" hidden>
+    <div class="docs-layout">
+      <aside id="docs-tree" class="docs-tree">
+        <div class="docs-tree-toolbar">
+          <input id="docs-search" type="search" placeholder="🔎 Search docs…" autocomplete="off">
+          <span id="docs-stats" class="muted"></span>
+        </div>
+        <nav id="docs-tree-root"></nav>
+      </aside>
+      <main id="docs-detail" class="docs-detail">
+        <div class="empty-state">Pick a page from the tree to see its details and linked exercises.</div>
+      </main>
+    </div>
   </div>
 
   <footer>
