@@ -245,6 +245,121 @@ kubectl run restricted -n netpol-test --rm -it --image=busybox --labels="app=res
 </p>
 </details>
 
+### [CKA 真题 - 7分] Create allow-port-from-namespace NetworkPolicy in internal namespace allowing same-namespace pods access on port 9000
+
+> 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+
+**题目:**
+Create a new NetworkPolicy named `allow-port-from-namespace` in the existing namespace `internal`. Ensure that the new NetworkPolicy allows Pods in namespace `internal` to connect to port `9000` of Pods in the same namespace. Further ensure that the new NetworkPolicy does not allow access to Pods not listening on port `9000`, and does not allow access to Pods not in namespace `internal`.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# 切换 context
+kubectl config use-context hk8s
+
+cat <<EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-port-from-namespace
+  namespace: internal
+spec:
+  podSelector: {}              # 应用到 internal 命名空间所有 Pod
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector: {}          # 仅允许同命名空间的 Pod 访问
+    ports:
+    - protocol: TCP
+      port: 9000
+EOF
+
+# 验证
+kubectl describe networkpolicy allow-port-from-namespace -n internal
+```
+
+</p>
+</details>
+
+### [CKA 真题 - 7分] Create NetworkPolicy allowing pods in my-app namespace to egress to big-corp namespace on port 8080
+
+> 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+
+**题目:**
+Create a NetworkPolicy in namespace `my-app` that enables Pods in `my-app` to connect to port `8080` of Pods running in the existing namespace `big-corp`.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# 先确保 big-corp 命名空间有 label，便于 namespaceSelector 匹配
+kubectl label ns big-corp name=big-corp --overwrite
+
+cat <<EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-big-corp
+  namespace: my-app
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: big-corp        # 或使用内置标签 kubernetes.io/metadata.name: big-corp
+    ports:
+    - protocol: TCP
+      port: 8080
+EOF
+```
+
+</p>
+</details>
+
+### [CKA 真题 - 7分] Allow pods from internal namespace to access port 9200 in big-corp namespace
+
+> 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+
+**题目:**
+Create a NetworkPolicy in the `big-corp` namespace allowing Pods from the `internal` namespace to access pods on port `9200`.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-port-from-internal
+  namespace: big-corp
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: internal
+    ports:
+    - protocol: TCP
+      port: 9200
+EOF
+
+# 注意: kubernetes.io/metadata.name 是 Kubernetes 1.22+ 自动添加的内置 label
+# 旧版本需要手动给 namespace 打 label: kubectl label ns internal name=internal
+```
+
+</p>
+</details>
+
 ---
 
 ## 3. Use ClusterIP, NodePort, LoadBalancer service types and endpoints
@@ -320,6 +435,54 @@ kubectl get endpoints web-np
 4. kubectl describe svc <svc> — 查看 TargetPort 是否正确
 5. 修复 selector 或 pod labels 后验证: kubectl get endpoints <svc>
 ```
+
+### [CKA 真题 - 7分] Reconfigure front-end deployment to add named port http (80/TCP) and expose via NodePort service front-end-svc
+
+> 🔗 [Concepts > Services, Load Balancing, and Networking > Service](https://kubernetes.io/docs/concepts/services-networking/service/)
+
+**题目:**
+Reconfigure the existing deployment `front-end` and add a port specification named `http` exposing port `80/tcp` of the existing container nginx. Create a new service named `front-end-svc` exposing the container port `http`. Configure the new service to also expose the individual Pods via a NodePort on the nodes on which they are scheduled.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# 1. 给 deployment 的 nginx 容器添加 ports 配置
+kubectl edit deploy front-end
+```
+
+```yaml
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:                  # 添加这段
+        - name: http
+          containerPort: 80
+          protocol: TCP
+```
+
+```bash
+# 2. 创建 NodePort service，targetPort 引用容器命名端口 "http"
+kubectl expose deploy front-end \
+  --name=front-end-svc \
+  --port=80 \
+  --target-port=http \
+  --type=NodePort
+
+# 验证
+kubectl get svc front-end-svc
+kubectl get endpoints front-end-svc
+# endpoints 应不为空，说明 Pod label 与 service selector 匹配
+
+# 测试访问
+NODE_IP=$(kubectl get node -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+NODE_PORT=$(kubectl get svc front-end-svc -o jsonpath='{.spec.ports[0].nodePort}')
+curl http://$NODE_IP:$NODE_PORT
+```
+
+</p>
+</details>
 
 ---
 
@@ -526,6 +689,58 @@ curl -H "Host: bar.example.com" http://$INGRESS_IP/
 </p>
 </details>
 
+### [CKA 真题 - 7分] Create Ingress "pong" in ing-internal namespace routing /hi to service hi:5678
+
+> 🔗 [Concepts > Services, Load Balancing, and Networking > Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
+
+**题目:**
+Create a new Ingress resource as follows:
+- Name: `pong`
+- Namespace: `ing-internal`
+- Exposing service `hi` on path `/hi` using service port `5678`
+
+The availability of service `hi` can be checked using the following command, which should return `hi`:
+`curl -kL <INTERNAL_IP>/hi`
+
+<details><summary>show</summary>
+<p>
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pong
+  namespace: ing-internal
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /     # 如果需要重写路径
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /hi
+        pathType: Prefix
+        backend:
+          service:
+            name: hi
+            port:
+              number: 5678
+EOF
+
+# 验证
+kubectl get ingress -n ing-internal
+kubectl describe ingress pong -n ing-internal
+
+# 测试
+INGRESS_IP=$(kubectl get ingress pong -n ing-internal -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+curl -kL $INGRESS_IP/hi
+# 应返回 "hi"
+```
+
+</p>
+</details>
+
 ---
 
 ## 6. Understand and use CoreDNS
@@ -618,6 +833,191 @@ kubectl get pods -n kube-system -l k8s-app=kube-dns
 
 # test DNS resolution for the custom domain
 kubectl exec dnsutils -- nslookup myservice.mycompany.local
+```
+
+</p>
+</details>
+
+---
+
+## Killer.sh Mock Exam Questions
+
+> 📚 Source PDFs: [`assets/CKA Simulator A Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20A%20Kubernetes%201.35%20-%20Killer%20Shell.pdf) | [`assets/CKA Simulator B Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20B%20Kubernetes%201.35%20-%20Killer%20Shell.pdf)
+
+### [Killer.sh A-Q13] Replace Ingress with Gateway API HTTPRoute including header-based routing
+
+> 🔗 [Concepts > Services, Load Balancing, and Networking > Gateway API](https://kubernetes.io/docs/concepts/services-networking/gateway/)
+
+**Task:** Replace Ingress at `/opt/course/13/ingress.yaml` in `project-r500` with a Gateway API solution. (1) Create HTTPRoute `traffic-director` replicating old routes; (2) Extend with `/auto` path routing to `mobile` backend if `User-Agent: mobile`, else to `desktop`. Existing Gateway is `main` at http://r500.gateway:30080.
+
+<details><summary>show</summary>
+<p>
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: traffic-director
+  namespace: project-r500
+spec:
+  parentRefs:
+  - name: main
+  hostnames: ["r500.gateway"]
+  rules:
+  - matches:
+    - path: {type: PathPrefix, value: /desktop}
+    backendRefs:
+    - {name: web-desktop, port: 80}
+  - matches:
+    - path: {type: PathPrefix, value: /mobile}
+    backendRefs:
+    - {name: web-mobile, port: 80}
+  # User-Agent rule MUST come before the catch-all /auto rule (order matters)
+  - matches:
+    - path: {type: PathPrefix, value: /auto}
+      headers:
+      - {type: Exact, name: User-Agent, value: mobile}
+    backendRefs:
+    - {name: web-mobile, port: 80}
+  - matches:
+    - path: {type: PathPrefix, value: /auto}
+    backendRefs:
+    - {name: web-desktop, port: 80}
+```
+
+```bash
+k apply -f http-route.yaml
+curl http://r500.gateway:30080/desktop
+curl -H "User-Agent: mobile" http://r500.gateway:30080/auto
+```
+
+</p>
+</details>
+
+### [Killer.sh A-Q15] NetworkPolicy with multiple egress rules — separate rules form OR, not AND
+
+> 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+
+**Task:** Create NetworkPolicy `np-backend` in `project-snake` allowing `backend-*` Pods to: connect to `db1-*` on port 1111 AND `db2-*` on port 2222. Use the `app` Pod labels.
+
+> **关键陷阱:** 每条 egress 规则内的 `to:` + `ports:` 形成 AND。如果合并 selector 到一条规则，则形成 OR — 允许 backend 访问 db1:2222 和 db2:1111（错误）。必须分成两条独立 egress 规则。
+
+<details><summary>show</summary>
+<p>
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: np-backend
+  namespace: project-snake
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: db1
+    ports:
+    - protocol: TCP
+      port: 1111
+  - to:
+    - podSelector:
+        matchLabels:
+          app: db2
+    ports:
+    - protocol: TCP
+      port: 2222
+```
+
+</p>
+</details>
+
+### [Killer.sh A-Q16] Update CoreDNS to resolve custom-domain alongside cluster.local
+
+> 🔗 [Tasks > Administer a Cluster > Using CoreDNS for Service Discovery](https://kubernetes.io/docs/tasks/administer-cluster/coredns/)
+
+**Task:** (1) Backup existing CoreDNS ConfigMap YAML to `/opt/course/16/coredns_backup.yaml`; (2) Configure CoreDNS so DNS resolution `SERVICE.NAMESPACE.custom-domain` works exactly like `SERVICE.NAMESPACE.cluster.local`. Test with `busybox:1` nslookup.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# backup
+k -n kube-system get cm coredns -o yaml > /opt/course/16/coredns_backup.yaml
+
+# edit Corefile: change "kubernetes cluster.local in-addr.arpa ip6.arpa"
+# to "kubernetes custom-domain cluster.local in-addr.arpa ip6.arpa"
+k -n kube-system edit cm coredns
+```
+
+```
+# Corefile (after edit)
+.:53 {
+    errors
+    health { lameduck 5s }
+    ready
+    kubernetes custom-domain cluster.local in-addr.arpa ip6.arpa {
+       pods insecure
+       fallthrough in-addr.arpa ip6.arpa
+       ttl 30
+    }
+    prometheus :9153
+    forward . /etc/resolv.conf
+    cache 30
+    loop
+    reload
+    loadbalance
+}
+```
+
+```bash
+# reload CoreDNS
+k -n kube-system rollout restart deploy coredns
+
+# test
+k run bb --image=busybox:1 -- sh -c 'sleep 1d'
+k exec -it bb -- nslookup kubernetes.default.svc.custom-domain
+k exec -it bb -- nslookup kubernetes.default.svc.cluster.local
+```
+
+</p>
+</details>
+
+### [Killer.sh B-Q1] Build correct FQDNs for Service, Headless Service, Pod, Pod-by-IP
+
+> 🔗 [Concepts > Services, Load Balancing, and Networking > DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
+
+**Task:** Update the ConfigMap used by the controller Deployment in `lima-control` with correct FQDNs:
+- DNS_1: Service `kubernetes` in `default`
+- DNS_2: Headless Service `department` in `lima-workload`
+- DNS_3: Pod `section100` in `lima-workload` (must survive IP changes — use subdomain)
+- DNS_4: a Pod with IP `1.2.3.4` in `kube-system`
+
+<details><summary>show</summary>
+<p>
+
+```yaml
+# k -n lima-control edit cm control-config
+data:
+  DNS_1: kubernetes.default.svc.cluster.local
+  DNS_2: department.lima-workload.svc.cluster.local
+  DNS_3: section100.section.lima-workload.svc.cluster.local
+  DNS_4: 1-2-3-4.kube-system.pod.cluster.local
+```
+
+```bash
+k -n lima-control rollout restart deploy controller
+
+# FQDN cheatsheet:
+# Service:           <svc>.<ns>.svc.cluster.local
+# Headless Service:  <svc>.<ns>.svc.cluster.local (returns A records for each Pod)
+# Pod (subdomain):   <hostname>.<subdomain>.<ns>.svc.cluster.local
+# Pod by IP:         <ip-with-dashes>.<ns>.pod.cluster.local
 ```
 
 </p>

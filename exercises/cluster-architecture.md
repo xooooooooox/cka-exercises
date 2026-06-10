@@ -336,6 +336,45 @@ cat: /var/run/secrets/kubernetes.io/serviceaccount/token: No such file or direct
 </p>
 </details>
 
+### [CKA 真题 - 4分] Create deployment-clusterrole, ServiceAccount cicd-token in app-team1, and bind them
+
+> 🔗 [Reference > Access Authn Authz > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+
+**题目:**
+Create a new ClusterRole named `deployment-clusterrole` which only allows to create the following resource types: Deployment, StatefulSet, DaemonSet. Create a new ServiceAccount named `cicd-token` in the existing namespace `app-team1`. Bind the new ClusterRole `deployment-clusterrole` to the new ServiceAccount `cicd-token`, limited to the namespace `app-team1`.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# 切换 context（考试中务必先执行）
+kubectl config use-context k8s
+
+# 1. 创建 ClusterRole（仅允许 create 操作）
+kubectl create clusterrole deployment-clusterrole \
+  --verb=create \
+  --resource=deployments,statefulsets,daemonsets
+
+# 2. 在 app-team1 namespace 中创建 ServiceAccount
+kubectl create serviceaccount cicd-token -n app-team1
+
+# 3. 创建 RoleBinding（限制在 app-team1 namespace 内生效）
+# 注意：使用 rolebinding 而不是 clusterrolebinding，因为题目要求"limited to the namespace"
+kubectl create rolebinding cicd-token-binding \
+  --clusterrole=deployment-clusterrole \
+  --serviceaccount=app-team1:cicd-token \
+  -n app-team1
+
+# 验证
+kubectl auth can-i create deployment --as=system:serviceaccount:app-team1:cicd-token -n app-team1
+# yes
+kubectl auth can-i create deployment --as=system:serviceaccount:app-team1:cicd-token -n default
+# no
+```
+
+</p>
+</details>
+
 ---
 
 ## 2. Prepare underlying infrastructure for installing a Kubernetes cluster
@@ -810,6 +849,63 @@ sudo systemctl restart kubelet
 kubectl uncordon <worker-node>
 
 # Verify
+kubectl get nodes
+```
+
+</p>
+</details>
+
+### [CKA 真题 - 7分] Upgrade only the master node from v1.x.x to v1.(x+1).x, skipping etcd upgrade
+
+> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
+
+**题目:**
+Given an existing Kubernetes cluster running version 1.x.x, upgrade all of the Kubernetes control plane and node components on the master node only to the version v1.(x+1).x. You are also expected to upgrade kubelet and kubectl on the master node. Be sure to drain the master node before upgrading it and uncordon it after the upgrade. **Do not upgrade the worker nodes, etcd, the container manager, the CNI plugin, the DNS service or any other addons.**
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# 切换 context
+kubectl config use-context mk8s
+
+# 1. 在 master 节点上 cordon + drain（从 control-plane 节点视角操作）
+kubectl cordon master01
+kubectl drain master01 --delete-emptydir-data --ignore-daemonsets --force
+
+# 2. SSH 到 master 节点
+ssh master01
+sudo -i
+
+# 3. 升级 kubeadm
+apt-mark unhold kubeadm
+apt-get update && apt-get install -y kubeadm=1.x+1.x-00
+apt-mark hold kubeadm
+
+# 验证版本
+kubeadm version
+
+# 4. 查看升级计划
+kubeadm upgrade plan
+
+# 5. 应用升级（关键: --etcd-upgrade=false 跳过 etcd 升级）
+kubeadm upgrade apply v1.x+1.x --etcd-upgrade=false
+
+# 6. 升级 kubelet 和 kubectl
+apt-mark unhold kubelet kubectl
+apt-get install -y kubelet=1.x+1.x-00 kubectl=1.x+1.x-00
+apt-mark hold kubelet kubectl
+
+# 7. 重启 kubelet
+systemctl daemon-reload
+systemctl restart kubelet
+
+# 8. 退出 master 节点，uncordon
+exit  # 退出 sudo
+exit  # 退出 ssh
+kubectl uncordon master01
+
+# 验证
 kubectl get nodes
 ```
 
@@ -1473,6 +1569,131 @@ ETCDCTL_API=3 etcdctl endpoint health \
 </p>
 </details>
 
+### [CKA 真题 - 4分] Drain node ek8s-node-1 so all pods are evicted
+
+> 🔗 [Tasks > Administer a Cluster > Safely Drain a Node](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/)
+
+**题目:**
+Set the node named `ek8s-node-1` as unavailable and reschedule all the pods running on it.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# 切换 context
+kubectl config use-context ek8s
+
+# 1. cordon: 标记节点为不可调度
+kubectl cordon ek8s-node-1
+
+# 2. drain: 驱逐节点上的所有 Pod
+# --delete-emptydir-data: 允许删除使用 emptyDir 的 Pod
+# --ignore-daemonsets: 忽略 DaemonSet 管理的 Pod（无法驱逐）
+# --force: 强制驱逐裸 Pod（非 controller 管理的）
+kubectl drain ek8s-node-1 \
+  --delete-emptydir-data \
+  --ignore-daemonsets \
+  --force
+
+# 验证: 节点状态应为 SchedulingDisabled，且无业务 Pod
+kubectl get nodes
+kubectl get pods -A -o wide --field-selector spec.nodeName=ek8s-node-1
+```
+
+</p>
+</details>
+
+### [CKA 真题 - 7分] Backup etcd to /srv/data/etcd-snapshot.db and restore from /var/lib/backup/etcd-snapshot-previous.db
+
+> 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
+
+**题目:**
+First, create a snapshot of the existing etcd instance running at `https://127.0.0.1:2379`, saving the snapshot to `/srv/data/etcd-snapshot.db`. Next, restore an existing, previous snapshot located at `/var/lib/backup/etcd-snapshot-previous.db`.
+The following TLS certificates/key are supplied for connecting to the server with etcdctl:
+- CA certificate: `/opt/KUIN000601/ca.crt`
+- Client certificate: `/opt/KUIN000601/etcd-client.crt`
+- Client key: `/opt/KUIN000601/etcd-client.key`
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# === Part 1: 备份 ===
+export ETCDCTL_API=3
+etcdctl snapshot save /srv/data/etcd-snapshot.db \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/opt/KUIN000601/ca.crt \
+  --cert=/opt/KUIN000601/etcd-client.crt \
+  --key=/opt/KUIN000601/etcd-client.key
+
+# 验证快照
+etcdctl snapshot status /srv/data/etcd-snapshot.db --write-out=table
+
+# === Part 2: 恢复 ===
+# 注意: 考试中如果是 static pod 部署的 etcd，需要先停止 kube-apiserver 和 etcd
+# 方法1: 移走 static pod manifest 文件
+sudo mv /etc/kubernetes/manifests/etcd.yaml /tmp/
+sudo mv /etc/kubernetes/manifests/kube-apiserver.yaml /tmp/
+
+# 执行恢复（恢复到新的数据目录）
+sudo ETCDCTL_API=3 etcdctl snapshot restore \
+  /var/lib/backup/etcd-snapshot-previous.db \
+  --data-dir=/var/lib/etcd-restore
+
+# 修改 etcd manifest 指向新数据目录
+sudo vi /tmp/etcd.yaml
+# 修改 hostPath:
+#   - hostPath:
+#       path: /var/lib/etcd-restore   # 原为 /var/lib/etcd
+#     name: etcd-data
+
+# 移回 manifest 触发 kubelet 启动
+sudo mv /tmp/etcd.yaml /etc/kubernetes/manifests/
+sudo mv /tmp/kube-apiserver.yaml /etc/kubernetes/manifests/
+
+# 验证
+kubectl get pods -n kube-system | grep etcd
+kubectl get nodes
+```
+
+</p>
+</details>
+
+### [CKA 真题 - 4分] Count Ready nodes excluding those with NoSchedule taints, write count to file
+
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
+
+**题目:**
+Check how many nodes are ready (not including nodes tainted with NoSchedule), and write the number to `/opt/KUSC00402/kusc00402.txt`.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# 切换 context
+kubectl config use-context k8s
+
+# 方法 1: 命令组合
+# 总 Ready 节点数
+READY=$(kubectl get nodes | grep -w "Ready" | wc -l)
+
+# 带 NoSchedule 污点的节点数（包括 master 默认的 NoSchedule）
+NOSCHED=$(kubectl describe nodes | grep -i taint | grep -i NoSchedule | wc -l)
+
+# 计算差值并写入文件
+echo $((READY - NOSCHED)) > /opt/KUSC00402/kusc00402.txt
+
+# 验证
+cat /opt/KUSC00402/kusc00402.txt
+
+# 方法 2: 使用 jsonpath 更精确
+kubectl get nodes -o jsonpath='{range .items[?(@.status.conditions[-1].status=="True")]}{.metadata.name}{"\t"}{.spec.taints[*].effect}{"\n"}{end}' \
+  | grep -v NoSchedule | wc -l > /opt/KUSC00402/kusc00402.txt
+```
+
+</p>
+</details>
+
 ---
 
 ## 5. Implement and configure a highly-available control plane
@@ -1481,7 +1702,158 @@ ETCDCTL_API=3 etcdctl endpoint health \
 > [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Options for Highly Available Topology](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ha-topology/)
 > [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Creating Highly Available Clusters with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/)
 
-_原文档暂无此考点的练习。_
+### Describe the two HA topology options for kubeadm clusters and their trade-offs
+
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Options for Highly Available Topology](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ha-topology/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# HA 拓扑方式一: Stacked etcd（堆叠式）
+# - etcd 与控制平面组件运行在同一节点
+# - 最少 3 个控制平面节点
+# - 优点: 节省资源，部署简单
+# - 缺点: 控制平面节点故障会同时丢失一个 etcd 成员
+
+# HA 拓扑方式二: External etcd（外部 etcd）
+# - etcd 运行在独立的专用节点上
+# - 最少 3 个控制平面节点 + 3 个 etcd 节点
+# - 优点: 故障域隔离，etcd 和控制平面互不影响
+# - 缺点: 需要更多节点
+
+# 判断当前集群使用哪种拓扑
+# 如果 etcd 以 static pod 运行 → stacked
+kubectl get pods -n kube-system -l component=etcd
+
+# 查看 API server 连接的 etcd endpoints
+kubectl -n kube-system describe pod kube-apiserver-<cp-node> | grep etcd
+# --etcd-servers=https://127.0.0.1:2379 → stacked
+# --etcd-servers=https://<external-ip>:2379 → external
+
+# 检查所有控制平面节点
+kubectl get nodes -l node-role.kubernetes.io/control-plane
+```
+
+</p>
+</details>
+
+### Initialize an HA cluster with kubeadm using a load balancer endpoint
+
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Creating Highly Available Clusters with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# === 前提条件 ===
+# - 至少 3 个节点用作控制平面
+# - 一个负载均衡器（如 HAProxy、Nginx）将流量分发到所有 API server
+# - 负载均衡器地址: LOAD_BALANCER_DNS:6443
+
+# === 在第一个控制平面节点初始化 ===
+sudo kubeadm init \
+  --control-plane-endpoint "LOAD_BALANCER_DNS:6443" \
+  --upload-certs \
+  --pod-network-cidr=10.244.0.0/16
+
+# --control-plane-endpoint: 所有 API server 共享的负载均衡器地址
+# --upload-certs: 将控制平面证书上传到 kubeadm-certs Secret，其他 CP 节点可下载
+
+# 输出会包含两个 join 命令:
+# 1. 控制平面节点 join（包含 --control-plane 和 --certificate-key）
+# 2. 工作节点 join（普通 join）
+
+# set up kubeconfig
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# install CNI plugin
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.29.3/manifests/calico.yaml
+```
+
+</p>
+</details>
+
+### Join an additional control plane node to an existing HA cluster
+
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Creating Highly Available Clusters with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# === 在新的控制平面节点上运行 join 命令 ===
+sudo kubeadm join LOAD_BALANCER_DNS:6443 \
+  --token <token> \
+  --discovery-token-ca-cert-hash sha256:<hash> \
+  --control-plane \
+  --certificate-key <certificate-key>
+
+# 如果 certificate-key 已过期（默认 2 小时），在第一个 CP 节点重新生成:
+sudo kubeadm init phase upload-certs --upload-certs
+# 输出新的 certificate-key
+
+# 如果 token 已过期，在第一个 CP 节点重新生成:
+kubeadm token create --print-join-command
+
+# 验证新节点已加入
+kubectl get nodes
+# 新节点应显示 control-plane role
+
+# 验证 etcd 成员已添加
+kubectl -n kube-system exec etcd-<node> -- etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/peer.crt \
+  --key=/etc/kubernetes/pki/etcd/peer.key \
+  member list
+```
+
+</p>
+</details>
+
+### Verify the health of an HA control plane by checking API server and etcd endpoints
+
+> 🔗 [Getting started > Production environment > Installing Kubernetes with deployment tools > Bootstrapping clusters with kubeadm > Creating Highly Available Clusters with kubeadm](https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/high-availability/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# check all control plane pods
+kubectl get pods -n kube-system -l tier=control-plane
+
+# check API server health on each control plane node
+curl -k https://<cp-node-1-ip>:6443/healthz
+curl -k https://<cp-node-2-ip>:6443/healthz
+curl -k https://<cp-node-3-ip>:6443/healthz
+# expected: ok
+
+# check etcd cluster health
+kubectl -n kube-system exec etcd-<cp-node> -- etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/peer.crt \
+  --key=/etc/kubernetes/pki/etcd/peer.key \
+  endpoint health
+
+# check etcd member list and leader
+kubectl -n kube-system exec etcd-<cp-node> -- etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/peer.crt \
+  --key=/etc/kubernetes/pki/etcd/peer.key \
+  endpoint status --write-table
+
+# verify all control plane components are healthy
+kubectl get componentstatuses    # 注意: 此命令在新版本中可能已弃用
+kubectl get --raw='/readyz?verbose'
+```
+
+</p>
+</details>
 
 ---
 
@@ -1491,7 +1863,302 @@ _原文档暂无此考点的练习。_
 > [Tasks > Manage Kubernetes Objects > Managing Kubernetes Objects Using Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)
 > [Helm Documentation](https://helm.sh/docs/)
 
-_原文档暂无此考点的练习。_
+### Install a Helm chart, list releases, and inspect the installed resources
+
+> 🔗 [Helm Documentation: Using Helm](https://helm.sh/docs/intro/using_helm/)
+
+> **Note:** CKA 考试环境通常已预装 Helm。
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# add a Helm chart repository
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+
+# search for available charts
+helm search repo bitnami/nginx
+
+# install a chart
+helm install my-nginx bitnami/nginx
+
+# list installed releases
+helm list
+
+# check release status
+helm status my-nginx
+
+# view the Kubernetes resources created by the release
+kubectl get all -l app.kubernetes.io/instance=my-nginx
+
+# view the generated manifest (useful for debugging)
+helm get manifest my-nginx
+
+# uninstall the release
+helm uninstall my-nginx
+```
+
+</p>
+</details>
+
+### Upgrade a Helm release with custom values, then roll back to a previous revision
+
+> 🔗 [Helm Documentation: Helm Upgrade](https://helm.sh/docs/helm/helm_upgrade/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# install a chart
+helm install my-nginx bitnami/nginx
+
+# upgrade with custom values
+helm upgrade my-nginx bitnami/nginx --set replicaCount=3
+
+# view revision history
+helm history my-nginx
+
+# view current custom values
+helm get values my-nginx
+
+# roll back to revision 1
+helm rollback my-nginx 1
+
+# verify the rollback
+helm history my-nginx
+kubectl get deploy -l app.kubernetes.io/instance=my-nginx
+
+# upgrade using a values file
+cat <<EOF > values.yaml
+replicaCount: 2
+service:
+  type: ClusterIP
+EOF
+helm upgrade my-nginx bitnami/nginx -f values.yaml
+
+# clean up
+helm uninstall my-nginx
+```
+
+</p>
+</details>
+
+### Use Kustomize to deploy an application with environment-specific overlays
+
+> 🔗 [Tasks > Manage Kubernetes Objects > Managing Kubernetes Objects Using Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# create the directory structure
+mkdir -p kustomize-demo/base kustomize-demo/overlays/prod
+```
+
+```yaml
+# kustomize-demo/base/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+```
+
+```yaml
+# kustomize-demo/base/kustomization.yaml
+resources:
+- deployment.yaml
+```
+
+```yaml
+# kustomize-demo/overlays/prod/kustomization.yaml
+resources:
+- ../../base
+namePrefix: prod-
+commonLabels:
+  env: production
+replicas:
+- name: web
+  count: 3
+```
+
+```bash
+# preview the generated output
+kubectl kustomize kustomize-demo/overlays/prod
+
+# apply the overlay
+kubectl apply -k kustomize-demo/overlays/prod
+
+# verify: deployment name has "prod-" prefix, labels include "env: production", 3 replicas
+kubectl get deploy prod-web --show-labels
+```
+
+</p>
+</details>
+
+### Use Kustomize to patch a Deployment and add resource limits via a strategic merge patch
+
+> 🔗 [Tasks > Manage Kubernetes Objects > Managing Kubernetes Objects Using Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+mkdir -p kustomize-patch
+```
+
+```yaml
+# kustomize-patch/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: app
+        image: nginx
+```
+
+```yaml
+# kustomize-patch/resource-patch.yaml — strategic merge patch to add resource limits
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  template:
+    spec:
+      containers:
+      - name: app
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+```
+
+```yaml
+# kustomize-patch/kustomization.yaml
+resources:
+- deployment.yaml
+patches:
+- path: resource-patch.yaml
+```
+
+```bash
+# preview the merged output
+kubectl kustomize kustomize-patch
+
+# apply
+kubectl apply -k kustomize-patch
+
+# verify resource limits are applied
+kubectl get deploy app -o jsonpath='{.spec.template.spec.containers[0].resources}'
+```
+
+</p>
+</details>
+
+### Use Kustomize configMapGenerator to create a ConfigMap and reference it in a Deployment
+
+> 🔗 [Tasks > Manage Kubernetes Objects > Managing Kubernetes Objects Using Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+mkdir -p kustomize-cm
+```
+
+```bash
+# create a config file
+cat > kustomize-cm/app.properties <<EOF
+database.host=db.example.com
+database.port=5432
+log.level=info
+EOF
+```
+
+```yaml
+# kustomize-cm/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: app
+        image: nginx
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+      volumes:
+      - name: config
+        configMap:
+          name: app-config
+```
+
+```yaml
+# kustomize-cm/kustomization.yaml
+resources:
+- deployment.yaml
+configMapGenerator:
+- name: app-config
+  files:
+  - app.properties
+```
+
+```bash
+# preview: notice Kustomize appends a hash suffix to the ConfigMap name
+kubectl kustomize kustomize-cm
+# ConfigMap name will be something like: app-config-7g9f6h2d8k
+# Deployment's volume reference is automatically updated to match
+
+# apply
+kubectl apply -k kustomize-cm
+
+# verify
+kubectl get cm | grep app-config
+# hash 后缀确保 ConfigMap 更新时会触发 Deployment 滚动更新（immutable rollout）
+```
+
+</p>
+</details>
 
 ---
 
@@ -1805,4 +2472,627 @@ kubectl describe sc <storage-class-name>
 > [Concepts > Extending Kubernetes > Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
 > [Concepts > Extending Kubernetes > Operator Pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 
-_原文档暂无此考点的练习。_
+### Create a CustomResourceDefinition and a custom resource instance
+
+> 🔗 [Tasks > Extend Kubernetes > Use CustomResourceDefinitions](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# create a CRD
+cat <<EOF | kubectl apply -f -
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: crontabs.stable.example.com
+spec:
+  group: stable.example.com
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              cronSpec:
+                type: string
+              image:
+                type: string
+              replicas:
+                type: integer
+  scope: Namespaced
+  names:
+    plural: crontabs
+    singular: crontab
+    kind: CronTab
+    shortNames:
+    - ct
+EOF
+
+# verify the CRD is created
+kubectl get crd crontabs.stable.example.com
+
+# create an instance of the custom resource
+cat <<EOF | kubectl apply -f -
+apiVersion: stable.example.com/v1
+kind: CronTab
+metadata:
+  name: my-crontab
+spec:
+  cronSpec: "* * * * */5"
+  image: my-cron-image
+  replicas: 3
+EOF
+
+# verify the custom resource
+kubectl get crontabs        # or: kubectl get ct (using shortName)
+kubectl get ct my-crontab -o yaml
+```
+
+</p>
+</details>
+
+### List existing CRDs in the cluster and inspect a custom resource
+
+> 🔗 [Concepts > Extending Kubernetes > Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# list all CRDs in the cluster
+kubectl get crd
+
+# describe a specific CRD (shows schema, status, versions)
+kubectl describe crd crontabs.stable.example.com
+
+# find custom API resources by group
+kubectl api-resources | grep stable.example.com
+
+# list all instances of a custom resource
+kubectl get crontabs --all-namespaces
+
+# inspect a specific custom resource
+kubectl get ct my-crontab -o yaml
+kubectl describe ct my-crontab
+
+# check if the resource has explain support
+kubectl explain crontab.spec
+```
+
+</p>
+</details>
+
+### Delete a CRD and observe that all custom resource instances are also removed
+
+> 🔗 [Tasks > Extend Kubernetes > Use CustomResourceDefinitions](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/)
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# verify custom resources exist
+kubectl get ct
+# NAME          AGE
+# my-crontab    5m
+
+# create a second instance
+cat <<EOF | kubectl apply -f -
+apiVersion: stable.example.com/v1
+kind: CronTab
+metadata:
+  name: another-crontab
+spec:
+  cronSpec: "0 */6 * * *"
+  image: another-image
+  replicas: 1
+EOF
+
+kubectl get ct
+# should show 2 instances
+
+# delete the CRD
+kubectl delete crd crontabs.stable.example.com
+
+# verify: all custom resource instances are automatically deleted (cascading deletion)
+kubectl get ct
+# error: the server doesn't have a resource type "crontabs"
+
+# ⚠️ 删除 CRD 会级联删除所有该类型的自定义资源实例，生产环境需谨慎操作
+```
+
+</p>
+</details>
+
+### Install an operator and verify it reconciles custom resources
+
+> 🔗 [Concepts > Extending Kubernetes > Operator Pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
+
+> **Note:** Operator = CRD + Controller。Controller 监听 CR 的变化并自动执行对应操作（reconciliation）。CKA 考试中通常只需理解概念并能安装/验证 operator。
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# Operator 模式的核心组件:
+# 1. CRD — 定义自定义资源的 schema
+# 2. Controller — 监听 CR 的增删改，执行 reconciliation 逻辑
+# 3. RBAC — Controller 操作集群资源所需的权限
+
+# 安装 operator 通常包含以下步骤:
+# 1. 安装 CRDs
+kubectl apply -f <operator-crds.yaml>
+
+# 2. 创建 namespace、ServiceAccount、RBAC
+kubectl apply -f <operator-rbac.yaml>
+
+# 3. 部署 operator controller（通常是一个 Deployment）
+kubectl apply -f <operator-deployment.yaml>
+
+# 验证 operator 运行状态
+kubectl get pods -n <operator-namespace>
+
+# 创建自定义资源，观察 operator 的 reconciliation
+kubectl apply -f <custom-resource.yaml>
+
+# 查看 operator 创建的子资源（如 Deployments、Services 等）
+kubectl get all -l <operator-labels>
+
+# 查看 operator 的事件日志
+kubectl get events --field-selector reason=<operator-event>
+
+# 查看 operator controller 的日志
+kubectl logs deploy/<operator-name> -n <operator-namespace>
+```
+
+</p>
+</details>
+
+---
+
+## Killer.sh Mock Exam Questions
+
+> 📚 Source PDFs: [`assets/CKA Simulator A Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20A%20Kubernetes%201.35%20-%20Killer%20Shell.pdf) | [`assets/CKA Simulator B Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20B%20Kubernetes%201.35%20-%20Killer%20Shell.pdf)
+>
+> CKA 报名后 killer.sh 提供两次模拟考试（Simulator A & B），各 17 题，难度高于真实考试。下文整理了与本章节（集群架构）相关的题目，完整解答见 PDF。
+
+### [Killer.sh A-Q1] Contexts: extract info from kubeconfig file
+
+> 🔗 [Tasks > Access Applications in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+
+**Task:** From `/opt/course/1/kubeconfig` on cka9412, write:
+1. All context names → `/opt/course/1/contexts` (one per line)
+2. Current context name → `/opt/course/1/current-context`
+3. Base64-decoded client-certificate of user `account-0027` → `/opt/course/1/cert`
+
+<details><summary>show</summary>
+<p>
+
+```bash
+ssh cka9412
+
+# 1. all context names
+k --kubeconfig /opt/course/1/kubeconfig config get-contexts -oname > /opt/course/1/contexts
+
+# 2. current context
+k --kubeconfig /opt/course/1/kubeconfig config current-context > /opt/course/1/current-context
+
+# 3. base64-decoded client cert for account-0027
+k --kubeconfig /opt/course/1/kubeconfig config view --raw \
+  -ojsonpath='{.users[?(@.name=="account-0027@internal")].user.client-certificate-data}' \
+  | base64 -d > /opt/course/1/cert
+```
+
+</p>
+</details>
+
+### [Killer.sh A-Q2] Install cert-manager via Helm, create ClusterIssuer with CRL distribution point
+
+> 🔗 [Concepts > Extending Kubernetes > Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
+
+**Task:** Install cert-manager via Helm in namespace `cert-manager`. (1) Create the namespace; (2) install chart `jetstack/cert-manager` with `crds.enabled=true`, release name `cert-manager`; (3) update `/opt/course/2/cluster-issuer.yaml` to include `crlDistributionPoints: ["http://example.com/crl"]` under `spec.selfSigned`; (4) apply the ClusterIssuer.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+k create ns cert-manager
+
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+helm -n cert-manager install cert-manager jetstack/cert-manager --set crds.enabled=true
+
+# edit /opt/course/2/cluster-issuer.yaml, add under spec.selfSigned:
+# crlDistributionPoints:
+# - "http://example.com/crl"
+
+k apply -f /opt/course/2/cluster-issuer.yaml
+
+# verify
+k get clusterissuer
+k -n cert-manager get pods
+```
+
+</p>
+</details>
+
+### [Killer.sh A-Q8] Update Kubernetes version and join new node to cluster
+
+> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Adding Linux worker nodes](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/adding-linux-nodes/)
+
+**Task:** Node `cka3962-node1` is on an older Kubernetes version and not in the cluster. (1) Update Kubernetes on the node to the exact controlplane version; (2) Join the node to the cluster using kubeadm.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# check controlplane version
+k get node
+# e.g. v1.35.2
+
+ssh cka3962-node1
+sudo -i
+
+apt update
+apt install -y kubectl=1.35.2-1.1 kubelet=1.35.2-1.1
+systemctl restart kubelet
+
+exit; exit  # back to controlplane
+
+# generate join command
+kubeadm token create --print-join-command
+# kubeadm join 192.168.100.31:6443 --token xxx --discovery-token-ca-cert-hash sha256:xxx
+
+# run join command on node
+ssh cka3962-node1 'sudo kubeadm join 192.168.100.31:6443 --token xxx --discovery-token-ca-cert-hash sha256:xxx'
+
+k get nodes  # node should appear as Ready
+```
+
+</p>
+</details>
+
+### [Killer.sh A-Q9] Contact Kubernetes API from inside a Pod using a ServiceAccount
+
+> 🔗 [Tasks > Run Applications > Accessing the Kubernetes API from a Pod](https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/)
+
+**Task:** ServiceAccount `secret-reader` exists in `project-swan`. Create Pod `api-contact` (image `nginx:1-alpine`) using this SA. Inside the Pod, use curl to fetch all Secrets via the Kubernetes API. Write result to `/opt/course/9/result.json`.
+
+<details><summary>show</summary>
+<p>
+
+```yaml
+# api-contact.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: api-contact
+  namespace: project-swan
+spec:
+  serviceAccountName: secret-reader
+  containers:
+  - name: nginx
+    image: nginx:1-alpine
+```
+
+```bash
+k apply -f api-contact.yaml
+
+k -n project-swan exec api-contact -it -- sh
+# inside pod:
+TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+curl -k https://kubernetes.default/api/v1/secrets \
+  -H "Authorization: Bearer ${TOKEN}" > /tmp/result.json
+exit
+
+k -n project-swan cp api-contact:/tmp/result.json /opt/course/9/result.json
+```
+
+</p>
+</details>
+
+### [Killer.sh A-Q10] Create ServiceAccount with Role + RoleBinding for create-only on Secrets and ConfigMaps
+
+> 🔗 [Reference > Access Authn Authz > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
+
+**Task:** In namespace `project-hamster`, create:
+- ServiceAccount `processor`
+- Role `processor` allowing only `create` on Secrets and ConfigMaps
+- RoleBinding `processor` binding the Role to the SA
+
+<details><summary>show</summary>
+<p>
+
+```bash
+k -n project-hamster create sa processor
+
+k -n project-hamster create role processor \
+  --verb=create \
+  --resource=secret \
+  --resource=configmap
+
+k -n project-hamster create rolebinding processor \
+  --role=processor \
+  --serviceaccount=project-hamster:processor
+
+# verify
+k -n project-hamster auth can-i create secret --as=system:serviceaccount:project-hamster:processor   # yes
+k -n project-hamster auth can-i delete secret --as=system:serviceaccount:project-hamster:processor   # no
+```
+
+</p>
+</details>
+
+### [Killer.sh A-Q14] Check kube-apiserver certificate expiration and prepare renewal command
+
+> 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Certificate Management with kubeadm](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/)
+
+**Task:** (1) Check kube-apiserver server certificate validity via openssl and write expiration date into `/opt/course/14/expiration`; confirm with kubeadm. (2) Write the kubeadm command that renews only the kube-apiserver certificate into `/opt/course/14/kubeadm-renew-certs.sh`.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# expiration from openssl
+openssl x509 -noout -text -in /etc/kubernetes/pki/apiserver.crt \
+  | grep -A2 "Validity"
+# Not After : Oct 29 14:19:27 2025 GMT
+
+echo "Oct 29 14:19:27 2025 GMT" > /opt/course/14/expiration
+
+# confirm with kubeadm
+kubeadm certs check-expiration | grep apiserver
+
+# renewal command
+cat > /opt/course/14/kubeadm-renew-certs.sh <<EOF
+#!/bin/bash
+kubeadm certs renew apiserver
+EOF
+chmod +x /opt/course/14/kubeadm-renew-certs.sh
+```
+
+</p>
+</details>
+
+### [Killer.sh B-Q2] Create a Static Pod on controlplane and expose via NodePort Service
+
+> 🔗 [Tasks > Configure Pods and Containers > Create static Pods](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/)
+
+**Task:** Create a Static Pod `my-static-pod` in namespace `default` on the controlplane (image `nginx:1-alpine`, requests 10m CPU / 20Mi memory). Then create a NodePort Service `static-pod-service` exposing it on port 80.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# on controlplane node
+ssh <controlplane>
+sudo -i
+
+# create static pod manifest
+cat > /etc/kubernetes/manifests/my-static-pod.yaml <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-static-pod
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1-alpine
+    resources:
+      requests:
+        cpu: 10m
+        memory: 20Mi
+EOF
+
+# kubelet picks it up automatically; pod will be named my-static-pod-<nodename>
+k get pod
+# my-static-pod-cka2560   1/1   Running
+
+# expose via NodePort
+k expose pod my-static-pod-cka2560 --name=static-pod-service --type=NodePort --port=80
+```
+
+</p>
+</details>
+
+### [Killer.sh B-Q3] Inspect kubelet client and server certificate Issuer and Extended Key Usage
+
+> 🔗 [Reference > Access Authn Authz > PKI Certificates and Requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)
+
+**Task:** Node `cka5248-node1` joined the cluster via kubeadm and TLS bootstrapping. Find Issuer and Extended Key Usage for: (1) Kubelet Client Certificate; (2) Kubelet Server Certificate. Write findings into `/opt/course/3/certificate-info.txt`.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+ssh cka5248-node1
+sudo -i
+
+# Client cert (kubelet → kube-apiserver)
+openssl x509 -noout -text -in /var/lib/kubelet/pki/kubelet-client-current.pem \
+  | grep -E "Issuer:|Extended Key Usage:" -A1
+# Issuer: CN=kubernetes
+# Extended Key Usage: TLS Web Client Authentication
+
+# Server cert (kube-apiserver → kubelet)
+openssl x509 -noout -text -in /var/lib/kubelet/pki/kubelet.crt \
+  | grep -E "Issuer:|Extended Key Usage:" -A1
+# Issuer: CN=cka5248-node1-ca@<ts>
+# Extended Key Usage: TLS Web Server Authentication
+
+# write findings
+cat > /opt/course/3/certificate-info.txt <<EOF
+Kubelet Client Certificate:
+  Issuer: CN=kubernetes
+  Extended Key Usage: TLS Web Client Authentication
+
+Kubelet Server Certificate:
+  Issuer: CN=cka5248-node1-ca
+  Extended Key Usage: TLS Web Server Authentication
+EOF
+```
+
+</p>
+</details>
+
+### [Killer.sh B-Q7] Etcd version check and snapshot
+
+> 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
+
+**Task:** (1) Save `etcd --version` output to `/opt/course/7/etcd-version`; (2) Create etcd snapshot at `/opt/course/7/etcd-snapshot.db`.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# etcd version (via static pod)
+k -n kube-system exec etcd-cka2560 -- etcd --version > /opt/course/7/etcd-version
+
+# snapshot save
+ETCDCTL_API=3 etcdctl snapshot save /opt/course/7/etcd-snapshot.db \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key
+
+# verify
+etcdctl snapshot status /opt/course/7/etcd-snapshot.db --write-out=table
+```
+
+</p>
+</details>
+
+### [Killer.sh B-Q8] Identify how each controlplane component is started/installed
+
+> 🔗 [Concepts > Overview > Components of Kubernetes](https://kubernetes.io/docs/concepts/overview/components/)
+
+**Task:** Find how controlplane components (kubelet, kube-apiserver, kube-scheduler, kube-controller-manager, etcd) are started/installed plus the DNS application name and how it's started. Write findings to `/opt/course/8/controlplane-components.txt` using TYPE values: `not-installed`, `process`, `static-pod`, `pod`.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+service kubelet status        # process (systemd)
+ls /etc/kubernetes/manifests/  # apiserver, scheduler, controller-manager, etcd → static-pod
+k -n kube-system get deploy    # coredns → Deployment → pod
+
+cat > /opt/course/8/controlplane-components.txt <<EOF
+kubelet: process
+kube-apiserver: static-pod
+kube-scheduler: static-pod
+kube-controller-manager: static-pod
+etcd: static-pod
+dns: pod coredns
+EOF
+```
+
+</p>
+</details>
+
+### [Killer.sh B-Q14] Discover cluster topology and configuration
+
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
+
+**Task:** Find: (1) number of controlplane nodes; (2) number of worker nodes; (3) Service CIDR; (4) CNI plugin and its config file; (5) suffix of static pods on `cka8448`. Write all to `/opt/course/14/cluster-info`.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# node counts
+k get node
+# 1 controlplane + 1 worker
+
+# Service CIDR
+grep -E "service-cluster-ip-range" /etc/kubernetes/manifests/kube-apiserver.yaml
+# --service-cluster-ip-range=10.96.0.0/12
+
+# CNI plugin
+ls /etc/cni/net.d/
+# 10-weave.conflist
+
+# static pod suffix on cka8448
+k get pod -n kube-system -o wide | grep cka8448
+# pods are named e.g. kube-apiserver-cka8448  → suffix is "-cka8448"
+
+cat > /opt/course/14/cluster-info <<EOF
+1: there are 1 controlplane node
+2: there are 1 worker node
+3: Service CIDR: 10.96.0.0/12
+4: CNI plugin: Weave, config: /etc/cni/net.d/10-weave.conflist
+5: static pods on cka8448 have suffix: -cka8448
+EOF
+```
+
+</p>
+</details>
+
+### [Killer.sh B-Q16] List namespaced API resources and find Namespace with most Roles
+
+> 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
+
+**Task:** Write names of all namespaced Kubernetes resources into `/opt/course/16/resources.txt`. Find the `project-*` namespace with the most Roles; write its name and Role count into `/opt/course/16/crowded-namespace.txt`.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# all namespaced resources
+k api-resources --namespaced -o name > /opt/course/16/resources.txt
+
+# find project-* namespace with most Roles
+for ns in $(k get ns -o name | grep -oE 'project-[a-z]+'); do
+  count=$(k -n $ns get role --no-headers 2>/dev/null | wc -l)
+  echo "$ns $count"
+done | sort -k2 -n -r | head -1
+
+# write top result
+echo "project-miami with 300 roles" > /opt/course/16/crowded-namespace.txt
+```
+
+</p>
+</details>
+
+### [Killer.sh B-Q17] Install operator via Kustomize, debug missing RBAC, add CR
+
+> 🔗 [Concepts > Extending Kubernetes > Operator Pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
+
+**Task:** A Kustomize config at `/opt/course/17/operator` installs an operator with CRDs and is applied by `kubectl kustomize /opt/course/17/operator/prod | kubectl apply -f -`. In the base config: (1) Check operator logs to find which CRD lists fail with Forbidden, then grant Role `operator-role` the missing permissions; (2) Add a new `Student` resource named `student4`; (3) Deploy to prod.
+
+<details><summary>show</summary>
+<p>
+
+```bash
+# check operator logs for Forbidden errors
+k -n operator-prod logs <operator-pod>
+# "students.education.killer.sh is forbidden" + "classes.education.killer.sh is forbidden"
+
+# edit base/rbac.yaml — add Role rule:
+# - apiGroups: ["education.killer.sh"]
+#   resources: ["students", "classes"]
+#   verbs: ["list"]
+
+# edit base/students.yaml — append:
+# ---
+# apiVersion: education.killer.sh/v1
+# kind: Student
+# metadata:
+#   name: student4
+# spec:
+#   name: "Alice"
+#   description: "exam practice"
+
+# deploy to prod
+kubectl kustomize /opt/course/17/operator/prod | kubectl apply -f -
+
+# verify operator pod restarts and lists succeed
+k -n operator-prod logs <operator-pod> -f
+```
+
+</p>
+</details>
