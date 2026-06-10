@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CKA Practice</title>
+  <meta name="description" content="Interactive CKA exam practice: browse, filter, search, and quiz across ~205 curriculum + historical exam + killer.sh simulator questions.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%98%B8%EF%B8%8F%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <header id="app-header">
+    <div class="brand">
+      <span class="brand-icon">☸️</span>
+      <strong>CKA Practice</strong>
+    </div>
+    <nav class="mode-tabs" role="tablist">
+      <button data-mode="browse" class="mode-tab active" type="button">📚 Browse</button>
+      <button data-mode="quiz" class="mode-tab" type="button">🎯 Quiz</button>
+    </nav>
+    <div class="header-right">
+      <span id="quiz-timer" hidden></span>
+      <button id="theme-toggle" type="button" title="Toggle theme">🌗</button>
+    </div>
+  </header>
+
+  <!-- Browse mode -->
+  <div id="view-browse" class="view active">
+    <div id="filter-bar">
+      <details class="dropdown">
+        <summary>Domain <span id="filter-domain-count"></span></summary>
+        <div id="filter-domain-list" class="filter-list"></div>
+      </details>
+      <details class="dropdown">
+        <summary>Tag <span id="filter-tag-count"></span></summary>
+        <div id="filter-tag-list" class="filter-list">
+          <label><input type="checkbox" value="general" checked> General</label>
+          <label><input type="checkbox" value="cka-zhenti" checked> <span class="tag-pill tag-cka-zhenti">CKA 真题</span></label>
+          <label><input type="checkbox" value="killersh-a" checked> <span class="tag-pill tag-killersh-a">Killer.sh A</span></label>
+          <label><input type="checkbox" value="killersh-b" checked> <span class="tag-pill tag-killersh-b">Killer.sh B</span></label>
+        </div>
+      </details>
+      <input id="filter-search" type="search" placeholder="🔎 Search title or task…" autocomplete="off">
+      <label class="toggle-label" title="Show only bookmarked exercises">
+        <input id="filter-bookmark" type="checkbox"> ⭐ Bookmarks
+      </label>
+      <label class="toggle-label" title="Show only exercises you haven't marked done">
+        <input id="filter-undone" type="checkbox"> ☐ Not done
+      </label>
+      <label class="toggle-label" title="Reveal all solutions in the list">
+        <input id="filter-reveal-solutions" type="checkbox"> 👁 Reveal solutions
+      </label>
+      <button id="filter-reset" type="button" title="Reset all filters">↻ Reset</button>
+      <span id="filter-stats"></span>
+    </div>
+
+    <div class="layout">
+      <aside id="sidebar">
+        <div id="sidebar-progress"></div>
+        <nav id="sidebar-tree"></nav>
+      </aside>
+      <main id="main"></main>
+    </div>
+  </div>
+
+  <!-- Quiz mode -->
+  <div id="view-quiz" class="view" hidden>
+    <!-- Setup screen -->
+    <section id="quiz-setup" class="quiz-screen">
+      <h2>🎯 Start a quiz session</h2>
+      <p class="muted">Randomly pull questions from the question bank for focused practice. Self-grade your answers — there's no automatic checking (solutions are CLI/YAML).</p>
+
+      <fieldset>
+        <legend>Source — domain</legend>
+        <div id="quiz-domain-list" class="filter-list horizontal"></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Source — tag</legend>
+        <div class="filter-list horizontal">
+          <label><input type="checkbox" name="quiz-tag" value="general" checked> General</label>
+          <label><input type="checkbox" name="quiz-tag" value="cka-zhenti" checked> <span class="tag-pill tag-cka-zhenti">CKA 真题</span></label>
+          <label><input type="checkbox" name="quiz-tag" value="killersh-a" checked> <span class="tag-pill tag-killersh-a">Killer.sh A</span></label>
+          <label><input type="checkbox" name="quiz-tag" value="killersh-b" checked> <span class="tag-pill tag-killersh-b">Killer.sh B</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Source — filter</legend>
+        <label><input type="checkbox" id="quiz-only-bookmarks"> Only bookmarked</label>
+        <label><input type="checkbox" id="quiz-only-undone"> Only not-yet-done</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Count</legend>
+        <label><input type="radio" name="quiz-count" value="5"> 5</label>
+        <label><input type="radio" name="quiz-count" value="10" checked> 10</label>
+        <label><input type="radio" name="quiz-count" value="17"> 17 (full mock)</label>
+        <label><input type="radio" name="quiz-count" value="custom"> Custom: <input type="number" id="quiz-count-custom" min="1" max="500" value="20" style="width:5em"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Time limit</legend>
+        <label><input type="radio" name="quiz-time" value="0" checked> No limit</label>
+        <label><input type="radio" name="quiz-time" value="30"> 30 min</label>
+        <label><input type="radio" name="quiz-time" value="60"> 60 min</label>
+        <label><input type="radio" name="quiz-time" value="120"> 120 min</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Solutions</legend>
+        <label><input type="radio" name="quiz-solutions" value="hidden" checked> Hidden until I click Reveal</label>
+        <label><input type="radio" name="quiz-solutions" value="visible"> Always visible</label>
+      </fieldset>
+
+      <div class="quiz-actions">
+        <button id="quiz-start-btn" type="button" class="primary">▶ Start quiz</button>
+        <span id="quiz-eligible-count" class="muted"></span>
+      </div>
+    </section>
+
+    <!-- Active quiz session -->
+    <section id="quiz-active" class="quiz-screen" hidden>
+      <div class="quiz-progress">
+        <span id="quiz-progress-text"></span>
+        <progress id="quiz-progress-bar" value="0" max="1"></progress>
+      </div>
+      <div id="quiz-card" class="exercise-card"></div>
+      <div class="quiz-controls">
+        <button id="quiz-prev" type="button">← Prev</button>
+        <button id="quiz-flag" type="button">🚩 Flag</button>
+        <button id="quiz-reveal" type="button">👁 Reveal solution</button>
+        <span class="spacer"></span>
+        <button id="quiz-grade-got" type="button" class="grade-got">✓ Got it</button>
+        <button id="quiz-grade-miss" type="button" class="grade-miss">✗ Missed</button>
+        <button id="quiz-skip" type="button">↷ Skip</button>
+        <button id="quiz-next" type="button">Next →</button>
+      </div>
+      <div class="quiz-end-row">
+        <button id="quiz-finish" type="button" class="danger">⏹ End session</button>
+      </div>
+    </section>
+
+    <!-- Summary -->
+    <section id="quiz-summary" class="quiz-screen" hidden>
+      <h2>📊 Session summary</h2>
+      <div id="quiz-summary-stats"></div>
+      <ol id="quiz-summary-list"></ol>
+      <div class="quiz-actions">
+        <button id="quiz-restart" type="button" class="primary">▶ New quiz</button>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <span class="muted">
+      <a href="https://github.com/xooooooooox/cka-exercises" target="_blank" rel="noopener">GitHub</a>
+      · Built from <code>exercises/*.md</code> · <span id="build-meta"></span>
+    </span>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>

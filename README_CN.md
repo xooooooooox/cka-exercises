@@ -20,20 +20,43 @@ Certified Kubernetes Administrator (CKA) 考试准备，基于 [CKA Curriculum v
 - **[CKA 真题]** — 历年真题，按考试大纲归类到对应章节
 - **[Killer.sh A-Qn / B-Qn]** — killer.sh CKA 模拟考题（Simulator A & B），统一归在每个文件末尾的专门章节。原版 PDF 见 [`assets/`](assets/)
 
+## 🎯 在线练习页面
+
+[`docs/`](docs/) 下是一个静态 SPA，提供浏览+测验两种模式，覆盖全部 ~205 道题。支持按考点 / 标签（CKA 真题 / Killer.sh A / B / 通用）/ 收藏 / 未完成多维过滤。测验模式可随机抽题、设置 30/60/120 分钟限时、自我打分、生成会话总结。
+
+**在线地址：** 推送到 `main` 后 GitHub Pages 自动部署到 `https://<owner>.github.io/cka-exercises/`（需在仓库 Settings → Pages → Source 选择 GitHub Actions）。
+
+**本地运行：**
+
+```shell
+node scripts/build-exercises.mjs    # 从 markdown 重新生成 docs/exercises.json
+npm run serve                       # python3 -m http.server 8080 --directory docs
+# 打开 http://localhost:8080
+```
+
+进度（✓ 已完成、⭐ 收藏、主题）通过 `localStorage` 持久化。Markdown 由 CDN 加载的 Marked.js 渲染，运行时无需构建。
+
 ## 项目结构
 
 ```
 .
 ├── README.md
 ├── README_CN.md
+├── package.json                        # npm run build / npm run serve
 ├── assets/                             # killer.sh Simulator A/B PDF（报名后官方提供）
+├── docs/                               # 练习 SPA（GitHub Pages 源目录）
+│   ├── index.html
+│   ├── app.js
+│   ├── style.css
+│   └── exercises.json                  # 由 scripts/build-exercises.mjs 生成
 ├── exercises/                          # 按考试大纲组织的练习
 │   ├── cluster-architecture.md         # 集群架构、安装与配置 (25%)
 │   ├── scheduling.md                   # 工作负载与调度 (15%)
 │   ├── networking.md                   # 服务与网络 (20%)
 │   ├── storage.md                      # 存储 (10%)
 │   └── troubleshooting.md              # 故障排查 (30%)
-└── prepare/                            # 考前准备 (见下方)
+└── scripts/
+    └── build-exercises.mjs             # 把 markdown 抽取为 JSON
 ```
 
 ## 考前准备
