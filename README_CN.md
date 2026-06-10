@@ -29,10 +29,11 @@ Certified Kubernetes Administrator (CKA) 考试准备，基于 [CKA Curriculum v
 **本地运行：**
 
 ```shell
-node scripts/build-exercises.mjs    # 从 markdown 重新生成 docs/exercises.json
-npm run serve                       # python3 -m http.server 8080 --directory docs
+npm run serve   # 自动重新构建 docs/exercises.json 后启动 :8080
 # 打开 http://localhost:8080
 ```
+
+`docs/exercises.json` 是 `exercises/*.md` 的构建产物，每次 `npm run build`/`npm run serve` 以及 Pages 部署时自动重生。该文件已 gitignore，不会出现在 PR 中。
 
 进度（✓ 已完成、⭐ 收藏、主题）通过 `localStorage` 持久化。Markdown 由 CDN 加载的 Marked.js 渲染，运行时无需构建。
 
@@ -48,7 +49,7 @@ npm run serve                       # python3 -m http.server 8080 --directory do
 │   ├── index.html
 │   ├── app.js
 │   ├── style.css
-│   └── exercises.json                  # 由 scripts/build-exercises.mjs 生成
+│   └── exercises.json                  # gitignore — 由 scripts/build-exercises.mjs 生成
 ├── exercises/                          # 按考试大纲组织的练习
 │   ├── cluster-architecture.md         # 集群架构、安装与配置 (25%)
 │   ├── scheduling.md                   # 工作负载与调度 (15%)

@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -24,33 +24,13 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      json-changed: ${{ steps.diff.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Build exercises.json
         run: node scripts/build-exercises.mjs
-      - name: Detect changes
-        id: diff
-        run: |
-          if git diff --quiet docs/exercises.json; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Commit refreshed exercises.json
-        if: steps.diff.outputs.changed == 'true'
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/exercises.json
-          git commit -m 'chore(docs): refresh exercises.json [skip ci]'
-          git push
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
