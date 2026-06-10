@@ -278,6 +278,9 @@ function renderExerciseCard(ex, opts = {}) {
   if (ex.points != null) meta.appendChild(el('span', { class: 'points-pill' }, `${ex.points} 分`));
   meta.appendChild(el('span', { class: 'id-pill' }, ex.id));
   meta.appendChild(el('span', {}, `${ex.domain.title.split(',')[0]} · ${ex.section.kind === 'killersh' ? 'Killer.sh' : `§${ex.section.number} ${ex.section.title}`}`));
+  if (ex.solveOn) {
+    meta.appendChild(el('span', { class: 'solve-on-chip', title: 'Solve this question on this host' }, `🖥 ${ex.solveOn}`));
+  }
   card.appendChild(meta);
 
   // Docs link
@@ -289,7 +292,28 @@ function renderExerciseCard(ex, opts = {}) {
 
   // Task
   if (ex.task) {
-    const task = el('div', { class: 'exercise-task', html: renderMarkdown(ex.task) });
+    card.appendChild(el('div', { class: 'task-label' }, 'Task'));
+    let taskMd = ex.task;
+    // Strip a leading "**Task:**" marker — we have our own label now.
+    taskMd = taskMd.replace(/^\s*\*\*Task:\*\*\s*\n+/, '');
+    const task = el('div', { class: 'exercise-task', html: renderMarkdown(taskMd) });
+    // Promote ℹ️ blockquotes to info callouts.
+    task.querySelectorAll('blockquote').forEach(bq => {
+      const first = bq.textContent.trim();
+      if (first.startsWith('ℹ️') || first.startsWith('ℹ')) {
+        bq.classList.add('info-callout');
+      }
+    });
+    // Render "**Lab context:**" prefix as a uppercase label for visual separation.
+    task.querySelectorAll('p').forEach(p => {
+      const onlyChild = p.children.length === 1 ? p.children[0] : null;
+      if (onlyChild && onlyChild.tagName === 'STRONG' && /^Lab context:?$/i.test(onlyChild.textContent.trim())) {
+        const label = document.createElement('div');
+        label.className = 'lab-context-label';
+        label.textContent = 'Lab context';
+        p.replaceWith(label);
+      }
+    });
     card.appendChild(task);
     attachCopyButtons(task);
   }

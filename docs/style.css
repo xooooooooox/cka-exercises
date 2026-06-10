@@ -257,8 +257,46 @@ pre .copy-btn.copied { color: var(--success); }
 .id-pill { font-family: ui-monospace, monospace; color: var(--fg-muted); }
 
 .exercise-docs { margin-bottom: 10px; font-size: 13px; }
+
+.solve-on-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--bg-code); border: 1px solid var(--border);
+  font-family: ui-monospace, monospace; font-size: 12px;
+  color: var(--fg-muted);
+}
+.task-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.6px; color: var(--fg-muted);
+  margin: 4px 0 6px;
+}
 .exercise-task { margin-bottom: 12px; }
 .exercise-task :last-child { margin-bottom: 0; }
+.exercise-task p { margin: 6px 0; }
+.exercise-task ul, .exercise-task ol { padding-left: 22px; margin: 8px 0; }
+.exercise-task li { margin: 3px 0; }
+.exercise-task li > p { margin: 2px 0; }
+.exercise-task blockquote {
+  margin: 8px 0; padding: 8px 12px;
+  border-left: 3px solid var(--border);
+  color: var(--fg-muted);
+}
+.exercise-task blockquote.info-callout {
+  border-left-color: var(--accent);
+  background: rgba(9, 105, 218, 0.07);
+  color: var(--fg);
+  border-radius: 4px;
+}
+[data-theme="dark"] .exercise-task blockquote.info-callout {
+  background: rgba(47, 129, 247, 0.12);
+}
+.exercise-task strong { font-weight: 700; }
+.exercise-task .lab-context-label {
+  display: block;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.6px; color: var(--fg-muted);
+  margin: 10px 0 4px;
+}
 .exercise-solution { margin-top: 8px; padding: 12px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
 .exercise-solution :first-child { margin-top: 0; }
 .exercise-solution :last-child { margin-bottom: 0; }

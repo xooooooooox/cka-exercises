@@ -85,6 +85,15 @@ function parseExercise(titleLine, body) {
   }
   let task = trimBlank(body.slice(taskStart, taskEnd));
 
+  // Extract optional `> 🖥 Solve on: \`ssh xxx\`` line at the start of the task.
+  // Strip it from the task body so it isn't rendered in the task area.
+  let solveOn = null;
+  const solveOnMatch = task.match(/^>\s*🖥[^\n]*?ssh\s+([^\s`'"]+)[^\n]*?(?:\n|$)/);
+  if (solveOnMatch) {
+    solveOn = `ssh ${solveOnMatch[1]}`;
+    task = trimBlank(task.slice(solveOnMatch[0].length));
+  }
+
   // Solution = concatenation of all <details>...</details> bodies.
   const detailsRegex = /<details>\s*<summary>([\s\S]*?)<\/summary>\s*([\s\S]*?)<\/details>/g;
   let solution = '';
@@ -104,7 +113,7 @@ function parseExercise(titleLine, body) {
   // If no <details>, the task body itself often ends with italic guidance
   // like "*此为场景练习，无固定答案。关键步骤：…*" — keep the task as-is.
 
-  return { task, solution, docsLink, docsLinkText };
+  return { task, solution, docsLink, docsLinkText, solveOn };
 }
 
 function parseFile(file, domainInfo) {
@@ -167,6 +176,7 @@ function parseFile(file, domainInfo) {
         points,
         docsLink: parsed.docsLink,
         docsLinkText: parsed.docsLinkText,
+        solveOn: parsed.solveOn,
         task: parsed.task,
         solution: parsed.solution,
       });

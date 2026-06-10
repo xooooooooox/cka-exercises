@@ -2663,12 +2663,24 @@ kubectl logs deploy/<operator-name> -n <operator-namespace>
 
 ### [Killer.sh A-Q1] Contexts: extract info from kubeconfig file
 
+
 > 🔗 [Tasks > Access Applications in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
 
-**Task:** From `/opt/course/1/kubeconfig` on cka9412, write:
-1. All context names → `/opt/course/1/contexts` (one per line)
-2. Current context name → `/opt/course/1/current-context`
-3. Base64-decoded client-certificate of user `account-0027` → `/opt/course/1/cert`
+> 🖥 Solve on: `ssh cka9412`
+
+**Task:**
+
+You're asked to extract the following information out of kubeconfig file `/opt/course/1/kubeconfig` on `cka9412`:
+
+1. Write all kubeconfig context names into `/opt/course/1/contexts`, one per line
+2. Write the name of the current context into `/opt/course/1/current-context`
+3. Write the client-certificate of user `account-0027` base64-decoded into `/opt/course/1/cert`
+
+**Lab context:**
+
+- Hostname: `cka9412` (controlplane)
+- Kubeconfig file already exists at `/opt/course/1/kubeconfig` with contexts `cluster-admin`, `cluster-w100`, `cluster-w200` (current context is `cluster-w200`)
+- Target directory `/opt/course/1/` already exists
 
 <details><summary>show</summary>
 <p>
@@ -2693,9 +2705,35 @@ k --kubeconfig /opt/course/1/kubeconfig config view --raw \
 
 ### [Killer.sh A-Q2] Install cert-manager via Helm, create ClusterIssuer with CRL distribution point
 
+
 > 🔗 [Concepts > Extending Kubernetes > Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
 
-**Task:** Install cert-manager via Helm in namespace `cert-manager`. (1) Create the namespace; (2) install chart `jetstack/cert-manager` with `crds.enabled=true`, release name `cert-manager`; (3) update `/opt/course/2/cluster-issuer.yaml` to include `crlDistributionPoints: ["http://example.com/crl"]` under `spec.selfSigned`; (4) apply the ClusterIssuer.
+> 🖥 Solve on: `ssh cka7968`
+
+**Task:**
+
+Install cert-manager using Helm in Namespace `cert-manager`. Then configure and create the ClusterIssuer CRD:
+
+1. Create Namespace `cert-manager`
+2. Install Helm chart `jetstack/cert-manager` (with `crds.enabled=true`) into the new Namespace. The Helm Release should be called `cert-manager`
+3. Update the ClusterIssuer resource in `/opt/course/2/cluster-issuer.yaml` to include `crlDistributionPoints: ["http://example.com/crl"]` under `spec.selfSigned`
+4. Create the ClusterIssuer resource from `/opt/course/2/cluster-issuer.yaml`
+
+> ℹ️ It is not required for cert-manager to issue real certificates. Installing the Helm Chart and the ClusterIssuer resource as requested is enough
+
+**Lab context:**
+
+- Hostname: `cka7968` (controlplane)
+- Helm repo `jetstack` is already configured (pointing at `http://localhost:6000`); chart `jetstack/cert-manager` is available
+- Existing `/opt/course/2/cluster-issuer.yaml`:
+  ```yaml
+  apiVersion: cert-manager.io/v1
+  kind: ClusterIssuer
+  metadata:
+    name: course-issuer
+  spec:
+    selfSigned:
+  ```
 
 <details><summary>show</summary>
 <p>
@@ -2723,9 +2761,25 @@ k -n cert-manager get pods
 
 ### [Killer.sh A-Q8] Update Kubernetes version and join new node to cluster
 
+
 > 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Adding Linux worker nodes](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/adding-linux-nodes/)
 
-**Task:** Node `cka3962-node1` is on an older Kubernetes version and not in the cluster. (1) Update Kubernetes on the node to the exact controlplane version; (2) Join the node to the cluster using kubeadm.
+> 🖥 Solve on: `ssh cka3962`
+
+**Task:**
+
+Your coworker notified you that node `cka3962-node1` is running an older Kubernetes version and is not even part of the cluster yet.
+
+1. Update the node's Kubernetes to the exact version of the controlplane
+2. Add the node to the cluster using `kubeadm`
+
+> ℹ️ You can connect to the worker node using `ssh cka3962-node1` from `cka3962`
+
+**Lab context:**
+
+- Hostname: `cka3962` (controlplane) — connect to worker via `ssh cka3962-node1`
+- Controlplane is running Kubernetes `v1.35.2`
+- On `cka3962-node1`: `kubeadm` is already at `v1.35.2`, but `kubectl` and `kubelet` are at `v1.34.5`, and the node has not yet joined the cluster
 
 <details><summary>show</summary>
 <p>
@@ -2759,9 +2813,23 @@ k get nodes  # node should appear as Ready
 
 ### [Killer.sh A-Q9] Contact Kubernetes API from inside a Pod using a ServiceAccount
 
+
 > 🔗 [Tasks > Run Applications > Accessing the Kubernetes API from a Pod](https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/)
 
-**Task:** ServiceAccount `secret-reader` exists in `project-swan`. Create Pod `api-contact` (image `nginx:1-alpine`) using this SA. Inside the Pod, use curl to fetch all Secrets via the Kubernetes API. Write result to `/opt/course/9/result.json`.
+> 🖥 Solve on: `ssh cka9412`
+
+**Task:**
+
+There is ServiceAccount `secret-reader` in Namespace `project-swan`. Create a Pod of image `nginx:1-alpine` named `api-contact` which uses this ServiceAccount.
+
+Exec into the Pod and use `curl` to manually query all Secrets from the Kubernetes Api.
+Write the result into file `/opt/course/9/result.json`.
+
+**Lab context:**
+
+- Hostname: `cka9412` (controlplane)
+- Existing ServiceAccount `secret-reader` in Namespace `project-swan` (already authorized to list Secrets)
+- Target directory `/opt/course/9/` already exists
 
 <details><summary>show</summary>
 <p>
@@ -2798,12 +2866,19 @@ k -n project-swan cp api-contact:/tmp/result.json /opt/course/9/result.json
 
 ### [Killer.sh A-Q10] Create ServiceAccount with Role + RoleBinding for create-only on Secrets and ConfigMaps
 
+
 > 🔗 [Reference > Access Authn Authz > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
-**Task:** In namespace `project-hamster`, create:
-- ServiceAccount `processor`
-- Role `processor` allowing only `create` on Secrets and ConfigMaps
-- RoleBinding `processor` binding the Role to the SA
+> 🖥 Solve on: `ssh cka3962`
+
+**Task:**
+
+Create a new ServiceAccount `processor` in Namespace `project-hamster`. Create a Role and RoleBinding, both named `processor` as well. These should allow the new SA to only create Secrets and ConfigMaps in that Namespace.
+
+**Lab context:**
+
+- Hostname: `cka3962` (controlplane)
+- Namespace `project-hamster` already exists
 
 <details><summary>show</summary>
 <p>
@@ -2830,9 +2905,23 @@ k -n project-hamster auth can-i delete secret --as=system:serviceaccount:project
 
 ### [Killer.sh A-Q14] Check kube-apiserver certificate expiration and prepare renewal command
 
+
 > 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Certificate Management with kubeadm](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-certs/)
 
-**Task:** (1) Check kube-apiserver server certificate validity via openssl and write expiration date into `/opt/course/14/expiration`; confirm with kubeadm. (2) Write the kubeadm command that renews only the kube-apiserver certificate into `/opt/course/14/kubeadm-renew-certs.sh`.
+> 🖥 Solve on: `ssh cka9412`
+
+**Task:**
+
+Perform some tasks on cluster certificates:
+
+1. Check how long the kube-apiserver server certificate is valid using `openssl` or `cfssl`. Write the expiration date into `/opt/course/14/expiration`. Run the `kubeadm` command to list the expiration dates and confirm both methods show the same one
+2. Write the kubeadm command that would renew the kube-apiserver certificate into `/opt/course/14/kubeadm-renew-certs.sh`
+
+**Lab context:**
+
+- Hostname: `cka9412` (controlplane)
+- kube-apiserver certificate present at `/etc/kubernetes/pki/apiserver.crt`
+- Target directory `/opt/course/14/` already exists
 
 <details><summary>show</summary>
 <p>
@@ -2861,9 +2950,24 @@ chmod +x /opt/course/14/kubeadm-renew-certs.sh
 
 ### [Killer.sh B-Q2] Create a Static Pod on controlplane and expose via NodePort Service
 
+
 > 🔗 [Tasks > Configure Pods and Containers > Create static Pods](https://kubernetes.io/docs/tasks/configure-pod-container/static-pod/)
 
-**Task:** Create a Static Pod `my-static-pod` in namespace `default` on the controlplane (image `nginx:1-alpine`, requests 10m CPU / 20Mi memory). Then create a NodePort Service `static-pod-service` exposing it on port 80.
+> 🖥 Solve on: `ssh cka2560`
+
+**Task:**
+
+Create a Static Pod named `my-static-pod` in Namespace `default` on the controlplane node. It should be of image `nginx:1-alpine` and have resource requests for `10m` CPU and `20Mi` memory.
+
+Create a NodePort Service named `static-pod-service` which exposes that static Pod on port `80`.
+
+> ℹ️ For verification check if the new Service has one Endpoint. It should also be possible to access the Pod via the `cka2560` internal IP address, like using `curl 192.168.100.31:NODE_PORT`
+
+**Lab context:**
+
+- Hostname: `cka2560` (controlplane)
+- Static Pod manifests directory: `/etc/kubernetes/manifests/`
+- Controlplane internal IP: `192.168.100.31`
 
 <details><summary>show</summary>
 <p>
@@ -2902,9 +3006,29 @@ k expose pod my-static-pod-cka2560 --name=static-pod-service --type=NodePort --p
 
 ### [Killer.sh B-Q3] Inspect kubelet client and server certificate Issuer and Extended Key Usage
 
+
 > 🔗 [Reference > Access Authn Authz > PKI Certificates and Requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)
 
-**Task:** Node `cka5248-node1` joined the cluster via kubeadm and TLS bootstrapping. Find Issuer and Extended Key Usage for: (1) Kubelet Client Certificate; (2) Kubelet Server Certificate. Write findings into `/opt/course/3/certificate-info.txt`.
+> 🖥 Solve on: `ssh cka5248`
+
+**Task:**
+
+Node `cka5248-node1` has been added to the cluster using kubeadm and TLS bootstrapping.
+
+Find the Issuer and Extended Key Usage values on `cka5248-node1` for:
+
+1. Kubelet Client Certificate, the one used for outgoing connections to the kube-apiserver
+2. Kubelet Server Certificate, the one used for incoming connections from the kube-apiserver
+
+Write the information into file `/opt/course/3/certificate-info.txt`.
+
+> ℹ️ You can connect to the worker node using `ssh cka5248-node1` from `cka5248`
+
+**Lab context:**
+
+- Hostname: `cka5248` (controlplane) — connect to worker via `ssh cka5248-node1`
+- Kubelet pki directory on the worker: `/var/lib/kubelet/pki/` (contains `kubelet-client-current.pem` and `kubelet.crt`)
+- Target directory `/opt/course/3/` already exists on `cka5248`
 
 <details><summary>show</summary>
 <p>
@@ -2942,9 +3066,24 @@ EOF
 
 ### [Killer.sh B-Q7] Etcd version check and snapshot
 
+
 > 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
 
-**Task:** (1) Save `etcd --version` output to `/opt/course/7/etcd-version`; (2) Create etcd snapshot at `/opt/course/7/etcd-snapshot.db`.
+> 🖥 Solve on: `ssh cka2560`
+
+**Task:**
+
+You have been tasked to perform the following etcd operations:
+
+1. Run `etcd --version` and store the output at `/opt/course/7/etcd-version`
+2. Make a snapshot of etcd and save it at `/opt/course/7/etcd-snapshot.db`
+
+**Lab context:**
+
+- Hostname: `cka2560` (controlplane)
+- etcd runs as a static Pod (`etcd-cka2560` in `kube-system`); `etcd` binary is not installed directly on the host
+- etcd certificates available under `/etc/kubernetes/pki/etcd/` (`ca.crt`, `server.crt`, `server.key`)
+- Target directory `/opt/course/7/` already exists
 
 <details><summary>show</summary>
 <p>
@@ -2969,9 +3108,36 @@ etcdctl snapshot status /opt/course/7/etcd-snapshot.db --write-out=table
 
 ### [Killer.sh B-Q8] Identify how each controlplane component is started/installed
 
+
 > 🔗 [Concepts > Overview > Components of Kubernetes](https://kubernetes.io/docs/concepts/overview/components/)
 
-**Task:** Find how controlplane components (kubelet, kube-apiserver, kube-scheduler, kube-controller-manager, etcd) are started/installed plus the DNS application name and how it's started. Write findings to `/opt/course/8/controlplane-components.txt` using TYPE values: `not-installed`, `process`, `static-pod`, `pod`.
+> 🖥 Solve on: `ssh cka8448`
+
+**Task:**
+
+Check how the controlplane components `kubelet`, `kube-apiserver`, `kube-scheduler`, `kube-controller-manager` and `etcd` are started/installed on the controlplane node.
+
+Also find out the name of the DNS application and how it's started/installed in the cluster.
+
+Write your findings into file `/opt/course/8/controlplane-components.txt`. The file should be structured like:
+
+```
+# /opt/course/8/controlplane-components.txt
+kubelet: [TYPE]
+kube-apiserver: [TYPE]
+kube-scheduler: [TYPE]
+kube-controller-manager: [TYPE]
+etcd: [TYPE]
+dns: [TYPE] [NAME]
+```
+
+Choices of `[TYPE]` are: `not-installed`, `process`, `static-pod`, `pod`
+
+**Lab context:**
+
+- Hostname: `cka8448` (controlplane, single-node cluster)
+- Cluster was set up using `kubeadm`
+- Target directory `/opt/course/8/` already exists
 
 <details><summary>show</summary>
 <p>
@@ -2996,9 +3162,36 @@ EOF
 
 ### [Killer.sh B-Q14] Discover cluster topology and configuration
 
+
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
 
-**Task:** Find: (1) number of controlplane nodes; (2) number of worker nodes; (3) Service CIDR; (4) CNI plugin and its config file; (5) suffix of static pods on `cka8448`. Write all to `/opt/course/14/cluster-info`.
+> 🖥 Solve on: `ssh cka8448`
+
+**Task:**
+
+You're ask to find out following information about the cluster:
+
+1. How many controlplane nodes are available?
+2. How many worker nodes (non controlplane nodes) are available?
+3. What is the Service CIDR?
+4. Which Networking (or CNI Plugin) is configured and where is its config file?
+5. Which suffix will static pods have that run on `cka8448`?
+
+Write your answers into file `/opt/course/14/cluster-info`, structured like this:
+
+```
+# /opt/course/14/cluster-info
+1: [ANSWER]
+2: [ANSWER]
+3: [ANSWER]
+4: [ANSWER]
+5: [ANSWER]
+```
+
+**Lab context:**
+
+- Hostname: `cka8448` (controlplane)
+- Target directory `/opt/course/14/` already exists
 
 <details><summary>show</summary>
 <p>
@@ -3034,9 +3227,22 @@ EOF
 
 ### [Killer.sh B-Q16] List namespaced API resources and find Namespace with most Roles
 
+
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
-**Task:** Write names of all namespaced Kubernetes resources into `/opt/course/16/resources.txt`. Find the `project-*` namespace with the most Roles; write its name and Role count into `/opt/course/16/crowded-namespace.txt`.
+> 🖥 Solve on: `ssh cka3200`
+
+**Task:**
+
+Write the names of all namespaced Kubernetes resources (like Pod, Secret, ConfigMap...) into `/opt/course/16/resources.txt`.
+
+Find the `project-*` Namespace with the highest number of Roles defined in it and write its name and amount of Roles into `/opt/course/16/crowded-namespace.txt`.
+
+**Lab context:**
+
+- Hostname: `cka3200` (controlplane)
+- Several `project-*` Namespaces exist (e.g. `project-jinan`, `project-miami`, `project-melbourne`, `project-seoul`, `project-toronto`)
+- Target directory `/opt/course/16/` already exists
 
 <details><summary>show</summary>
 <p>
@@ -3060,9 +3266,32 @@ echo "project-miami with 300 roles" > /opt/course/16/crowded-namespace.txt
 
 ### [Killer.sh B-Q17] Install operator via Kustomize, debug missing RBAC, add CR
 
+
 > 🔗 [Concepts > Extending Kubernetes > Operator Pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 
-**Task:** A Kustomize config at `/opt/course/17/operator` installs an operator with CRDs and is applied by `kubectl kustomize /opt/course/17/operator/prod | kubectl apply -f -`. In the base config: (1) Check operator logs to find which CRD lists fail with Forbidden, then grant Role `operator-role` the missing permissions; (2) Add a new `Student` resource named `student4`; (3) Deploy to prod.
+> 🖥 Solve on: `ssh cka6016`
+
+**Task:**
+
+There is Kustomize config available at `/opt/course/17/operator`. It installs an operator which works with different CRDs. It has been deployed like this:
+
+```
+kubectl kustomize /opt/course/17/operator/prod | kubectl apply -f -
+```
+
+Perform the following changes in the Kustomize base config:
+
+1. The operator needs to list certain CRDs. Check the logs to find out which ones and adjust the permissions for Role `operator-role`
+2. Add a new `Student` resource called `student4` with any name and description
+
+Deploy your Kustomize config changes to `prod`.
+
+**Lab context:**
+
+- Hostname: `cka6016` (controlplane)
+- Kustomize tree at `/opt/course/17/operator/` with `base/` and `prod/` directories
+- Operator already deployed in Namespace `operator-prod` (Pod is running but failing to `list` `students.education.killer.sh` and `classes.education.killer.sh` due to missing RBAC)
+- Existing `Student` resources: `student1`, `student2`, `student3`; existing `Class`: `advanced`
 
 <details><summary>show</summary>
 <p>

@@ -430,11 +430,23 @@ cat /opt/KUTR00101/foobar
 
 ### [Killer.sh A-Q7] Write bash scripts using kubectl top for node and pod resource usage
 
+
 > 🔗 [Tasks > Monitoring, Logging, and Debugging > Resource metrics pipeline](https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/)
 
-**Task:** metrics-server is installed. Write two bash scripts:
-- `/opt/course/7/node.sh` — show resource usage of nodes
-- `/opt/course/7/pod.sh` — show resource usage of Pods and their containers
+> 🖥 Solve on: `ssh cka5774`
+
+**Task:**
+
+The metrics-server has been installed in the cluster. Write two bash scripts which use `kubectl`:
+
+1. Script `/opt/course/7/node.sh` should show resource usage of nodes
+2. Script `/opt/course/7/pod.sh` should show resource usage of Pods and their containers
+
+**Lab context:**
+
+- Hostname: `cka5774` (controlplane)
+- metrics-server is already running so `kubectl top` works
+- Target directory `/opt/course/7/` already exists
 
 <details><summary>show</summary>
 <p>
@@ -462,11 +474,27 @@ chmod +x /opt/course/7/node.sh /opt/course/7/pod.sh
 
 ### [Killer.sh A-Q17] Find the containerd container for a Pod via crictl, dump info and logs
 
+
 > 🔗 [Tasks > Monitoring, Logging, and Debugging > Debugging Kubernetes Nodes With Crictl](https://kubernetes.io/docs/tasks/debug/debug-cluster/crictl/)
 
-**Task:** In `project-tiger` create Pod `tigers-reunite` (image `httpd:2-alpine`, labels `pod=container` and `container=pod`). Find the node, SSH in, find the containerd container with crictl. Then:
-- Write container ID + `info.runtimeType` to `/opt/course/17/pod-container.txt`
-- Write container logs to `/opt/course/17/pod-container.log`
+> 🖥 Solve on: `ssh cka2556`
+
+**Task:**
+
+In Namespace `project-tiger` create a Pod named `tigers-reunite` of image `httpd:2-alpine` with labels `pod=container` and `container=pod`. Find out on which node the Pod is scheduled. Ssh into that node and find the containerd container belonging to that Pod.
+
+Using command `crictl`:
+
+1. Write the ID of the container and the `info.runtimeType` into `/opt/course/17/pod-container.txt`
+2. Write the logs of the container into `/opt/course/17/pod-container.log`
+
+> ℹ️ You can connect to a worker node using `ssh cka2556-node1` or `ssh cka2556-node2` from `cka2556`
+
+**Lab context:**
+
+- Hostname: `cka2556` (controlplane) — connect to workers via `ssh cka2556-node1` or `ssh cka2556-node2`
+- Namespace `project-tiger` already exists
+- Target directory `/opt/course/17/` already exists on `cka2556`
 
 <details><summary>show</summary>
 <p>
@@ -501,11 +529,22 @@ crictl logs <id> > /opt/course/17/pod-container.log
 
 ### [Killer.sh B-Q5] kubectl sorting scripts (creationTimestamp and uid)
 
+
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Formatting output](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#formatting-output)
 
-**Task:** Create two bash scripts using `kubectl --sort-by`:
-- `/opt/course/5/find_pods.sh` — list all Pods in all namespaces sorted by age (`metadata.creationTimestamp`)
-- `/opt/course/5/find_pods_uid.sh` — sorted by `metadata.uid`
+> 🖥 Solve on: `ssh cka8448`
+
+**Task:**
+
+Create two bash script files which use kubectl sorting to:
+
+1. Write a command into `/opt/course/5/find_pods.sh` which lists all Pods in all Namespaces sorted by their AGE (`metadata.creationTimestamp`)
+2. Write a command into `/opt/course/5/find_pods_uid.sh` which lists all Pods in all Namespaces sorted by field `metadata.uid`
+
+**Lab context:**
+
+- Hostname: `cka8448` (controlplane)
+- Target directory `/opt/course/5/` already exists
 
 <details><summary>show</summary>
 <p>
@@ -529,9 +568,24 @@ chmod +x /opt/course/5/find_pods.sh /opt/course/5/find_pods_uid.sh
 
 ### [Killer.sh B-Q6] Fix broken kubelet ExecStart path, then create a Pod
 
+
 > 🔗 [Tasks > Monitoring, Logging, and Debugging > Troubleshoot Clusters](https://kubernetes.io/docs/tasks/debug/debug-cluster/)
 
-**Task:** kubelet on controlplane `cka1024` is not running. Fix it and verify the node becomes Ready. Then create Pod `success` in `default` (image `nginx:1-alpine`).
+> 🖥 Solve on: `ssh cka1024`
+
+**Task:**
+
+There seems to be an issue with the kubelet on controlplane node `cka1024`, it's not running.
+
+Fix the kubelet and confirm that the node is available in Ready state.
+Create a Pod called `success` in `default` Namespace of image `nginx:1-alpine`.
+
+> ℹ️ The node has no taints and can schedule Pods without additional tolerations
+
+**Lab context:**
+
+- Hostname: `cka1024` (controlplane, single-node cluster) — kube-apiserver is currently unreachable
+- `kubelet` is installed at `/usr/bin/kubelet`; systemd unit drop-in at `/usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf` currently references the wrong binary path `/usr/local/bin/kubelet`
 
 <details><summary>show</summary>
 <p>
@@ -568,9 +622,25 @@ k run success --image=nginx:1-alpine
 
 ### [Killer.sh B-Q9] Temporarily disable kube-scheduler, manually schedule a Pod, then restore
 
+
 > 🔗 [Concepts > Scheduling, Preemption and Eviction > Kubernetes Scheduler](https://kubernetes.io/docs/concepts/scheduling-eviction/kube-scheduler/)
 
-**Task:** Temporarily stop kube-scheduler. Create Pod `manual-schedule` (image `httpd:2-alpine`) and confirm it's Pending. Manually schedule it on node `cka5248`. Then restart kube-scheduler and verify by creating `manual-schedule2`, which should auto-schedule to `cka5248-node1`.
+> 🖥 Solve on: `ssh cka5248`
+
+**Task:**
+
+Temporarily stop the kube-scheduler, this means in a way that you can start it again afterwards.
+
+Create a single Pod named `manual-schedule` of image `httpd:2-alpine`, confirm it's created but not scheduled on any node.
+
+Now you're the scheduler and have all its power, manually schedule that Pod on node `cka5248`. Make sure it's running.
+
+Start the kube-scheduler again and confirm it's running correctly by creating a second Pod named `manual-schedule2` of image `httpd:2-alpine` and check if it's running on `cka5248-node1`.
+
+**Lab context:**
+
+- Hostname: `cka5248` (controlplane); cluster has nodes `cka5248` (controlplane) and `cka5248-node1` (worker)
+- kube-scheduler runs as a static Pod (manifest at `/etc/kubernetes/manifests/kube-scheduler.yaml`)
 
 <details><summary>show</summary>
 <p>
@@ -610,9 +680,22 @@ k get pod manual-schedule2 -o wide
 
 ### [Killer.sh B-Q15] Cluster event logging script + capture pod-kill vs container-kill events
 
+
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Viewing and finding resources](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#viewing-and-finding-resources)
 
-**Task:** (1) Write a kubectl command to `/opt/course/15/cluster_events.sh` that lists latest events cluster-wide sorted by `metadata.creationTimestamp`; (2) Delete the kube-proxy Pod and capture the resulting events into `/opt/course/15/pod_kill.log`; (3) Manually kill the containerd container of the kube-proxy Pod and capture the events into `/opt/course/15/container_kill.log`.
+> 🖥 Solve on: `ssh cka6016`
+
+**Task:**
+
+1. Write a kubectl command into `/opt/course/15/cluster_events.sh` which shows the latest events in the whole cluster, ordered by time (`metadata.creationTimestamp`)
+2. Delete the kube-proxy Pod and write the events this caused into `/opt/course/15/pod_kill.log` on `cka6016`
+3. Manually kill the containerd container of the kube-proxy Pod and write the events into `/opt/course/15/container_kill.log`
+
+**Lab context:**
+
+- Hostname: `cka6016` (controlplane, single-node cluster) — the kube-proxy Pod also runs on this node
+- `crictl` is available for container management
+- Target directory `/opt/course/15/` already exists
 
 <details><summary>show</summary>
 <p>

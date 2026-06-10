@@ -846,9 +846,60 @@ kubectl exec dnsutils -- nslookup myservice.mycompany.local
 
 ### [Killer.sh A-Q13] Replace Ingress with Gateway API HTTPRoute including header-based routing
 
+
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Gateway API](https://kubernetes.io/docs/concepts/services-networking/gateway/)
 
-**Task:** Replace Ingress at `/opt/course/13/ingress.yaml` in `project-r500` with a Gateway API solution. (1) Create HTTPRoute `traffic-director` replicating old routes; (2) Extend with `/auto` path routing to `mobile` backend if `User-Agent: mobile`, else to `desktop`. Existing Gateway is `main` at http://r500.gateway:30080.
+> 🖥 Solve on: `ssh cka7968`
+
+**Task:**
+
+The team from Project r500 wants to replace their Ingress (`networking.k8s.io`) with a Gateway Api (`gateway.networking.k8s.io`) solution. The old Ingress is available at `/opt/course/13/ingress.yaml`.
+
+Perform the following in Namespace `project-r500` and for the already existing Gateway:
+
+1. Create a new HTTPRoute named `traffic-director` which replicates the routes from the old Ingress
+2. Extend the new HTTPRoute with path `/auto` which forwards to `mobile` backend if the `User-Agent` is exactly `mobile` and to `desktop` backend otherwise
+
+The existing Gateway is reachable at `http://r500.gateway:30080` which means your implementation should work for these commands:
+
+```
+curl r500.gateway:30080/desktop
+curl r500.gateway:30080/mobile
+curl r500.gateway:30080/auto -H "User-Agent: mobile"
+curl r500.gateway:30080/auto
+```
+
+**Lab context:**
+
+- Hostname: `cka7968` (controlplane)
+- Existing Gateway `main` in Namespace `project-r500` referencing GatewayClass `nginx` (NGINX Gateway Fabric); Services `web-desktop` and `web-mobile` already exist
+- Existing `/opt/course/13/ingress.yaml`:
+  ```yaml
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: traffic-director
+  spec:
+    ingressClassName: nginx
+    rules:
+      - host: r500.gateway
+        http:
+          paths:
+            - backend:
+                service:
+                  name: web-desktop
+                  port:
+                    number: 80
+              path: /desktop
+              pathType: Prefix
+            - backend:
+                service:
+                  name: web-mobile
+                  port:
+                    number: 80
+              path: /mobile
+              pathType: Prefix
+  ```
 
 <details><summary>show</summary>
 <p>
@@ -896,11 +947,30 @@ curl -H "User-Agent: mobile" http://r500.gateway:30080/auto
 
 ### [Killer.sh A-Q15] NetworkPolicy with multiple egress rules — separate rules form OR, not AND
 
+
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
 
-**Task:** Create NetworkPolicy `np-backend` in `project-snake` allowing `backend-*` Pods to: connect to `db1-*` on port 1111 AND `db2-*` on port 2222. Use the `app` Pod labels.
+> 🖥 Solve on: `ssh cka7968`
 
-> **关键陷阱:** 每条 egress 规则内的 `to:` + `ports:` 形成 AND。如果合并 selector 到一条规则，则形成 OR — 允许 backend 访问 db1:2222 和 db2:1111（错误）。必须分成两条独立 egress 规则。
+**Task:**
+
+There was a security incident where an intruder was able to access the whole cluster from a single hacked backend Pod.
+
+To prevent this create a NetworkPolicy called `np-backend` in Namespace `project-snake`. It should allow the `backend-*` Pods only to:
+
+- Connect to `db1-*` Pods on port `1111`
+- Connect to `db2-*` Pods on port `2222`
+
+Use the `app` Pod labels in your policy.
+
+> ℹ️ All Pods in the Namespace run plain Nginx images. This allows simple connectivity tests like: `k -n project-snake exec POD_NAME -- curl POD_IP:PORT`
+
+> ℹ️ For example, connections from `backend-*` Pods to `vault-*` Pods on port `3333` should no longer work
+
+**Lab context:**
+
+- Hostname: `cka7968` (controlplane)
+- Namespace `project-snake` contains Pods `backend-0`, `db1-0`, `db2-0`, `vault-0` with `app` labels matching their name prefix; all run plain Nginx images on ports 1111/2222/3333 respectively
 
 <details><summary>show</summary>
 <p>
@@ -939,9 +1009,30 @@ spec:
 
 ### [Killer.sh A-Q16] Update CoreDNS to resolve custom-domain alongside cluster.local
 
+
 > 🔗 [Tasks > Administer a Cluster > Using CoreDNS for Service Discovery](https://kubernetes.io/docs/tasks/administer-cluster/coredns/)
 
-**Task:** (1) Backup existing CoreDNS ConfigMap YAML to `/opt/course/16/coredns_backup.yaml`; (2) Configure CoreDNS so DNS resolution `SERVICE.NAMESPACE.custom-domain` works exactly like `SERVICE.NAMESPACE.cluster.local`. Test with `busybox:1` nslookup.
+> 🖥 Solve on: `ssh cka5774`
+
+**Task:**
+
+The CoreDNS configuration in the cluster needs to be updated:
+
+1. Make a backup of the existing configuration Yaml and store it at `/opt/course/16/coredns_backup.yaml`. You should be able to fast recover from the backup
+2. Update the CoreDNS configuration in the cluster so that DNS resolution for `SERVICE.NAMESPACE.custom-domain` will work exactly like and in addition to `SERVICE.NAMESPACE.cluster.local`
+
+Test your configuration for example from a Pod with `busybox:1` image. These commands should result in an IP address:
+
+```
+nslookup kubernetes.default.svc.cluster.local
+nslookup kubernetes.default.svc.custom-domain
+```
+
+**Lab context:**
+
+- Hostname: `cka5774` (controlplane)
+- CoreDNS runs as Deployment `coredns` in `kube-system` (2 replicas) backed by ConfigMap `coredns`
+- Target directory `/opt/course/16/` already exists
 
 <details><summary>show</summary>
 <p>
@@ -990,13 +1081,31 @@ k exec -it bb -- nslookup kubernetes.default.svc.cluster.local
 
 ### [Killer.sh B-Q1] Build correct FQDNs for Service, Headless Service, Pod, Pod-by-IP
 
+
 > 🔗 [Concepts > Services, Load Balancing, and Networking > DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
 
-**Task:** Update the ConfigMap used by the controller Deployment in `lima-control` with correct FQDNs:
-- DNS_1: Service `kubernetes` in `default`
-- DNS_2: Headless Service `department` in `lima-workload`
-- DNS_3: Pod `section100` in `lima-workload` (must survive IP changes — use subdomain)
-- DNS_4: a Pod with IP `1.2.3.4` in `kube-system`
+> 🖥 Solve on: `ssh cka6016`
+
+**Task:**
+
+The Deployment `controller` in Namespace `lima-control` communicates with various cluster internal endpoints by using their DNS FQDN values.
+
+Update the ConfigMap used by the Deployment with the correct FQDN values for:
+
+1. `DNS_1`: Service `kubernetes` in Namespace `default`
+2. `DNS_2`: Headless Service `department` in Namespace `lima-workload`
+3. `DNS_3`: Pod `section100` in Namespace `lima-workload`. It should work even if the Pod IP changes
+4. `DNS_4`: A Pod with IP `1.2.3.4` in Namespace `kube-system`
+
+Ensure the Deployment works with the updated values.
+
+> ℹ️ You can use `nslookup` or `dig` inside a Pod of the `controller` Deployment
+
+**Lab context:**
+
+- Hostname: `cka6016` (controlplane)
+- Existing Deployment `controller` in Namespace `lima-control` (uses ConfigMap `control-config` with keys `DNS_1`..`DNS_4`)
+- In Namespace `lima-workload`: Service `department` (headless, ClusterIP `None`) and Service `section` back Pods `section100`, `section200` which set `hostname`/`subdomain` so `POD.SERVICE.NS.svc.cluster.local` resolves
 
 <details><summary>show</summary>
 <p>

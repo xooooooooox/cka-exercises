@@ -865,12 +865,23 @@ kubectl get pvc pv-volume
 
 ### [Killer.sh A-Q6] PV + PVC + Deployment volume mount
 
+
 > 🔗 [Tasks > Configure Pods and Containers > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/)
 
+> 🖥 Solve on: `ssh cka7968`
+
 **Task:**
-- Create PV `safari-pv` (2Gi, RWO, hostPath `/Volumes/Data`, no storageClassName)
-- Create PVC `safari-pvc` in `project-t230` (2Gi, RWO, no storageClassName) — must bind
-- Create Deployment `safari` in `project-t230` (image `httpd:2-alpine`) mounting that volume at `/tmp/safari-data`
+
+Create a new PersistentVolume named `safari-pv`. It should have a capacity of 2Gi, accessMode ReadWriteOnce, hostPath `/Volumes/Data` and no storageClassName defined.
+
+Next create a new PersistentVolumeClaim in Namespace `project-t230` named `safari-pvc`. It should request 2Gi storage, accessMode ReadWriteOnce and should not define a storageClassName. The PVC should bound to the PV correctly.
+
+Finally create a new Deployment `safari` in Namespace `project-t230` which mounts that volume at `/tmp/safari-data`. The Pods of that Deployment should be of image `httpd:2-alpine`.
+
+**Lab context:**
+
+- Hostname: `cka7968` (controlplane)
+- Namespace `project-t230` already exists
 
 <details><summary>show</summary>
 <p>
@@ -932,9 +943,58 @@ k apply -f safari.yaml
 
 ### [Killer.sh B-Q10] StorageClass with WaitForFirstConsumer + Retain, use PVC in Job
 
+
 > 🔗 [Concepts > Storage > Storage Classes](https://kubernetes.io/docs/concepts/storage/storage-classes/)
 
-**Task:** Create StorageClass `local-backup`: provisioner `rancher.io/local-path`, `volumeBindingMode: WaitForFirstConsumer`, retain PV on PVC delete. Adjust the Job at `/opt/course/10/backup.yaml` to use a PVC requesting 50Mi with this SC. Deploy and verify the Job completes and PVC binds to a new PV.
+> 🖥 Solve on: `ssh cka6016`
+
+**Task:**
+
+There is a backup Job which needs to be adjusted to use a PVC to store backups.
+
+Create a StorageClass named `local-backup` which uses `provisioner: rancher.io/local-path` and `volumeBindingMode: WaitForFirstConsumer`. To prevent possible data loss the StorageClass should keep a PV retained even if a bound PVC is deleted.
+
+Adjust the Job at `/opt/course/10/backup.yaml` to use a PVC which request 50Mi storage and uses the new StorageClass.
+
+Deploy your changes, verify the Job completed once and the PVC was bound to a newly created PV.
+
+> ℹ️ To re-run a Job, delete it and create it again
+
+> ℹ️ The abbreviation PV stands for PersistentVolume and PVC for PersistentVolumeClaim
+
+**Lab context:**
+
+- Hostname: `cka6016` (controlplane)
+- Local Path Provisioner is installed; default StorageClass `local-path` exists with `reclaimPolicy: Delete`, `volumeBindingMode: WaitForFirstConsumer`
+- Existing `/opt/course/10/backup.yaml`:
+  ```yaml
+  apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: backup
+    namespace: project-bern
+  spec:
+    backoffLimit: 0
+    template:
+      spec:
+        volumes:
+          - name: backup
+            emptyDir: {}
+        containers:
+          - name: bash
+            image: bash:5
+            command:
+              - bash
+              - -c
+              - |
+                set -x
+                touch /backup/backup-$(date +%Y-%m-%d-%H-%M-%S).tar.gz
+                sleep 15
+            volumeMounts:
+              - name: backup
+                mountPath: /backup
+        restartPolicy: Never
+  ```
 
 <details><summary>show</summary>
 <p>

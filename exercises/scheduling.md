@@ -1136,9 +1136,19 @@ kubectl get pod nginx-kusc00401 -o wide
 
 ### [Killer.sh A-Q3] Scale down a StatefulSet
 
+
 > 🔗 [Concepts > Workloads > Workload Management > StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
 
-**Task:** In namespace `project-h800` there are two Pods `o3db-*`. Scale them down to a single replica to save resources.
+> 🖥 Solve on: `ssh cka3962`
+
+**Task:**
+
+There are two Pods named `o3db-*` in Namespace `project-h800`. The Project H800 management asked you to scale these down to one replica to save resources.
+
+**Lab context:**
+
+- Hostname: `cka3962` (controlplane)
+- Namespace `project-h800` contains a StatefulSet `o3db` with 2 replicas (`o3db-0`, `o3db-1`)
 
 <details><summary>show</summary>
 <p>
@@ -1159,9 +1169,21 @@ k -n project-h800 get pod -l app=o3db
 
 ### [Killer.sh A-Q4] Find Pods most likely to be evicted first under pressure (QoS)
 
+
 > 🔗 [Tasks > Configure Pods and Containers > Configure Quality of Service for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/)
 
-**Task:** Check all Pods in namespace `project-c13` and find those that would be terminated first under CPU/memory pressure. Write their names to `/opt/course/4/pods-terminated-first.txt`.
+> 🖥 Solve on: `ssh cka2556`
+
+**Task:**
+
+Check all available Pods in the Namespace `project-c13` and find the names of those that would probably be terminated first if the nodes run out of resources (cpu or memory).
+Write the Pod names into `/opt/course/4/pods-terminated-first.txt`.
+
+**Lab context:**
+
+- Hostname: `cka2556` (controlplane)
+- Namespace `project-c13` contains Deployments `c13-2x3-api`, `c13-2x3-web`, `c13-3cc-data`, `c13-3cc-runner-heavy`, `c13-3cc-web` (only `c13-3cc-runner-heavy` Pods have no resource requests/limits set, i.e. QoS `BestEffort`)
+- Target directory `/opt/course/4/` already exists
 
 <details><summary>show</summary>
 <p>
@@ -1182,9 +1204,32 @@ cat /opt/course/4/pods-terminated-first.txt
 
 ### [Killer.sh A-Q5] Configure HPA via Kustomize, override maxReplicas in prod overlay
 
+
 > 🔗 [Tasks > Run Applications > Horizontal Pod Autoscaling](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/)
 
-**Task:** Replace an external autoscaler with an HPA via Kustomize at `/opt/course/5/api-gateway`. (1) Remove ConfigMap `horizontal-scaling-config` from base & overlays; (2) Add HPA `api-gateway` for Deployment `api-gateway` with min=2, max=4, target avg CPU 50%; (3) In prod overlay override `maxReplicas: 6`; (4) Apply both overlays.
+> 🖥 Solve on: `ssh cka5774`
+
+**Task:**
+
+Previously the application `api-gateway` used some external autoscaler which should now be replaced with a HorizontalPodAutoscaler (HPA). The application has been deployed to Namespaces `api-gateway-staging` and `api-gateway-prod` like this:
+
+```
+kubectl kustomize /opt/course/5/api-gateway/staging | kubectl apply -f -
+kubectl kustomize /opt/course/5/api-gateway/prod | kubectl apply -f -
+```
+
+Using the Kustomize config at `/opt/course/5/api-gateway` do the following:
+
+1. Remove the ConfigMap `horizontal-scaling-config` completely
+2. Add HPA named `api-gateway` for the Deployment `api-gateway` with min 2 and max 4 replicas. It should scale at 50% average CPU utilisation
+3. In prod the HPA should have max 6 replicas
+4. Apply your changes for staging and prod so they're reflected in the cluster
+
+**Lab context:**
+
+- Hostname: `cka5774` (controlplane)
+- Kustomize tree at `/opt/course/5/api-gateway/` with `base/`, `staging/`, `prod/` directories
+- Namespaces `api-gateway-staging` and `api-gateway-prod` already exist with `api-gateway` Deployment, ServiceAccount, and a `horizontal-scaling-config` ConfigMap deployed
 
 <details><summary>show</summary>
 <p>
@@ -1238,9 +1283,20 @@ k -n api-gateway-prod delete cm horizontal-scaling-config
 
 ### [Killer.sh A-Q11] Create a DaemonSet that runs on all nodes including controlplane
 
+
 > 🔗 [Concepts > Workloads > Workload Management > DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/)
 
-**Task:** In namespace `project-tiger` create DaemonSet `ds-important` (image `httpd:2-alpine`) with labels `id=ds-important` and `uuid=18426a0b-5f59-4e10-923f-c0e078e82462`. Pods request 10m CPU and 10Mi memory; run on all nodes including controlplane.
+> 🖥 Solve on: `ssh cka2556`
+
+**Task:**
+
+Use Namespace `project-tiger` for the following. Create a DaemonSet named `ds-important` with image `httpd:2-alpine` and labels `id=ds-important` and `uuid=18426a0b-5f59-4e10-923f-c0e078e82462`. The Pods it creates should request 10 millicore cpu and 10 mebibyte memory. The Pods of that DaemonSet should run on all nodes, also controlplanes.
+
+**Lab context:**
+
+- Hostname: `cka2556` (controlplane); cluster has nodes `cka2556`, `cka2556-node1`, `cka2556-node2`
+- Namespace `project-tiger` already exists
+- Controlplane node carries the standard taint `node-role.kubernetes.io/control-plane:NoSchedule`
 
 <details><summary>show</summary>
 <p>
@@ -1293,9 +1349,27 @@ k -n project-tiger get ds,pod -o wide   # one pod per node
 
 ### [Killer.sh A-Q12] Deployment with multi-container Pods + podAntiAffinity to spread one per node
 
+
 > 🔗 [Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes: Inter-pod affinity and anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity)
 
-**Task:** In namespace `project-tiger` create Deployment `deploy-important` (3 replicas, label `id=very-important`) with two containers: `container1` (image `nginx:1-alpine`) and `container2` (image `registry.k8s.io/pause:3.10`). Only one Pod per worker node — use `topologyKey: kubernetes.io/hostname`.
+> 🖥 Solve on: `ssh cka2556`
+
+**Task:**
+
+Implement the following in Namespace `project-tiger`:
+
+- Create a Deployment named `deploy-important` with 3 replicas
+- The Deployment and its Pods should have label `id=very-important`
+- First container named `container1` with image `nginx:1-alpine`
+- Second container named `container2` with image `registry.k8s.io/pause:3.10`
+- There should only ever be one Pod of that Deployment running on one worker node, use `topologyKey: kubernetes.io/hostname` for this
+
+> ℹ️ Because there are two worker nodes and the Deployment has three replicas the result should be that the third Pod won't be scheduled. In a way this scenario simulates the behaviour of a DaemonSet, but using a Deployment with a fixed number of replicas
+
+**Lab context:**
+
+- Hostname: `cka2556` (controlplane); cluster has nodes `cka2556`, `cka2556-node1`, `cka2556-node2` (2 workers)
+- Namespace `project-tiger` already exists
 
 <details><summary>show</summary>
 <p>
@@ -1339,9 +1413,30 @@ spec:
 
 ### [Killer.sh B-Q4] Pod becomes Ready only when an upstream Service is reachable
 
+
 > 🔗 [Tasks > Configure Pods and Containers > Configure Liveness, Readiness and Startup Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
 
-**Task:** Create Pod `ready-if-service-ready` (`nginx:1-alpine`) with livenessProbe `true` and a readinessProbe that performs `wget -T2 -O- http://service-am-i-ready:80`. Then create Pod `am-i-ready` (`nginx:1-alpine`, label `id=cross-server-ready`) so existing Service `service-am-i-ready` has an endpoint and the first Pod transitions to Ready.
+> 🖥 Solve on: `ssh cka3200`
+
+**Task:**
+
+Do the following in Namespace `default`:
+
+- Create a Pod named `ready-if-service-ready` of image `nginx:1-alpine`
+- Configure a LivenessProbe which simply executes command `true`
+- Configure a ReadinessProbe which does check if the url `http://service-am-i-ready:80` is reachable, you can use `wget -T2 -O- http://service-am-i-ready:80` for this
+- Start the Pod and confirm it isn't ready because of the ReadinessProbe.
+
+Then:
+
+- Create a second Pod named `am-i-ready` of image `nginx:1-alpine` with label `id: cross-server-ready`
+- The already existing Service `service-am-i-ready` should now have that second Pod as endpoint
+- Now the first Pod should be in ready state, check that
+
+**Lab context:**
+
+- Hostname: `cka3200` (controlplane)
+- Service `service-am-i-ready` already exists in Namespace `default` with selector `id=cross-server-ready` (currently has no endpoints)
 
 <details><summary>show</summary>
 <p>
@@ -1379,9 +1474,32 @@ k get pod ready-if-service-ready    # should become READY 1/1
 
 ### [Killer.sh B-Q11] Create namespace, mount Secret as file + env vars
 
+
 > 🔗 [Concepts > Configuration > Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
 
-**Task:** Create namespace `secret`. In it: (1) Pod `secret-pod` (`busybox:1`, `sleep 1d`); (2) Apply existing Secret `/opt/course/11/secret1.yaml` (after fixing namespace) and mount read-only at `/tmp/secret1`; (3) Create Secret `secret2` with `user=user1` and `pass=1234` exposed as env vars `APP_USER` and `APP_PASS`.
+> 🖥 Solve on: `ssh cka2560`
+
+**Task:**
+
+Create Namespace `secret` and implement the following in it:
+
+- Create Pod `secret-pod` with image `busybox:1`. It should be kept running by executing `sleep 1d` or something similar
+- Create the existing Secret `/opt/course/11/secret1.yaml` and mount it readonly into the Pod at `/tmp/secret1`
+- Create a new Secret called `secret2` which should contain `user=user1` and `pass=1234`. These entries should be available inside the Pod's container as environment variables `APP_USER` and `APP_PASS`
+
+**Lab context:**
+
+- Hostname: `cka2560` (controlplane)
+- Existing `/opt/course/11/secret1.yaml`:
+  ```yaml
+  apiVersion: v1
+  data:
+    halt: IyEgL2Jpbi9zaAo...
+  kind: Secret
+  metadata:
+    creationTimestamp: null
+    name: secret1
+  ```
 
 <details><summary>show</summary>
 <p>
@@ -1431,9 +1549,24 @@ spec:
 
 ### [Killer.sh B-Q12] Schedule Pod only on controlplane nodes (no new labels)
 
+
 > 🔗 [Concepts > Scheduling, Preemption and Eviction > Taints and Tolerations](https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/)
 
-**Task:** In `default` create Pod `pod1` (image `httpd:2-alpine`, container `pod1-container`) that runs only on controlplane nodes. Do not add new labels.
+> 🖥 Solve on: `ssh cka5248`
+
+**Task:**
+
+Create a Pod of image `httpd:2-alpine` in Namespace `default`.
+
+The Pod should be named `pod1` and the container should be named `pod1-container`.
+
+This Pod should only be scheduled on controlplane nodes.
+Do not add new labels to any nodes.
+
+**Lab context:**
+
+- Hostname: `cka5248` (controlplane); cluster has nodes `cka5248` (controlplane) and `cka5248-node1` (worker)
+- Controlplane already carries label `node-role.kubernetes.io/control-plane=""` and taint `node-role.kubernetes.io/control-plane:NoSchedule`
 
 <details><summary>show</summary>
 <p>
@@ -1464,14 +1597,25 @@ k get pod pod1 -o wide   # should land on controlplane
 
 ### [Killer.sh B-Q13] Multi-container Pod sharing emptyDir volume with downward API env
 
+
 > 🔗 [Tasks > Inject Data Into Applications > Expose Pod Information to Containers Through Environment Variables](https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/)
 
-**Task:** Create Pod `multi-container-playground` in `default` with a shared non-persistent volume and three containers:
-- c1 (`nginx:1-alpine`): expose env `MY_NODE_NAME` from `spec.nodeName`
-- c2 (`busybox:1`): write `date` to `date.log` every second
-- c3 (`busybox:1`): `tail -f date.log`
+> 🖥 Solve on: `ssh cka3200`
 
-Verify by checking c3's logs.
+**Task:**
+
+Create a Pod with multiple containers named `multi-container-playground` in Namespace `default`:
+
+- It should have a volume attached and mounted into each container. The volume shouldn't be persisted or shared with other Pods
+- Container `c1` with image `nginx:1-alpine` should have the name of the node where its Pod is running on available as environment variable `MY_NODE_NAME`
+- Container `c2` with image `busybox:1` should write the output of the `date` command every second in the shared volume into file `date.log`. You can use `while true; do date >> /your/vol/path/date.log; sleep 1; done` for this.
+- Container `c3` with image `busybox:1` should constantly write the content of file `date.log` from the shared volume to stdout. You can use `tail -f /your/vol/path/date.log` for this.
+
+> ℹ️ Check the logs of container `c3` to confirm correct setup
+
+**Lab context:**
+
+- Hostname: `cka3200` (controlplane)
 
 <details><summary>show</summary>
 <p>
