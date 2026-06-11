@@ -229,8 +229,8 @@
           <label class="provider-card"><input type="radio" name="llm-provider" value="anthropic"> <span>Anthropic</span><small>Claude</small></label>
           <label class="provider-card"><input type="radio" name="llm-provider" value="openai"> <span>OpenAI</span><small>GPT-4o</small></label>
           <label class="provider-card"><input type="radio" name="llm-provider" value="deepseek"> <span>DeepSeek</span><small>cheapest cloud</small></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="qwen"> <span>千问 Qwen</span><small>Alibaba DashScope</small></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="doubao"> <span>豆包 Doubao</span><small>ByteDance Ark</small></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="qwen"> <span>Qwen</span><small>Alibaba DashScope</small></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="doubao"> <span>Doubao</span><small>ByteDance Ark</small></label>
           <label class="provider-card"><input type="radio" name="llm-provider" value="ollama"> <span>Ollama</span><small>local · free</small></label>
         </div>
       </div>
@@ -247,8 +247,8 @@
 
       <div class="settings-row">
         <label class="settings-label" for="settings-model">Model</label>
-        <input id="settings-model" type="text" list="settings-model-list" autocomplete="off" placeholder="Pick from the dropdown or type a custom id">
-        <datalist id="settings-model-list"></datalist>
+        <input id="settings-model" type="text" autocomplete="off" placeholder="Pick a suggestion below, or type a custom id">
+        <div id="settings-model-suggestions" class="model-chip-row"></div>
         <small class="muted" id="settings-model-hint"></small>
       </div>
 

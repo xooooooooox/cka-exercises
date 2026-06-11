@@ -79,7 +79,7 @@ Reply with exactly this JSON shape:
   // ---------- Provider adapters ----------
 
   async function callAnthropic({ apiKey, baseUrl, model, system, user, chatPath }) {
-    const res = await fetch(`${baseUrl}${chatPath}`, {
+    const res = await withTimeout(fetch(`${baseUrl}${chatPath}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -93,7 +93,7 @@ Reply with exactly this JSON shape:
         system,
         messages: [{ role: 'user', content: user }],
       }),
-    });
+    }), 60000, 'Anthropic chat');
     if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await safeText(res)}`);
     const data = await res.json();
     return data.content?.[0]?.text || '';
@@ -111,21 +111,21 @@ Reply with exactly this JSON shape:
       ],
     };
     if (withJsonMode) body.response_format = { type: 'json_object' };
-    const res = await fetch(`${baseUrl}${chatPath}`, {
+    const res = await withTimeout(fetch(`${baseUrl}${chatPath}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         'authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify(body),
-    });
+    }), 60000, 'chat completion');
     if (!res.ok) throw new Error(`${res.status}: ${await safeText(res)}`);
     const data = await res.json();
     return data.choices?.[0]?.message?.content || '';
   }
 
   async function callOllama({ baseUrl, model, system, user, chatPath }) {
-    const res = await fetch(`${baseUrl}${chatPath}`, {
+    const res = await withTimeout(fetch(`${baseUrl}${chatPath}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -137,7 +137,7 @@ Reply with exactly this JSON shape:
           { role: 'user', content: user },
         ],
       }),
-    });
+    }), 60000, 'Ollama chat');
     if (!res.ok) throw new Error(`Ollama ${res.status}: ${await safeText(res)}`);
     const data = await res.json();
     return data.message?.content || '';
@@ -145,6 +145,27 @@ Reply with exactly this JSON shape:
 
   async function safeText(res) {
     try { const t = await res.text(); return t.slice(0, 200); } catch { return ''; }
+  }
+
+  // Wrap a fetch (or any promise) in a hard timeout. Real CORS preflight
+  // failures sometimes leave the request hanging indefinitely; this catches
+  // that case and surfaces a clear error instead of an infinite spinner.
+  function withTimeout(promise, ms = 15000, label = 'request') {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(
+        `${label} timed out after ${ms / 1000}s — likely CORS-blocked or provider unreachable from a browser`
+      )), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+  }
+
+  // Convert a low-level network/CORS TypeError into a user-readable message
+  function explainNetworkError(e, provider) {
+    if (e && e.name === 'TypeError') {
+      return new Error(`${provider} unreachable from browser (likely CORS-blocked). Try Anthropic / OpenAI / DeepSeek / Ollama, or use a CORS proxy.`);
+    }
+    return e;
   }
 
   // ---------- Main entry ----------
@@ -239,53 +260,57 @@ Reply with exactly this JSON shape:
     if (!def) throw new Error(`Unknown provider: ${provider}`);
     const base = baseUrl || def.baseUrl;
 
-    switch (provider) {
-      case 'anthropic': {
-        if (!apiKey) throw new Error('Anthropic API key required');
-        const res = await fetch(`${base}${def.modelsPath}`, {
-          headers: {
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-direct-browser-access': 'true',
-          },
-        });
-        if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await safeText(res)}`);
-        const data = await res.json();
-        return (data.data || []).map(m => m.id);
-      }
-      // OpenAI-compatible providers (uses /v1/models or /v3/models)
-      case 'openai':
-      case 'deepseek':
-      case 'qwen':
-      case 'doubao': {
-        if (!apiKey) throw new Error(`${provider} API key required`);
-        const res = await fetch(`${base}${def.modelsPath}`, {
-          headers: { 'authorization': `Bearer ${apiKey}` },
-        });
-        if (!res.ok) throw new Error(`${provider} ${res.status}: ${await safeText(res)}`);
-        const data = await res.json();
-        let ids = (data.data || []).map(m => m.id);
-        if (provider === 'openai') {
-          // Filter the noisy catalog down to chat-capable models
-          ids = ids
-            .filter(id => /^(gpt-|o1|o3|o4|chatgpt-)/i.test(id))
-            .filter(id => !/(embedding|whisper|dall-e|tts|moderation|audio|realtime|search)/i.test(id));
-        } else if (provider === 'qwen') {
-          // DashScope returns ~100 entries; trim embeddings / image / audio / tool-call alternates
-          ids = ids
-            .filter(id => /^qwen/i.test(id))
-            .filter(id => !/(embedding|reranker|image|audio|tts|vl-|ocr-)/i.test(id));
+    try {
+      switch (provider) {
+        case 'anthropic': {
+          if (!apiKey) throw new Error('Anthropic API key required');
+          const res = await withTimeout(fetch(`${base}${def.modelsPath}`, {
+            headers: {
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true',
+            },
+          }), 15000, 'Anthropic /models');
+          if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await safeText(res)}`);
+          const data = await res.json();
+          return (data.data || []).map(m => m.id);
         }
-        return ids.sort();
+        // OpenAI-compatible providers (uses /v1/models or /v3/models)
+        case 'openai':
+        case 'deepseek':
+        case 'qwen':
+        case 'doubao': {
+          if (!apiKey) throw new Error(`${provider} API key required`);
+          const res = await withTimeout(fetch(`${base}${def.modelsPath}`, {
+            headers: { 'authorization': `Bearer ${apiKey}` },
+          }), 15000, `${provider} /models`);
+          if (!res.ok) throw new Error(`${provider} ${res.status}: ${await safeText(res)}`);
+          const data = await res.json();
+          let ids = (data.data || []).map(m => m.id);
+          if (provider === 'openai') {
+            // Filter the noisy catalog down to chat-capable models
+            ids = ids
+              .filter(id => /^(gpt-|o1|o3|o4|chatgpt-)/i.test(id))
+              .filter(id => !/(embedding|whisper|dall-e|tts|moderation|audio|realtime|search)/i.test(id));
+          } else if (provider === 'qwen') {
+            // DashScope returns ~100 entries; trim embeddings / image / audio / tool-call alternates
+            ids = ids
+              .filter(id => /^qwen/i.test(id))
+              .filter(id => !/(embedding|reranker|image|audio|tts|vl-|ocr-)/i.test(id));
+          }
+          return ids.sort();
+        }
+        case 'ollama': {
+          const res = await withTimeout(fetch(`${base}${def.modelsPath}`), 8000, 'Ollama /api/tags');
+          if (!res.ok) throw new Error(`Ollama ${res.status} — is it running on ${base}?`);
+          const data = await res.json();
+          return (data.models || []).map(m => m.name);
+        }
+        default:
+          throw new Error(`Unhandled provider: ${provider}`);
       }
-      case 'ollama': {
-        const res = await fetch(`${base}${def.modelsPath}`);
-        if (!res.ok) throw new Error(`Ollama ${res.status} — is it running on ${base}?`);
-        const data = await res.json();
-        return (data.models || []).map(m => m.name);
-      }
-      default:
-        throw new Error(`Unhandled provider: ${provider}`);
+    } catch (e) {
+      throw explainNetworkError(e, provider);
     }
   }
 

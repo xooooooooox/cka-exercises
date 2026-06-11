@@ -318,14 +318,25 @@ const MODEL_FALLBACK = {
   ollama:    ['llama3.1:8b', 'qwen2.5:7b', 'mistral:7b'],
 };
 
-function populateModelList(models) {
-  const list = document.getElementById('settings-model-list');
-  if (!list) return;
-  list.innerHTML = '';
+function populateModelChips(models) {
+  const row = document.getElementById('settings-model-suggestions');
+  if (!row) return;
+  row.innerHTML = '';
+  const input = document.getElementById('settings-model');
+  const currentValue = input?.value || '';
   for (const m of (models || [])) {
-    const o = document.createElement('option');
-    o.value = m;
-    list.appendChild(o);
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'model-chip' + (m === currentValue ? ' active' : '');
+    chip.textContent = m;
+    chip.addEventListener('click', () => {
+      if (!input) return;
+      input.value = m;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      row.querySelectorAll('.model-chip.active').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    });
+    row.appendChild(chip);
   }
 }
 
@@ -354,7 +365,7 @@ function installSettingsOverlay() {
     // Ollama doesn't need a key
     if (keyRow) keyRow.style.display = (p === 'ollama') ? 'none' : '';
     // Reset model dropdown to the hardcoded fallback when switching providers
-    populateModelList(MODEL_FALLBACK[p]);
+    populateModelChips(MODEL_FALLBACK[p]);
     // Clear any stale test status (different provider)
     if (testStatus) { testStatus.hidden = true; testStatus.textContent = ''; }
   }
@@ -425,10 +436,15 @@ function installSettingsOverlay() {
         testStatus.className = cls;
         const suffix = r.models?.length ? ` — ${r.models.length} models available` : '';
         testStatus.textContent = `${r.warn ? '⚠' : '✓'} ${r.message}${suffix} (${latency})`;
-        if (r.models?.length) populateModelList(r.models);
+        if (r.models?.length) populateModelChips(r.models);
       } else {
         testStatus.className = 'test-status err';
-        testStatus.textContent = `✗ ${r.message} (${latency})`;
+        let msg = `✗ ${r.message} (${latency})`;
+        // Friendly hint for providers known to often block browser-direct calls
+        if (provider === 'doubao' && /CORS|unreachable|timed out|Failed to fetch/i.test(r.message)) {
+          msg += ' — Doubao usually blocks direct browser calls; consider Anthropic / OpenAI / DeepSeek / Ollama.';
+        }
+        testStatus.textContent = msg;
       }
     } catch (e) {
       testStatus.className = 'test-status err';
