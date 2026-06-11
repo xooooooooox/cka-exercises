@@ -6,6 +6,7 @@
   "description": "Static practice web app build tooling for cka-exercises",
   "scripts": {
     "build": "node scripts/build-exercises.mjs",
+    "lint": "node scripts/lint-exercises.mjs",
     "preserve": "node scripts/build-exercises.mjs",
     "serve": "python3 -m http.server 8080 --directory docs"
   }

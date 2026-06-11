@@ -9,6 +9,7 @@ on:
       - 'docs/app.js'
       - 'docs/style.css'
       - 'scripts/build-exercises.mjs'
+      - 'scripts/lint-exercises.mjs'
       - '.github/workflows/build-and-deploy-docs.yml'
   workflow_dispatch:
 
@@ -29,6 +30,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Lint exercises markdown
+        run: node scripts/lint-exercises.mjs
       - name: Build exercises.json
         run: node scripts/build-exercises.mjs
       - name: Configure Pages

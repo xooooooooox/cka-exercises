@@ -589,7 +589,7 @@ function finishQuiz() {
     const ex = State.byId.get(id);
     const verdict = q.status.get(id) || 'skipped';
     const label = el('li', {});
-    const a = el('a', { href: '#card-' + id, onclick: (e) => { e.preventDefault(); setMode('browse'); setTimeout(() => document.getElementById('card-' + id)?.scrollIntoView({ behavior: 'smooth' }), 50); } }, ex.title);
+    const a = el('a', { href: '#browse/' + id, onclick: (e) => { e.preventDefault(); location.hash = '#browse/' + id; } }, ex.title);
     label.append(
       el('span', { class: `status-${verdict}` }, verdict === 'got' ? '✓' : verdict === 'missed' ? '✗' : '↷'),
       ' ',
@@ -762,11 +762,12 @@ function renderDocsNode(node, depth, defaultOpen) {
   return details;
 }
 
-function selectDocsLeaf(url) {
+function selectDocsLeaf(url, opts = {}) {
   const leaf = State.docs.leaves.get(url);
   if (!leaf) return;
   State.docs.selectedUrl = url;
   storageSet(KEY.docsLastUrl, url);
+  if (opts.source !== 'hash') updateHash('docs', url);
 
   // Highlight active in tree
   document.querySelectorAll('.docs-leaf.active').forEach(b => b.classList.remove('active'));
@@ -826,10 +827,7 @@ function renderDocsDetail(leaf) {
       el('span', { class: 'ex-title' }, ex.title),
     );
     btn.addEventListener('click', () => {
-      setMode('browse');
-      setTimeout(() => {
-        document.getElementById('card-' + ex.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 60);
+      location.hash = '#browse/' + ex.id;
     });
     li.appendChild(btn);
     ul.appendChild(li);
@@ -884,8 +882,57 @@ function docsSearchHandler(ev) {
   });
 }
 
+// ---------- URL hash routing ----------
+// Supported hashes:
+//   #browse                          → Browse mode (default)
+//   #browse/<exerciseId>             → Browse + scroll to that card
+//   #quiz                            → Quiz mode
+//   #docs                            → Docs mode (no leaf selected)
+//   #docs/<encodedUrl>               → Docs mode + select that leaf
+
+let _suppressHash = false;            // prevent setMode → hashchange feedback loop
+
+function parseHash() {
+  const h = (location.hash || '#').slice(1);
+  if (!h) return { mode: null };
+  const [mode, ...rest] = h.split('/');
+  const arg = rest.length ? decodeURIComponent(rest.join('/')) : null;
+  if (['browse', 'quiz', 'docs'].includes(mode)) return { mode, arg };
+  return { mode: null };
+}
+
+function updateHash(mode, arg) {
+  const next = arg ? `#${mode}/${encodeURIComponent(arg)}` : `#${mode}`;
+  if (location.hash === next) return;
+  _suppressHash = true;
+  location.hash = next;
+  // hashchange fires async; clear the flag on next tick
+  setTimeout(() => { _suppressHash = false; }, 0);
+}
+
+function applyHash() {
+  const { mode, arg } = parseHash();
+  if (!mode) { setMode('browse', { source: 'hash' }); return; }
+  if (mode === 'browse' && arg) {
+    setMode('browse', { source: 'hash' });
+    setTimeout(() => {
+      document.getElementById('card-' + arg)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+    return;
+  }
+  if (mode === 'docs' && arg) {
+    setMode('docs', { source: 'hash' });
+    // selectDocsLeaf needs the tree to be built; setMode('docs') does that synchronously
+    if (State.docs && State.docs.leaves && State.docs.leaves.has(arg)) {
+      selectDocsLeaf(arg, { source: 'hash' });
+    }
+    return;
+  }
+  setMode(mode, { source: 'hash' });
+}
+
 // ---------- Mode switching ----------
-function setMode(mode) {
+function setMode(mode, opts = {}) {
   State.mode = mode;
   document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
   for (const id of ['view-browse', 'view-quiz', 'view-docs']) {
@@ -906,15 +953,141 @@ function setMode(mode) {
       State.docs.leaves = leaves;
       renderDocsTree();
       const lastUrl = storageGet(KEY.docsLastUrl, null);
-      if (lastUrl && leaves.has(lastUrl)) selectDocsLeaf(lastUrl);
+      if (lastUrl && leaves.has(lastUrl) && opts.source !== 'hash') selectDocsLeaf(lastUrl);
     }
   }
+  // Update URL hash to reflect the new mode (unless we came from a hash event)
+  if (opts.source !== 'hash') updateHash(mode);
 }
 
 // ---------- Theme ----------
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   storageSet(KEY.theme, theme);
+}
+
+// ---------- Keyboard shortcuts ----------
+
+const State_kbd = { focusedExerciseId: null };
+
+function isTypingInField() {
+  const a = document.activeElement;
+  return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable);
+}
+
+function getVisibleExerciseCards() {
+  return [...document.querySelectorAll('#main > .exercise-card')];
+}
+
+function focusExerciseCard(card) {
+  if (!card) return;
+  document.querySelectorAll('.exercise-card.kbd-focused').forEach(c => c.classList.remove('kbd-focused'));
+  card.classList.add('kbd-focused');
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  State_kbd.focusedExerciseId = card.id.replace(/^card-/, '');
+}
+
+function moveFocus(delta) {
+  if (State.mode !== 'browse') return;
+  const cards = getVisibleExerciseCards();
+  if (cards.length === 0) return;
+  let idx = cards.findIndex(c => c.classList.contains('kbd-focused'));
+  if (idx === -1) {
+    // Pick the first card whose top is below the filter bar
+    const bar = document.getElementById('filter-bar');
+    const barBottom = bar ? bar.getBoundingClientRect().bottom : 0;
+    idx = cards.findIndex(c => c.getBoundingClientRect().top >= barBottom - 1);
+    if (idx === -1) idx = 0;
+  } else {
+    idx = Math.max(0, Math.min(cards.length - 1, idx + delta));
+  }
+  focusExerciseCard(cards[idx]);
+}
+
+function getFocusedCard() {
+  if (State.mode !== 'browse') return null;
+  return document.querySelector('.exercise-card.kbd-focused')
+      || getVisibleExerciseCards()[0]
+      || null;
+}
+
+function toggleHelp(force) {
+  const overlay = document.getElementById('help-overlay');
+  const open = typeof force === 'boolean' ? force : overlay.hidden;
+  overlay.hidden = !open;
+}
+
+function focusSearch() {
+  if (State.mode === 'browse') {
+    document.getElementById('filter-search')?.focus();
+  } else if (State.mode === 'docs') {
+    document.getElementById('docs-search')?.focus();
+  }
+}
+
+function installKeyboardShortcuts() {
+  document.addEventListener('keydown', (ev) => {
+    // '?' opens help (Shift+/)
+    if (ev.key === '?' && !isTypingInField()) {
+      ev.preventDefault();
+      toggleHelp();
+      return;
+    }
+    // Esc closes help / blurs input
+    if (ev.key === 'Escape') {
+      if (!document.getElementById('help-overlay').hidden) {
+        toggleHelp(false); return;
+      }
+      if (isTypingInField()) { document.activeElement.blur(); return; }
+    }
+    if (isTypingInField()) return;
+
+    // '/' focuses search
+    if (ev.key === '/') { ev.preventDefault(); focusSearch(); return; }
+
+    // 1/2/3 — switch tab
+    if (ev.key === '1') { ev.preventDefault(); setMode('browse'); return; }
+    if (ev.key === '2') { ev.preventDefault(); setMode('quiz'); return; }
+    if (ev.key === '3') { ev.preventDefault(); setMode('docs'); return; }
+
+    // j/↓ next, k/↑ prev (Browse only — Quiz has its own next/prev buttons)
+    if (ev.key === 'j' || ev.key === 'ArrowDown') {
+      if (State.mode === 'browse') { ev.preventDefault(); moveFocus(+1); return; }
+    }
+    if (ev.key === 'k' || ev.key === 'ArrowUp') {
+      if (State.mode === 'browse') { ev.preventDefault(); moveFocus(-1); return; }
+    }
+
+    // Card actions on focused card
+    const card = getFocusedCard();
+    if (!card) return;
+
+    if (ev.key === ' ') {
+      // Space toggles the solution
+      ev.preventDefault();
+      const toggle = card.querySelector('.solution-toggle');
+      if (toggle) toggle.click();
+      return;
+    }
+    if (ev.key === 'd' || ev.key === 'D') {
+      ev.preventDefault();
+      const btn = [...card.querySelectorAll('.exercise-tools button')].find(b => /Done/.test(b.textContent));
+      if (btn) btn.click();
+      return;
+    }
+    if (ev.key === 'b' || ev.key === 'B') {
+      ev.preventDefault();
+      const btn = [...card.querySelectorAll('.exercise-tools button')].find(b => /[⭐☆]/.test(b.textContent));
+      if (btn) btn.click();
+      return;
+    }
+  });
+
+  document.getElementById('help-toggle')?.addEventListener('click', () => toggleHelp());
+  document.getElementById('help-close')?.addEventListener('click', () => toggleHelp(false));
+  document.getElementById('help-overlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'help-overlay') toggleHelp(false);
+  });
 }
 
 // ---------- Init ----------
@@ -939,6 +1112,16 @@ async function init() {
   // Browse
   renderFilterBar();
   renderBrowse();
+
+  // Hash routing — apply once at load, then on every hashchange
+  window.addEventListener('hashchange', () => {
+    if (_suppressHash) return;
+    applyHash();
+  });
+  applyHash();
+
+  // Keyboard shortcuts
+  installKeyboardShortcuts();
 
   // Quiz controls
   document.getElementById('quiz-start-btn').addEventListener('click', startQuiz);
