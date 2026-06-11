@@ -25,8 +25,9 @@ Currently 205 exercises across 5 domains. The repo has a small Node-based build 
 │   └── troubleshooting.md              # 30% —  24 exercises
 ├── docs/                               # GitHub Pages source (the SPA)
 │   ├── index.html
-│   ├── app.js                          # ~1100 LOC, no framework
-│   ├── style.css                       # light/dark theme + print, ~800 LOC
+│   ├── app.js                          # ~1400 LOC, no framework
+│   ├── llm.js                          # LLM-as-judge grading (Anthropic / OpenAI / DeepSeek / Ollama)
+│   ├── style.css                       # light/dark theme + print, ~1000 LOC
 │   └── exercises.json                  # gitignored — generated artifact
 ├── scripts/
 │   ├── build-exercises.mjs             # MD → JSON build (used by CI)
@@ -137,6 +138,9 @@ State management is in module-scope `State` object; no framework. Persistence vi
 | `cka:theme`      | `"light" | "dark"`                                  |
 | `cka:lastQuiz`   | last quiz settings (count, time, source filters)   |
 | `cka:docs:lastUrl` | last-selected leaf in Docs tab (auto-restore)    |
+| `cka:llm:settings` | LLM grading config (provider, apiKey, model, baseUrl, autoDoneThreshold) |
+| `cka:llm:privacyAck` | `true` after the first-use privacy dialog dismissal |
+| `cka:answer:<id>` | per-exercise saved answer + last verdict          |
 
 ## Content Conventions
 

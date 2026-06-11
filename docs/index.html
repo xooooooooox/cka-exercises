@@ -21,6 +21,7 @@
     </nav>
     <div class="header-right">
       <span id="quiz-timer" hidden></span>
+      <button id="settings-toggle" class="icon-btn" type="button" title="Grading settings" aria-label="Grading settings">⚙️</button>
       <button id="help-toggle" class="icon-btn" type="button" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨️</button>
       <a class="icon-btn" href="https://github.com/xooooooooox/cka-exercises" target="_blank" rel="noopener" title="View source on GitHub" aria-label="GitHub repository">
         <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
@@ -213,6 +214,75 @@
     </div>
   </div>
 
+  <!-- Settings overlay (LLM grading config) -->
+  <div id="settings-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="overlay-card">
+      <header>
+        <h2 id="settings-title">⚙️ Grading settings</h2>
+        <button class="icon-btn" type="button" id="settings-close" aria-label="Close">✕</button>
+      </header>
+      <p class="muted">Configure an LLM provider to auto-grade your answers. Answers + tasks are sent to the chosen provider when you click <b>Check</b> on an exercise.</p>
+
+      <div class="settings-section">
+        <label class="settings-label">Provider</label>
+        <div class="provider-grid">
+          <label class="provider-card"><input type="radio" name="llm-provider" value="anthropic"> <span>Anthropic</span><small>Claude</small></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="openai"> <span>OpenAI</span><small>GPT-4o</small></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="deepseek"> <span>DeepSeek</span><small>cheapest cloud</small></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="ollama"> <span>Ollama</span><small>local · free</small></label>
+        </div>
+      </div>
+
+      <div class="settings-row" id="settings-key-row">
+        <label class="settings-label" for="settings-key">API key</label>
+        <input id="settings-key" type="password" placeholder="sk-… / Bearer token" autocomplete="off">
+        <small class="muted">Stored in this browser's localStorage only.</small>
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="settings-model">Model</label>
+        <input id="settings-model" type="text" autocomplete="off">
+        <small class="muted" id="settings-model-hint"></small>
+      </div>
+
+      <div class="settings-row" id="settings-baseurl-row">
+        <label class="settings-label" for="settings-baseurl">Base URL <small class="muted">(optional override)</small></label>
+        <input id="settings-baseurl" type="text" autocomplete="off">
+      </div>
+
+      <div class="settings-row">
+        <label class="settings-label" for="settings-autodone">Auto-mark Done when score is at least</label>
+        <select id="settings-autodone">
+          <option value="-1">Never (manual only)</option>
+          <option value="100">100 (perfect)</option>
+          <option value="90">90</option>
+          <option value="80">80</option>
+          <option value="70">70</option>
+        </select>
+      </div>
+
+      <div class="settings-actions">
+        <button id="settings-save" type="button" class="primary">Save</button>
+        <button id="settings-clear" type="button" class="danger">Clear all</button>
+        <span id="settings-status" class="muted"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy first-use dialog -->
+  <div id="privacy-overlay" class="overlay" hidden role="dialog" aria-modal="true">
+    <div class="overlay-card">
+      <header><h2>🔒 Privacy</h2></header>
+      <p>When you click <b>Check</b>, your typed answer + the exercise task + the reference solution are sent over HTTPS to the LLM provider you configured.</p>
+      <p>For <b>Ollama</b>, the request stays on your machine (localhost).</p>
+      <p>Your data is not sent anywhere else. There is no backend.</p>
+      <div class="settings-actions">
+        <button id="privacy-accept" type="button" class="primary">I understand — grade my answer</button>
+        <button id="privacy-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <span class="muted">
       <a href="https://github.com/xooooooooox/cka-exercises" target="_blank" rel="noopener">GitHub</a>
@@ -221,6 +291,7 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="llm.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>

@@ -29,7 +29,26 @@ const KEY = {
   theme: 'cka:theme',
   lastQuiz: 'cka:lastQuiz',
   docsLastUrl: 'cka:docs:lastUrl',
+  llmSettings: 'cka:llm:settings',
+  privacyAck: 'cka:llm:privacyAck',
+  answerPrefix: 'cka:answer:',   // appended with <exerciseId>
 };
+
+const LLM_DEFAULT_SETTINGS = {
+  provider: 'anthropic',
+  apiKey: '',
+  model: '',          // empty → use provider default
+  baseUrl: '',        // empty → use provider default
+  autoDoneThreshold: -1,
+};
+
+function getLLMSettings() {
+  return Object.assign({}, LLM_DEFAULT_SETTINGS, storageGet(KEY.llmSettings, {}));
+}
+function setLLMSettings(s) { storageSet(KEY.llmSettings, s); }
+
+function getAnswer(exerciseId) { return storageGet(KEY.answerPrefix + exerciseId, null); }
+function setAnswer(exerciseId, payload) { storageSet(KEY.answerPrefix + exerciseId, payload); }
 function storageGet(k, fallback) {
   try { const v = localStorage.getItem(k); return v == null ? fallback : JSON.parse(v); }
   catch { return fallback; }
@@ -286,6 +305,238 @@ function renderSidebarProgress() {
   ));
 }
 
+// ---------- Settings overlay (LLM grading config) ----------
+
+function installSettingsOverlay() {
+  const overlay = document.getElementById('settings-overlay');
+  const toggle = document.getElementById('settings-toggle');
+  const close = document.getElementById('settings-close');
+  const save = document.getElementById('settings-save');
+  const clearBtn = document.getElementById('settings-clear');
+  const status = document.getElementById('settings-status');
+  const providerInputs = document.querySelectorAll('input[name="llm-provider"]');
+  const keyInput = document.getElementById('settings-key');
+  const modelInput = document.getElementById('settings-model');
+  const baseUrlInput = document.getElementById('settings-baseurl');
+  const autoDoneSelect = document.getElementById('settings-autodone');
+  const modelHint = document.getElementById('settings-model-hint');
+  const keyRow = document.getElementById('settings-key-row');
+
+  function reflectProvider(p) {
+    const def = window.LLM?.DEFAULTS[p] || {};
+    if (!modelInput.value) modelInput.placeholder = def.model || '';
+    if (!baseUrlInput.value) baseUrlInput.placeholder = def.baseUrl || '';
+    if (modelHint) modelHint.textContent = def.model ? `Default: ${def.model}` : '';
+    // Ollama doesn't need a key
+    if (keyRow) keyRow.style.display = (p === 'ollama') ? 'none' : '';
+  }
+
+  function loadIntoForm() {
+    const s = getLLMSettings();
+    providerInputs.forEach(r => { r.checked = (r.value === s.provider); });
+    keyInput.value = s.apiKey || '';
+    modelInput.value = s.model || '';
+    baseUrlInput.value = s.baseUrl || '';
+    autoDoneSelect.value = String(s.autoDoneThreshold);
+    reflectProvider(s.provider);
+  }
+
+  function open() { loadIntoForm(); overlay.hidden = false; }
+  function shut() { overlay.hidden = true; status.textContent = ''; }
+
+  toggle?.addEventListener('click', open);
+  close?.addEventListener('click', shut);
+  overlay?.addEventListener('click', (e) => { if (e.target.id === 'settings-overlay') shut(); });
+
+  providerInputs.forEach(r => r.addEventListener('change', () => reflectProvider(r.value)));
+
+  save?.addEventListener('click', () => {
+    const provider = [...providerInputs].find(r => r.checked)?.value || 'anthropic';
+    const s = {
+      provider,
+      apiKey: keyInput.value.trim(),
+      model: modelInput.value.trim(),
+      baseUrl: baseUrlInput.value.trim(),
+      autoDoneThreshold: parseInt(autoDoneSelect.value, 10),
+    };
+    setLLMSettings(s);
+    status.textContent = '✓ Saved';
+    setTimeout(() => { status.textContent = ''; }, 1200);
+    // Refresh the visible cards so the answer-box hint reflects the new provider/key state.
+    // Preserves typed answers and verdicts since both come from localStorage.
+    if (State.mode === 'browse') renderBrowse();
+  });
+
+  clearBtn?.addEventListener('click', () => {
+    if (!confirm('Clear all grading settings (provider, API key, model)? Answers and progress are not affected.')) return;
+    storageSet(KEY.llmSettings, null);
+    storageSet(KEY.privacyAck, false);
+    loadIntoForm();
+    status.textContent = '✓ Cleared';
+    setTimeout(() => { status.textContent = ''; }, 1200);
+  });
+}
+
+// ---------- Auto-grading UI (textarea + Check + verdict) ----------
+
+function renderAnswerBox(ex, opts = {}) {
+  const box = el('div', { class: 'answer-box' });
+  box.appendChild(el('div', { class: 'answer-label' }, '✏️ Your answer'));
+
+  const ta = el('textarea', {
+    class: 'answer-textarea',
+    placeholder: 'Paste your kubectl commands or YAML manifest, then click Check…',
+    rows: '4',
+    spellcheck: 'false',
+    autocomplete: 'off',
+  });
+  const saved = getAnswer(ex.id);
+  if (saved && typeof saved.text === 'string') ta.value = saved.text;
+  // Debounced persist on input
+  let saveTimer;
+  ta.addEventListener('input', () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const existing = getAnswer(ex.id) || {};
+      setAnswer(ex.id, Object.assign(existing, { text: ta.value }));
+    }, 400);
+  });
+  box.appendChild(ta);
+
+  const actions = el('div', { class: 'answer-actions' });
+  const checkBtn = el('button', { type: 'button', class: 'check-btn primary' }, '✓ Check');
+  const resetBtn = el('button', { type: 'button', class: 'answer-reset' }, '↻ Reset');
+  const hint = el('span', { class: 'answer-hint muted' }, '');
+  actions.append(checkBtn, resetBtn, hint);
+  box.appendChild(actions);
+
+  const verdictSlot = el('div', { class: 'verdict-slot' });
+  box.appendChild(verdictSlot);
+
+  // Restore prior verdict
+  if (saved && saved.verdict) renderVerdict(verdictSlot, saved.verdict, ex);
+
+  function updateHint() {
+    const s = getLLMSettings();
+    if (!s.provider) { hint.textContent = '⚙️ Configure a provider to grade'; return; }
+    if (s.provider !== 'ollama' && !s.apiKey) { hint.textContent = `⚙️ ${s.provider} key missing`; return; }
+    hint.textContent = `Using ${s.provider} (${s.model || (window.LLM?.DEFAULTS[s.provider]?.model || 'default')})`;
+  }
+  updateHint();
+
+  checkBtn.addEventListener('click', async () => {
+    const answer = ta.value.trim();
+    if (!answer) { hint.textContent = '⚠ Type an answer first'; return; }
+
+    // First-use privacy gate (unless using Ollama, which stays local)
+    const settings = getLLMSettings();
+    const skipPrivacy = settings.provider === 'ollama' || storageGet(KEY.privacyAck, false);
+    if (!skipPrivacy) {
+      const ok = await openPrivacyDialog(settings.provider);
+      if (!ok) return;
+      storageSet(KEY.privacyAck, true);
+    }
+
+    checkBtn.disabled = true;
+    checkBtn.textContent = '⏳ Grading…';
+    verdictSlot.innerHTML = '';
+    try {
+      const v = await window.LLM.grade({
+        task: ex.task || '',
+        solution: ex.solution || '',
+        answer,
+        settings,
+      });
+      // Persist
+      const existing = getAnswer(ex.id) || {};
+      setAnswer(ex.id, Object.assign(existing, { text: ta.value, verdict: v }));
+      renderVerdict(verdictSlot, v, ex);
+
+      // Auto-Done if user has a threshold set
+      const t = settings.autoDoneThreshold;
+      if (typeof t === 'number' && t >= 0 && v.score >= t) {
+        if (!isDone(ex.id)) {
+          setDone(ex.id, true);
+          // Refresh visual state of this card if browse is active
+          document.getElementById('card-' + ex.id)?.classList.add('done');
+          renderSidebarProgress();
+        }
+      }
+
+      // Quiz mode hook: feed verdict into the quiz status
+      if (State.mode === 'quiz' && State.quiz && opts.fromQuiz) {
+        State.quiz.status.set(ex.id, v.correct ? 'got' : (v.verdict === 'partial' ? 'partial' : 'missed'));
+      }
+    } catch (e) {
+      verdictSlot.appendChild(el('div', { class: 'verdict verdict-error' },
+        el('strong', {}, '✗ Grading failed'),
+        el('div', {}, e.message || String(e)),
+      ));
+    } finally {
+      checkBtn.disabled = false;
+      checkBtn.textContent = '✓ Check';
+    }
+  });
+
+  resetBtn.addEventListener('click', () => {
+    ta.value = '';
+    verdictSlot.innerHTML = '';
+    setAnswer(ex.id, { text: '', verdict: null });
+    updateHint();
+  });
+
+  return box;
+}
+
+function renderVerdict(container, v, ex) {
+  container.innerHTML = '';
+  const cls = v.verdict === 'correct' ? 'verdict verdict-correct'
+            : v.verdict === 'partial' ? 'verdict verdict-partial'
+            : 'verdict verdict-incorrect';
+  const head = el('div', { class: 'verdict-head' },
+    el('span', { class: 'verdict-mark' },
+      v.verdict === 'correct' ? '✓ Correct' :
+      v.verdict === 'partial' ? '◐ Partial' :
+      '✗ Not yet'),
+    el('span', { class: 'verdict-score' }, `${v.score} / 100`),
+  );
+  const body = el('div', { class: cls });
+  body.appendChild(head);
+  if (v.summary) body.appendChild(el('div', { class: 'verdict-summary' }, v.summary));
+  if (v.passed && v.passed.length) {
+    body.appendChild(el('div', { class: 'verdict-section-label' }, '✓ Got right'));
+    const ul = el('ul', { class: 'verdict-list' });
+    v.passed.forEach(s => ul.appendChild(el('li', {}, s)));
+    body.appendChild(ul);
+  }
+  if (v.missed && v.missed.length) {
+    body.appendChild(el('div', { class: 'verdict-section-label' }, '✗ Missed'));
+    const ul = el('ul', { class: 'verdict-list' });
+    v.missed.forEach(s => ul.appendChild(el('li', {}, s)));
+    body.appendChild(ul);
+  }
+  container.appendChild(body);
+}
+
+function openPrivacyDialog(provider) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('privacy-overlay');
+    if (!overlay) { resolve(true); return; }
+    overlay.hidden = false;
+    const accept = document.getElementById('privacy-accept');
+    const cancel = document.getElementById('privacy-cancel');
+    const cleanup = () => {
+      overlay.hidden = true;
+      accept.removeEventListener('click', onAccept);
+      cancel.removeEventListener('click', onCancel);
+    };
+    const onAccept = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    accept.addEventListener('click', onAccept);
+    cancel.addEventListener('click', onCancel);
+  });
+}
+
 function renderExerciseCard(ex, opts = {}) {
   // opts:
   //   openSolution  bool — start with solution visible (browse: from filter; quiz: from solutionsHidden)
@@ -374,6 +625,10 @@ function renderExerciseCard(ex, opts = {}) {
     card.appendChild(task);
     attachCopyButtons(task);
   }
+
+  // Auto-grading answer box (between task/lab-context and solution).
+  // Quiz mode passes opts.fromQuiz so the verdict updates State.quiz.status.
+  card.appendChild(renderAnswerBox(ex, { fromQuiz: !!opts.fromQuiz }));
 
   // Solution toggle + body
   if (ex.solution) {
@@ -517,7 +772,7 @@ function renderQuizCard() {
   // In "Hidden until I click Reveal" mode the dedicated Reveal button controls visibility;
   // hide the inline toggle until the user has clicked Reveal (then it becomes a collapse button).
   const showInlineToggle = !q.solutionsHidden || q.revealed.has(ex.id);
-  card.appendChild(renderExerciseCard(ex, { openSolution: solutionOpen, inlineToggle: showInlineToggle }));
+  card.appendChild(renderExerciseCard(ex, { openSolution: solutionOpen, inlineToggle: showInlineToggle, fromQuiz: true }));
 
   const flagBtn = document.getElementById('quiz-flag');
   flagBtn.textContent = q.flagged.has(ex.id) ? '🚩 Flagged' : '🚩 Flag';
@@ -1153,6 +1408,9 @@ async function init() {
 
   // Keyboard shortcuts
   installKeyboardShortcuts();
+
+  // Settings overlay (LLM grading)
+  installSettingsOverlay();
 
   // Mobile: Filters / Outline toggle buttons (CSS hides these on desktop)
   document.getElementById('filter-bar-toggle')?.addEventListener('click', () => {

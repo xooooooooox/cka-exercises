@@ -44,6 +44,18 @@ The webapp has three modes:
 
 Progress persists in `localStorage`. Press <kbd>?</kbd> in the webapp to see keyboard shortcuts.
 
+### ✏️ Automatic answer grading
+
+The webapp can grade your answers automatically using an LLM as judge. Click ⚙️ in the header to configure:
+
+1. Pick a provider — **Anthropic**, **OpenAI**, **DeepSeek**, or **Ollama** (local)
+2. Paste your API key (skip for Ollama)
+3. Optionally pick a model and set "auto-mark Done when score ≥ N"
+
+Then type your answer in the **✏️ Your answer** box on any exercise card and click **✓ Check**. The grader returns a verdict ("Correct" / "Partial" / "Not yet"), a score 0–100, a summary, and bullet lists of what you got right and what you missed. Your typed answers persist per exercise.
+
+> The grader is intentionally lenient about which approach you took — kubectl imperative, declarative YAML, helm, or kustomize all pass if they accomplish the task. Privacy: your answer + the task + the reference solution are sent to the provider you chose (or stay on `localhost` for Ollama). Nothing else is sent.
+
 ---
 
 ## ⚙️ Pre-exam Setup

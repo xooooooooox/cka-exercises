@@ -44,6 +44,18 @@
 
 进度通过 `localStorage` 持久化。在 webapp 内按 <kbd>?</kbd> 可看键盘快捷键。
 
+### ✏️ 自动批改答案
+
+webapp 支持用 LLM 自动批改你的答案。点击 header 里的 ⚙️ 配置：
+
+1. 选 provider — **Anthropic** / **OpenAI** / **DeepSeek** / **Ollama**（本地）
+2. 填 API key（Ollama 不需要）
+3. 可选：选模型、设置"score ≥ N 时自动标记 Done"
+
+然后在题目卡片上的 **✏️ Your answer** 框里输入你的答案，点 **✓ Check**。批改返回 verdict（Correct / Partial / Not yet）、0–100 分、一句话总结，以及"做对了什么 / 漏了什么"的列表。每道题的答案会持久化。
+
+> 批改对路径是宽容的 — kubectl imperative、声明式 YAML、helm、kustomize 只要能完成任务都算对。隐私说明：你的答案 + 题目 + 参考解答会发送给你选的 provider（Ollama 只在本机 localhost 处理）；不会发到任何其他地方。
+
 ---
 
 ## ⚙️ 考前配置
