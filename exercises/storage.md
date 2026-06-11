@@ -480,11 +480,11 @@ kubectl get pv app-config
 
 > 📖
 > [Concepts > Storage > Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
-> [Tasks > Configure Pods and Containers > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/)
+> [Tutorials > Configuration > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/)
 
 ### Create a PersistentVolume and PersistentVolumeClaim, then mount the PVC in a pod
 
-> 🔗 [Tasks > Configure Pods and Containers > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/)
+> 🔗 [Tutorials > Configuration > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/)
 
 <details><summary>show</summary>
 <p>
@@ -656,7 +656,7 @@ kubectl get pvc expand-pvc
 
 ### Use a PersistentVolumeClaim in a Deployment and verify data survives pod restarts
 
-> 🔗 [Tasks > Configure Pods and Containers > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/)
+> 🔗 [Tutorials > Configuration > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/)
 
 <details><summary>show</summary>
 <p>
@@ -783,7 +783,7 @@ kubectl exec readonly-pod -- sh -c 'echo "new data" > /data/write-test.txt'
 
 ### [CKA Past Exam - 7 pts] Create PVC pv-volume (10Mi, csi-hostpath-sc), mount in web-server pod, then expand to 70Mi with --record
 
-> 🔗 [Tasks > Configure Pods and Containers > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/)
+> 🔗 [Tutorials > Configuration > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/)
 
 **题目:**
 Create a new PersistentVolumeClaim:
@@ -864,7 +864,7 @@ kubectl get pvc pv-volume
 > 📚 Source PDFs: [`assets/CKA Simulator A Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20A%20Kubernetes%201.35%20-%20Killer%20Shell.pdf) | [`assets/CKA Simulator B Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20B%20Kubernetes%201.35%20-%20Killer%20Shell.pdf)
 
 ### [Killer.sh A-Q6] PV/PVC: create + mount in Deployment
-> 🔗 [Tasks > Configure Pods and Containers > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/)
+> 🔗 [Tutorials > Configuration > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/)
 > [Concepts > Storage > Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 
 > 🖥 Solve on: `ssh cka7968`

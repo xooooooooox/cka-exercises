@@ -28,8 +28,8 @@
     "url": "https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/"
   },
   "Configure a Pod to use storage": {
-    "breadcrumb": "Tasks > Configure Pods and Containers > Configure a Pod to Use a PersistentVolume for Storage",
-    "url": "https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/"
+    "breadcrumb": "Tutorials > Configuration > Configure a Pod to Use a PersistentVolume for Storage",
+    "url": "https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/"
   },
   "Configure Probes": {
     "breadcrumb": "Tasks > Configure Pods and Containers > Configure Liveness, Readiness and Startup Probes",

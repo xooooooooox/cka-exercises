@@ -32,8 +32,10 @@ Currently 205 exercises across 5 domains. The repo has a small Node-based build 
 │   ├── apply-enriched-tasks.mjs        # one-shot: killer.sh task-body enrichment
 │   ├── apply-killersh-polish.mjs       # one-shot: docs hints + title rewrites
 │   └── k8s-docs-map.json               # kubernetes.io breadcrumb → URL lookup
-├── prepare/                            # pre-exam dotfile snippets (referenced by README)
-└── .github/workflows/build-and-deploy-docs.yml   # CI: build + deploy to Pages
+└── .github/workflows/
+    ├── build-and-deploy-docs.yml       # CI: lint + build + deploy to Pages
+    ├── lint.yml                        # PR-check: lint exercises markdown
+    └── link-check.yml                  # weekly: ping every kubernetes.io URL
 ```
 
 Only `build-exercises.mjs` runs in CI. The two `apply-*.mjs` scripts are idempotent one-shots kept for provenance.
@@ -185,7 +187,6 @@ Pages source must be set to "GitHub Actions" in the repo settings.
 ## Things to be aware of
 
 - `docs/exercises.json` is **gitignored** (it's a build artifact). Don't commit it.
-- The `prepare/` directory is referenced from the README but its files aren't tracked; they're snippets the candidate types into the exam terminal.
 - The killer.sh PDFs in `assets/` are user-provided after CKA registration — they ship with the repo for now but might be removed if licensing concerns arise.
 - Killercoda's `sachin/CKA` course is referenced from the README but its content requires login and isn't reproducible here.
 

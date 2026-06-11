@@ -1,0 +1,19 @@
+name: Check kubernetes.io links
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'     # every Monday 09:00 UTC
+  workflow_dispatch:
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build exercises.json
+        run: node scripts/build-exercises.mjs
+      - name: Check links
+        run: node scripts/check-links.mjs

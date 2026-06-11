@@ -239,20 +239,51 @@ function renderSidebar(visibleExercises) {
   }
 }
 
+// Short labels for the sidebar progress widget (avoid the long domain titles).
+const PROGRESS_SHORT_LABEL = {
+  'cluster-architecture': 'Cluster Arch',
+  'scheduling':           'Scheduling',
+  'networking':           'Networking',
+  'storage':              'Storage',
+  'troubleshooting':      'Troubleshooting',
+};
+
 function renderSidebarProgress() {
   const elProgress = document.getElementById('sidebar-progress');
   elProgress.innerHTML = '';
   let allTotal = 0, allDone = 0, allBookmark = 0;
+
+  // Per-domain rows
   for (const dom of State.data.domains) {
     const total = dom.sections.reduce((s, sec) => s + sec.exercises.length, 0);
     const done = dom.sections.reduce((s, sec) => s + sec.exercises.filter(e => isDone(e.id)).length, 0);
     allTotal += total; allDone += done;
+
+    const pct = total ? (done / total) * 100 : 0;
+    const row = el('div', { class: 'prog-row' + (done === total ? ' complete' : '') });
+    row.appendChild(el('div', { class: 'prog-label' },
+      el('span', { class: 'prog-name' }, PROGRESS_SHORT_LABEL[dom.key] || dom.key),
+      el('span', { class: 'prog-count' }, `${done}/${total}`),
+    ));
+    const bar = el('div', { class: 'prog-bar' });
+    const fill = el('div', { class: 'prog-bar-fill', style: { width: `${pct}%` } });
+    bar.appendChild(fill);
+    row.appendChild(bar);
+    elProgress.appendChild(row);
   }
+
   for (const ex of State.allExercises) if (isBookmark(ex.id)) allBookmark++;
-  elProgress.appendChild(el('div', { class: 'progress-row' },
-    'Done overall: ', el('strong', {}, `${allDone} / ${allTotal}`)));
-  elProgress.appendChild(el('div', { class: 'progress-row' },
-    'Bookmarked: ', el('strong', {}, `${allBookmark}`)));
+
+  // Divider + overall + bookmarks
+  elProgress.appendChild(el('div', { class: 'prog-divider' }));
+  elProgress.appendChild(el('div', { class: 'prog-overall' },
+    el('span', {}, 'Overall'),
+    el('strong', {}, `${allDone} / ${allTotal}`),
+  ));
+  elProgress.appendChild(el('div', { class: 'prog-overall muted' },
+    el('span', {}, '⭐ Bookmarked'),
+    el('strong', {}, `${allBookmark}`),
+  ));
 }
 
 function renderExerciseCard(ex, opts = {}) {

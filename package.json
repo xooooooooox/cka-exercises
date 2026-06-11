@@ -7,6 +7,7 @@
   "scripts": {
     "build": "node scripts/build-exercises.mjs",
     "lint": "node scripts/lint-exercises.mjs",
+    "link-check": "node scripts/check-links.mjs",
     "preserve": "node scripts/build-exercises.mjs",
     "serve": "python3 -m http.server 8080 --directory docs"
   }

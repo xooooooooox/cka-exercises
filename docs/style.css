@@ -191,6 +191,49 @@ pre .copy-btn.copied { color: var(--success); }
 #sidebar-progress .progress-row { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; }
 #sidebar-progress .progress-row strong { color: var(--accent); }
 
+/* Per-domain progress bars */
+.prog-row { padding: 5px 0; }
+.prog-row .prog-label {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+.prog-row .prog-name { color: var(--fg); font-weight: 500; }
+.prog-row .prog-count {
+  color: var(--fg-muted);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+}
+.prog-row .prog-bar {
+  height: 5px;
+  background: var(--bg-code);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.prog-row .prog-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width .25s, background-color .25s;
+  border-radius: 999px;
+}
+.prog-row.complete .prog-bar-fill { background: var(--success); }
+.prog-row.complete .prog-name { color: var(--success); }
+
+.prog-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+.prog-overall {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px;
+  padding: 1px 0;
+}
+.prog-overall strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+.prog-overall.muted { color: var(--fg-muted); }
+.prog-overall.muted strong { color: var(--fg-muted); }
+
 .tree-domain { margin-bottom: 8px; }
 .tree-domain > summary {
   list-style: none;
@@ -673,4 +716,116 @@ kbd {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   scroll-margin-top: 80px;
+}
+
+/* ============================================================ */
+/* Print stylesheet — clean printable Browse view                */
+/* ============================================================ */
+
+@media print {
+  /* Force light, ink-friendly colors regardless of theme */
+  :root, [data-theme="dark"] {
+    --bg: #ffffff !important;
+    --bg-elev: #ffffff !important;
+    --bg-code: #f5f5f5 !important;
+    --fg: #000000 !important;
+    --fg-muted: #555555 !important;
+    --border: #cccccc !important;
+    --accent: #0050aa !important;
+  }
+
+  body, html {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide interactive chrome */
+  #app-header,
+  #filter-bar,
+  #sidebar,
+  footer,
+  .icon-btn,
+  .mode-tabs,
+  .solution-toggle,
+  .exercise-tools,
+  .copy-btn,
+  #help-overlay,
+  #view-quiz,
+  #view-docs {
+    display: none !important;
+  }
+
+  /* Layout reset: main fills the page */
+  .layout {
+    display: block !important;
+  }
+  #main {
+    padding: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .view {
+    display: block !important;
+  }
+  #view-browse {
+    display: block !important;
+  }
+
+  /* Expand every solution */
+  .exercise-card .exercise-solution {
+    display: block !important;
+  }
+
+  /* Card formatting for paper */
+  .exercise-card {
+    background: white !important;
+    border: 1px solid #cccccc !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 10px 14px !important;
+    margin: 0 0 14px !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .exercise-card.done {
+    border-left: 4px solid #1a7f37 !important;
+  }
+  .exercise-title { font-size: 14px !important; }
+  .exercise-meta { font-size: 11px !important; gap: 6px !important; }
+
+  /* Tag pills: convert filled chip to text-only on paper */
+  .tag-pill, .points-pill, .qnum-pill {
+    background: transparent !important;
+    color: black !important;
+    border: 1px solid #888 !important;
+    padding: 0 4px !important;
+  }
+  .solve-on-chip {
+    background: transparent !important;
+    border: 1px solid #888 !important;
+  }
+
+  /* Code blocks */
+  pre, code {
+    background: #f5f5f5 !important;
+    border: 1px solid #dddddd !important;
+    color: black !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  pre { padding: 8px 10px !important; }
+
+  /* Heading levels print nicer */
+  h2 { font-size: 16px !important; margin-top: 14px !important; }
+  h3 { font-size: 13px !important; }
+
+  /* Hide tree-domain h3 markers that mention `muted` since they look odd */
+  .muted { color: #555 !important; }
+
+  /* Links print as URL footnotes for offline use (uncomment if desired) */
+  /* a[href]::after { content: " (" attr(href) ")"; font-size: 10px; color: #666; } */
+
+  /* Show a footer note at top of first page */
+  @page { margin: 18mm 14mm; }
 }
