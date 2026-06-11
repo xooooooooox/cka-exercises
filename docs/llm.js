@@ -36,16 +36,50 @@ Reply with exactly this JSON shape:
   // ---------- Defaults per provider ----------
 
   const DEFAULTS = {
-    anthropic: { baseUrl: 'https://api.anthropic.com', model: 'claude-haiku-4-5' },
-    openai:    { baseUrl: 'https://api.openai.com',    model: 'gpt-4o-mini' },
-    deepseek:  { baseUrl: 'https://api.deepseek.com',  model: 'deepseek-chat' },
-    ollama:    { baseUrl: 'http://localhost:11434',    model: 'llama3.1:8b' },
+    anthropic: {
+      baseUrl: 'https://api.anthropic.com',
+      model: 'claude-haiku-4-5',
+      chatPath: '/v1/messages',
+      modelsPath: '/v1/models?limit=100',
+    },
+    openai: {
+      baseUrl: 'https://api.openai.com',
+      model: 'gpt-4o-mini',
+      chatPath: '/v1/chat/completions',
+      modelsPath: '/v1/models',
+    },
+    deepseek: {
+      baseUrl: 'https://api.deepseek.com',
+      model: 'deepseek-chat',
+      chatPath: '/v1/chat/completions',
+      modelsPath: '/v1/models',
+    },
+    // 千问 — Alibaba DashScope (OpenAI-compatible mode)
+    qwen: {
+      baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode',
+      model: 'qwen-plus',
+      chatPath: '/v1/chat/completions',
+      modelsPath: '/v1/models',
+    },
+    // 豆包 — ByteDance Volcengine ARK (OpenAI-compatible, /v3 path)
+    doubao: {
+      baseUrl: 'https://ark.cn-beijing.volces.com/api',
+      model: 'doubao-1-5-pro-256k',
+      chatPath: '/v3/chat/completions',
+      modelsPath: '/v3/models',
+    },
+    ollama: {
+      baseUrl: 'http://localhost:11434',
+      model: 'llama3.1:8b',
+      chatPath: '/api/chat',
+      modelsPath: '/api/tags',
+    },
   };
 
   // ---------- Provider adapters ----------
 
-  async function callAnthropic({ apiKey, baseUrl, model, system, user }) {
-    const res = await fetch(`${baseUrl}/v1/messages`, {
+  async function callAnthropic({ apiKey, baseUrl, model, system, user, chatPath }) {
+    const res = await fetch(`${baseUrl}${chatPath}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -65,53 +99,33 @@ Reply with exactly this JSON shape:
     return data.content?.[0]?.text || '';
   }
 
-  async function callOpenAI({ apiKey, baseUrl, model, system, user }) {
-    const res = await fetch(`${baseUrl}/v1/chat/completions`, {
+  // Shared OpenAI-compatible chat completion (used by OpenAI, DeepSeek, Qwen, Doubao).
+  // `withJsonMode` toggles response_format — only OpenAI is known to honor it reliably.
+  async function callOpenAICompat({ apiKey, baseUrl, model, system, user, chatPath, withJsonMode }) {
+    const body = {
+      model,
+      max_tokens: 800,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+    };
+    if (withJsonMode) body.response_format = { type: 'json_object' };
+    const res = await fetch(`${baseUrl}${chatPath}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         'authorization': `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model,
-        max_tokens: 800,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-      }),
+      body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`OpenAI ${res.status}: ${await safeText(res)}`);
+    if (!res.ok) throw new Error(`${res.status}: ${await safeText(res)}`);
     const data = await res.json();
     return data.choices?.[0]?.message?.content || '';
   }
 
-  async function callDeepSeek(opts) {
-    // OpenAI-compatible. DeepSeek doesn't honor response_format JSON cleanly, so omit it.
-    const { apiKey, baseUrl, model, system, user } = opts;
-    const res = await fetch(`${baseUrl}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 800,
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: user },
-        ],
-      }),
-    });
-    if (!res.ok) throw new Error(`DeepSeek ${res.status}: ${await safeText(res)}`);
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || '';
-  }
-
-  async function callOllama({ baseUrl, model, system, user }) {
-    const res = await fetch(`${baseUrl}/api/chat`, {
+  async function callOllama({ baseUrl, model, system, user, chatPath }) {
+    const res = await fetch(`${baseUrl}${chatPath}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -168,13 +182,16 @@ Reply with exactly this JSON shape:
       model,
       system: SYSTEM_PROMPT,
       user: buildUserPrompt({ task, solution, answer }),
+      chatPath: def.chatPath,
     };
 
     let raw;
     switch (provider) {
       case 'anthropic': raw = await callAnthropic(args); break;
-      case 'openai':    raw = await callOpenAI(args);    break;
-      case 'deepseek':  raw = await callDeepSeek(args);  break;
+      case 'openai':    raw = await callOpenAICompat({ ...args, withJsonMode: true }); break;
+      case 'deepseek':
+      case 'qwen':
+      case 'doubao':    raw = await callOpenAICompat(args); break;
       case 'ollama':    raw = await callOllama(args);    break;
       default: throw new Error(`Unhandled provider: ${provider}`);
     }
@@ -215,5 +232,98 @@ Reply with exactly this JSON shape:
 
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-  window.LLM = { grade, DEFAULTS, SYSTEM_PROMPT };
+  // ---------- Provider list-models ----------
+
+  async function listModels({ provider, apiKey, baseUrl }) {
+    const def = DEFAULTS[provider];
+    if (!def) throw new Error(`Unknown provider: ${provider}`);
+    const base = baseUrl || def.baseUrl;
+
+    switch (provider) {
+      case 'anthropic': {
+        if (!apiKey) throw new Error('Anthropic API key required');
+        const res = await fetch(`${base}${def.modelsPath}`, {
+          headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+          },
+        });
+        if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await safeText(res)}`);
+        const data = await res.json();
+        return (data.data || []).map(m => m.id);
+      }
+      // OpenAI-compatible providers (uses /v1/models or /v3/models)
+      case 'openai':
+      case 'deepseek':
+      case 'qwen':
+      case 'doubao': {
+        if (!apiKey) throw new Error(`${provider} API key required`);
+        const res = await fetch(`${base}${def.modelsPath}`, {
+          headers: { 'authorization': `Bearer ${apiKey}` },
+        });
+        if (!res.ok) throw new Error(`${provider} ${res.status}: ${await safeText(res)}`);
+        const data = await res.json();
+        let ids = (data.data || []).map(m => m.id);
+        if (provider === 'openai') {
+          // Filter the noisy catalog down to chat-capable models
+          ids = ids
+            .filter(id => /^(gpt-|o1|o3|o4|chatgpt-)/i.test(id))
+            .filter(id => !/(embedding|whisper|dall-e|tts|moderation|audio|realtime|search)/i.test(id));
+        } else if (provider === 'qwen') {
+          // DashScope returns ~100 entries; trim embeddings / image / audio / tool-call alternates
+          ids = ids
+            .filter(id => /^qwen/i.test(id))
+            .filter(id => !/(embedding|reranker|image|audio|tts|vl-|ocr-)/i.test(id));
+        }
+        return ids.sort();
+      }
+      case 'ollama': {
+        const res = await fetch(`${base}${def.modelsPath}`);
+        if (!res.ok) throw new Error(`Ollama ${res.status} — is it running on ${base}?`);
+        const data = await res.json();
+        return (data.models || []).map(m => m.name);
+      }
+      default:
+        throw new Error(`Unhandled provider: ${provider}`);
+    }
+  }
+
+  // ---------- Connection test ----------
+  // Validates URL + auth + (for Ollama) model presence. Returns the live model list
+  // alongside the verdict so the UI can repopulate its dropdown in one round-trip.
+
+  async function testConnection({ provider, apiKey, model, baseUrl }) {
+    const def = DEFAULTS[provider];
+    if (!def) throw new Error(`Unknown provider: ${provider}`);
+    const t0 = performance.now();
+    let models = [];
+    try {
+      models = await listModels({ provider, apiKey, baseUrl });
+    } catch (e) {
+      const latencyMs = performance.now() - t0;
+      return { ok: false, message: e.message || String(e), latencyMs, models: [] };
+    }
+    const latencyMs = performance.now() - t0;
+
+    // If user picked a specific model, verify it appears in the live list
+    if (model && models.length && !models.includes(model)) {
+      // Soft warning: still report ok=true since the model id might be valid but
+      // unlisted (e.g. preview models, fine-tunes not surfaced by /models).
+      return {
+        ok: true,
+        message: `Connected — '${model}' not in catalog but may still work`,
+        latencyMs,
+        models,
+        warn: true,
+      };
+    }
+
+    const msg = models.length
+      ? `Connected to ${provider}`
+      : `Connected to ${provider} (no models returned)`;
+    return { ok: true, message: msg, latencyMs, models };
+  }
+
+  window.LLM = { grade, DEFAULTS, SYSTEM_PROMPT, listModels, testConnection };
 })();

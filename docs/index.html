@@ -229,19 +229,26 @@
           <label class="provider-card"><input type="radio" name="llm-provider" value="anthropic"> <span>Anthropic</span><small>Claude</small></label>
           <label class="provider-card"><input type="radio" name="llm-provider" value="openai"> <span>OpenAI</span><small>GPT-4o</small></label>
           <label class="provider-card"><input type="radio" name="llm-provider" value="deepseek"> <span>DeepSeek</span><small>cheapest cloud</small></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="qwen"> <span>千问 Qwen</span><small>Alibaba DashScope</small></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="doubao"> <span>豆包 Doubao</span><small>ByteDance Ark</small></label>
           <label class="provider-card"><input type="radio" name="llm-provider" value="ollama"> <span>Ollama</span><small>local · free</small></label>
         </div>
       </div>
 
       <div class="settings-row" id="settings-key-row">
         <label class="settings-label" for="settings-key">API key</label>
-        <input id="settings-key" type="password" placeholder="sk-… / Bearer token" autocomplete="off">
+        <div class="key-row">
+          <input id="settings-key" type="password" placeholder="sk-… / Bearer token" autocomplete="off">
+          <button id="settings-test" type="button" title="Test connection + fetch model list">Test</button>
+        </div>
         <small class="muted">Stored in this browser's localStorage only.</small>
+        <div id="settings-test-status" class="test-status" hidden></div>
       </div>
 
       <div class="settings-row">
         <label class="settings-label" for="settings-model">Model</label>
-        <input id="settings-model" type="text" autocomplete="off">
+        <input id="settings-model" type="text" list="settings-model-list" autocomplete="off" placeholder="Pick from the dropdown or type a custom id">
+        <datalist id="settings-model-list"></datalist>
         <small class="muted" id="settings-model-hint"></small>
       </div>
 

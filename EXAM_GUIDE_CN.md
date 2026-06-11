@@ -48,9 +48,10 @@
 
 webapp 支持用 LLM 自动批改你的答案。点击 header 里的 ⚙️ 配置：
 
-1. 选 provider — **Anthropic** / **OpenAI** / **DeepSeek** / **Ollama**（本地）
+1. 选 provider — **Anthropic** / **OpenAI** / **DeepSeek** / **千问 Qwen** / **豆包 Doubao** / **Ollama**（本地）
 2. 填 API key（Ollama 不需要）
-3. 可选：选模型、设置"score ≥ N 时自动标记 Done"
+3. 点 **Test** —— 验证 key 是否生效，并自动用该 provider 的真实模型列表填充 Model 下拉
+4. 选模型（也可手输自定义 id）；设置"score ≥ N 时自动标记 Done"
 
 然后在题目卡片上的 **✏️ Your answer** 框里输入你的答案，点 **✓ Check**。批改返回 verdict（Correct / Partial / Not yet）、0–100 分、一句话总结，以及"做对了什么 / 漏了什么"的列表。每道题的答案会持久化。
 

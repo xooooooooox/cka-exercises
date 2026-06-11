@@ -307,6 +307,28 @@ function renderSidebarProgress() {
 
 // ---------- Settings overlay (LLM grading config) ----------
 
+// Fallback model list per provider — shown until the user runs Test, or when
+// the live /v1/models call fails. Kept short on purpose.
+const MODEL_FALLBACK = {
+  anthropic: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
+  openai:    ['gpt-4o', 'gpt-4o-mini', 'o4-mini'],
+  deepseek:  ['deepseek-chat', 'deepseek-reasoner'],
+  qwen:      ['qwen-plus', 'qwen-max', 'qwen-turbo', 'qwen3-max', 'qwen3-coder-plus'],
+  doubao:    ['doubao-1-5-pro-256k', 'doubao-1-5-pro-32k', 'doubao-pro-256k'],
+  ollama:    ['llama3.1:8b', 'qwen2.5:7b', 'mistral:7b'],
+};
+
+function populateModelList(models) {
+  const list = document.getElementById('settings-model-list');
+  if (!list) return;
+  list.innerHTML = '';
+  for (const m of (models || [])) {
+    const o = document.createElement('option');
+    o.value = m;
+    list.appendChild(o);
+  }
+}
+
 function installSettingsOverlay() {
   const overlay = document.getElementById('settings-overlay');
   const toggle = document.getElementById('settings-toggle');
@@ -321,6 +343,8 @@ function installSettingsOverlay() {
   const autoDoneSelect = document.getElementById('settings-autodone');
   const modelHint = document.getElementById('settings-model-hint');
   const keyRow = document.getElementById('settings-key-row');
+  const testBtn = document.getElementById('settings-test');
+  const testStatus = document.getElementById('settings-test-status');
 
   function reflectProvider(p) {
     const def = window.LLM?.DEFAULTS[p] || {};
@@ -329,6 +353,10 @@ function installSettingsOverlay() {
     if (modelHint) modelHint.textContent = def.model ? `Default: ${def.model}` : '';
     // Ollama doesn't need a key
     if (keyRow) keyRow.style.display = (p === 'ollama') ? 'none' : '';
+    // Reset model dropdown to the hardcoded fallback when switching providers
+    populateModelList(MODEL_FALLBACK[p]);
+    // Clear any stale test status (different provider)
+    if (testStatus) { testStatus.hidden = true; testStatus.textContent = ''; }
   }
 
   function loadIntoForm() {
@@ -374,6 +402,38 @@ function installSettingsOverlay() {
     loadIntoForm();
     status.textContent = '✓ Cleared';
     setTimeout(() => { status.textContent = ''; }, 1200);
+  });
+
+  // Test connection: probe the provider's list-models endpoint, repopulate the
+  // model dropdown with the live response on success.
+  testBtn?.addEventListener('click', async () => {
+    if (!testStatus) return;
+    const provider = [...providerInputs].find(r => r.checked)?.value || 'anthropic';
+    testStatus.hidden = false;
+    testStatus.className = 'test-status testing';
+    testStatus.textContent = '⏳ Testing…';
+    try {
+      const r = await window.LLM.testConnection({
+        provider,
+        apiKey: keyInput.value.trim(),
+        model: modelInput.value.trim(),
+        baseUrl: baseUrlInput.value.trim(),
+      });
+      const latency = `${Math.round(r.latencyMs)} ms`;
+      if (r.ok) {
+        const cls = r.warn ? 'test-status warn' : 'test-status ok';
+        testStatus.className = cls;
+        const suffix = r.models?.length ? ` — ${r.models.length} models available` : '';
+        testStatus.textContent = `${r.warn ? '⚠' : '✓'} ${r.message}${suffix} (${latency})`;
+        if (r.models?.length) populateModelList(r.models);
+      } else {
+        testStatus.className = 'test-status err';
+        testStatus.textContent = `✗ ${r.message} (${latency})`;
+      }
+    } catch (e) {
+      testStatus.className = 'test-status err';
+      testStatus.textContent = `✗ ${e.message || String(e)}`;
+    }
   });
 }
 
