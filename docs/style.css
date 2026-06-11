@@ -121,19 +121,24 @@ pre .copy-btn.copied { color: var(--success); }
 #quiz-timer.danger { color: var(--danger); border-color: var(--danger); animation: pulse 1s infinite; }
 @keyframes pulse { 50% { opacity: .55; } }
 
-/* Filter bar */
+/* Filter bar — desktop layout */
 #filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 20px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-elev);
   position: sticky;
   top: 56px;
   z-index: 40;
 }
+#filter-bar-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+}
+/* Mobile-only condensed toolbar; hidden on desktop */
+.mobile-toolbar { display: none; }
+.mobile-stats { font-size: 12px; }
 .dropdown { position: relative; }
 .dropdown > summary {
   list-style: none;
@@ -442,11 +447,60 @@ footer { padding: 12px 20px; border-top: 1px solid var(--border); background: va
 
 /* Mobile */
 @media (max-width: 768px) {
-  .layout { grid-template-columns: 1fr; }
-  #sidebar { position: relative; top: 0; max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
-  #filter-bar { flex-direction: column; align-items: stretch; }
-  .mode-tabs { display: flex; }
+  /* Header compaction */
   .brand strong { display: none; }
+  #app-header { padding: 8px 12px; gap: 8px; }
+  .mode-tab { padding: 4px 8px; font-size: 13px; }
+
+  /* Filter bar: not sticky; show compact toolbar; full filter content collapsed */
+  #filter-bar {
+    position: static;
+    padding: 8px 12px;
+    z-index: auto;
+  }
+  .mobile-toolbar {
+    display: flex; align-items: center; gap: 6px;
+    flex-wrap: nowrap;
+  }
+  .mobile-toolbar #filter-search-mobile {
+    flex: 1; min-width: 0;
+  }
+  .mobile-toolbar button {
+    white-space: nowrap;
+    padding: 5px 10px;
+    font-size: 13px;
+  }
+  .mobile-toolbar .mobile-stats { display: none; }
+  .mobile-toolbar button[aria-expanded="true"] {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+
+  #filter-bar-content {
+    display: none;
+    flex-direction: column; align-items: stretch;
+    gap: 8px;
+    padding: 12px 0 0;
+    margin-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  #filter-bar.expanded #filter-bar-content { display: flex; }
+  #filter-bar-content #filter-search { width: 100%; }
+  #filter-stats { margin-left: 0; }
+
+  /* Layout: 1 column, sidebar collapsed by default */
+  .layout { grid-template-columns: 1fr; }
+  #sidebar {
+    display: none;
+    position: static; max-height: none; top: 0;
+    border-right: none; border-bottom: 1px solid var(--border);
+  }
+  #sidebar.expanded { display: block; }
+
+  /* Main: less horizontal padding on mobile */
+  #main { padding: 14px 12px; }
+  .exercise-card { padding: 12px 14px; }
 }
 
 /* ============================================================ */

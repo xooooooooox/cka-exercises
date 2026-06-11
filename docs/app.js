@@ -1154,6 +1154,33 @@ async function init() {
   // Keyboard shortcuts
   installKeyboardShortcuts();
 
+  // Mobile: Filters / Outline toggle buttons (CSS hides these on desktop)
+  document.getElementById('filter-bar-toggle')?.addEventListener('click', () => {
+    const bar = document.getElementById('filter-bar');
+    const expanded = bar.classList.toggle('expanded');
+    document.getElementById('filter-bar-toggle').setAttribute('aria-expanded', String(expanded));
+  });
+  document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
+    const sb = document.getElementById('sidebar');
+    const expanded = sb.classList.toggle('expanded');
+    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', String(expanded));
+  });
+
+  // Mobile search input — mirror state to/from the desktop search
+  const mobileSearch = document.getElementById('filter-search-mobile');
+  const desktopSearch = document.getElementById('filter-search');
+  if (mobileSearch && desktopSearch) {
+    mobileSearch.addEventListener('input', () => {
+      if (desktopSearch.value !== mobileSearch.value) {
+        desktopSearch.value = mobileSearch.value;
+        desktopSearch.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+    desktopSearch.addEventListener('input', () => {
+      if (mobileSearch.value !== desktopSearch.value) mobileSearch.value = desktopSearch.value;
+    });
+  }
+
   // Quiz controls
   document.getElementById('quiz-start-btn').addEventListener('click', startQuiz);
   document.getElementById('quiz-next').addEventListener('click', quizNext);

@@ -34,31 +34,42 @@
   <!-- Browse mode -->
   <div id="view-browse" class="view active">
     <div id="filter-bar">
-      <details class="dropdown">
-        <summary>Domain <span id="filter-domain-count"></span></summary>
-        <div id="filter-domain-list" class="filter-list"></div>
-      </details>
-      <details class="dropdown">
-        <summary>Tag <span id="filter-tag-count"></span></summary>
-        <div id="filter-tag-list" class="filter-list">
-          <label><input type="checkbox" value="general" checked> General</label>
-          <label><input type="checkbox" value="cka-past-exam" checked> <span class="tag-pill tag-cka-past-exam">CKA Past Exam</span></label>
-          <label><input type="checkbox" value="killersh-a" checked> <span class="tag-pill tag-killersh-a">Killer.sh A</span></label>
-          <label><input type="checkbox" value="killersh-b" checked> <span class="tag-pill tag-killersh-b">Killer.sh B</span></label>
-        </div>
-      </details>
-      <input id="filter-search" type="search" placeholder="🔎 Search title or task…" autocomplete="off">
-      <label class="toggle-label" title="Show only bookmarked exercises">
-        <input id="filter-bookmark" type="checkbox"> ⭐ Bookmarks
-      </label>
-      <label class="toggle-label" title="Show only exercises you haven't marked done">
-        <input id="filter-undone" type="checkbox"> ☐ Not done
-      </label>
-      <label class="toggle-label" title="Reveal all solutions in the list">
-        <input id="filter-reveal-solutions" type="checkbox"> 👁 Reveal solutions
-      </label>
-      <button id="filter-reset" type="button" title="Reset all filters">↻ Reset</button>
-      <span id="filter-stats"></span>
+      <!-- Mobile-only condensed toolbar (≤768px). On desktop this row is hidden. -->
+      <div class="mobile-toolbar">
+        <input id="filter-search-mobile" type="search" placeholder="🔎 Search…" autocomplete="off">
+        <button id="filter-bar-toggle" type="button" aria-expanded="false" aria-controls="filter-bar-content" title="Show / hide filters">⚙️ Filters</button>
+        <button id="sidebar-toggle" type="button" aria-expanded="false" aria-controls="sidebar" title="Show / hide outline">📊 Outline</button>
+        <span class="mobile-stats muted"></span>
+      </div>
+
+      <!-- Filter content (always visible on desktop; collapsed by default on mobile) -->
+      <div id="filter-bar-content">
+        <details class="dropdown">
+          <summary>Domain <span id="filter-domain-count"></span></summary>
+          <div id="filter-domain-list" class="filter-list"></div>
+        </details>
+        <details class="dropdown">
+          <summary>Tag <span id="filter-tag-count"></span></summary>
+          <div id="filter-tag-list" class="filter-list">
+            <label><input type="checkbox" value="general" checked> General</label>
+            <label><input type="checkbox" value="cka-past-exam" checked> <span class="tag-pill tag-cka-past-exam">CKA Past Exam</span></label>
+            <label><input type="checkbox" value="killersh-a" checked> <span class="tag-pill tag-killersh-a">Killer.sh A</span></label>
+            <label><input type="checkbox" value="killersh-b" checked> <span class="tag-pill tag-killersh-b">Killer.sh B</span></label>
+          </div>
+        </details>
+        <input id="filter-search" type="search" placeholder="🔎 Search title or task…" autocomplete="off">
+        <label class="toggle-label" title="Show only bookmarked exercises">
+          <input id="filter-bookmark" type="checkbox"> ⭐ Bookmarks
+        </label>
+        <label class="toggle-label" title="Show only exercises you haven't marked done">
+          <input id="filter-undone" type="checkbox"> ☐ Not done
+        </label>
+        <label class="toggle-label" title="Reveal all solutions in the list">
+          <input id="filter-reveal-solutions" type="checkbox"> 👁 Reveal solutions
+        </label>
+        <button id="filter-reset" type="button" title="Reset all filters">↻ Reset</button>
+        <span id="filter-stats"></span>
+      </div>
     </div>
 
     <div class="layout">
