@@ -566,6 +566,49 @@ function setGistToken(v) { storageSet(KEY.gistToken, v || null); }
 function getGistId() { return storageGet(KEY.gistId, '') || ''; }
 function setGistId(v) { storageSet(KEY.gistId, v || null); }
 
+// Storage-driven helpers — reusable from Settings AND the header ☁ popover.
+// Each reads token / id from localStorage and (for Push) persists any newly created gist id.
+async function doGistPush() {
+  if (!window.GistSync) throw new Error('sync.js failed to load');
+  const token = getGistToken();
+  if (!token) throw new Error('Need a GitHub PAT first');
+  const payload = collectExportable();
+  let id = getGistId();
+  if (id) {
+    await window.GistSync.updateGist(token, id, payload);
+  } else {
+    const res = await window.GistSync.createGist(token, payload);
+    id = res.id;
+    setGistId(id);
+  }
+  return id;
+}
+
+async function doGistPull() {
+  if (!window.GistSync) throw new Error('sync.js failed to load');
+  const token = getGistToken();
+  const id = getGistId();
+  if (!token || !id) throw new Error('Need both PAT and Gist ID');
+  return await window.GistSync.readGist(token, id);
+}
+
+async function doGistTest() {
+  if (!window.GistSync) throw new Error('sync.js failed to load');
+  const token = getGistToken();
+  if (!token) throw new Error('Need a PAT');
+  return await window.GistSync.testAuth(token);
+}
+
+function confirmPullOverwrite(payload) {
+  const c = summariseImport(payload);
+  return confirm(
+    'Pull will overwrite local state:\n' +
+    `  ${c.done} exercises marked Done\n` +
+    `  ${c.bookmark} bookmarks\n` +
+    `  ${c.answers} saved answers\nContinue?`
+  );
+}
+
 function installGistHandlers() {
   const tokenInput = document.getElementById('gist-token');
   const idInput = document.getElementById('gist-id');
@@ -578,17 +621,15 @@ function installGistHandlers() {
   tokenInput.value = getGistToken();
   idInput.value = getGistId();
 
-  function persist() {
+  function persistInputs() {
     setGistToken(tokenInput.value.trim());
     setGistId(idInput.value.trim());
   }
-  tokenInput.addEventListener('change', persist);
-  idInput.addEventListener('change', persist);
+  tokenInput.addEventListener('change', persistInputs);
+  idInput.addEventListener('change', persistInputs);
 
-  function setStatus(msg, cls = '') {
-    if (!status) return;
-    status.textContent = msg;
-    status.className = `muted ${cls}`.trim();
+  function setStatus(msg) {
+    if (status) status.textContent = msg;
   }
 
   if (!window.GistSync) {
@@ -597,21 +638,11 @@ function installGistHandlers() {
   }
 
   pushBtn?.addEventListener('click', async () => {
-    persist();
-    const token = tokenInput.value.trim();
-    if (!token) { setStatus('✗ Need a GitHub PAT first'); return; }
+    persistInputs();
     setStatus('⏳ Pushing…');
     try {
-      const payload = collectExportable();
-      let id = idInput.value.trim();
-      if (id) {
-        await window.GistSync.updateGist(token, id, payload);
-      } else {
-        const res = await window.GistSync.createGist(token, payload);
-        id = res.id;
-        idInput.value = id;
-        setGistId(id);
-      }
+      const id = await doGistPush();
+      idInput.value = id;
       setStatus(`✓ Pushed to gist ${id.slice(0, 8)}…`);
     } catch (e) {
       setStatus(`✗ ${e.message}`);
@@ -619,21 +650,11 @@ function installGistHandlers() {
   });
 
   pullBtn?.addEventListener('click', async () => {
-    persist();
-    const token = tokenInput.value.trim();
-    const id = idInput.value.trim();
-    if (!token || !id) { setStatus('✗ Need both PAT and Gist ID'); return; }
+    persistInputs();
     setStatus('⏳ Pulling…');
     try {
-      const payload = await window.GistSync.readGist(token, id);
-      const c = summariseImport(payload);
-      const ok = confirm(
-        'Pull will overwrite local state:\n' +
-        `  ${c.done} exercises marked Done\n` +
-        `  ${c.bookmark} bookmarks\n` +
-        `  ${c.answers} saved answers\nContinue?`
-      );
-      if (!ok) { setStatus(''); return; }
+      const payload = await doGistPull();
+      if (!confirmPullOverwrite(payload)) { setStatus(''); return; }
       importPayload(payload);
       setStatus('✓ Pulled — reloading…');
       setTimeout(() => location.reload(), 500);
@@ -643,15 +664,127 @@ function installGistHandlers() {
   });
 
   testBtn?.addEventListener('click', async () => {
-    const token = tokenInput.value.trim();
-    if (!token) { setStatus('✗ Need a PAT'); return; }
     setStatus('⏳ Testing…');
     try {
-      const info = await window.GistSync.testAuth(token);
+      const info = await doGistTest();
       setStatus(`✓ Authenticated as @${info.login}`);
     } catch (e) {
       setStatus(`✗ ${e.message}`);
     }
+  });
+}
+
+// ---------- Header ☁ sync popover ----------
+
+function installSyncMenu() {
+  const toggle = document.getElementById('sync-toggle');
+  const menu = document.getElementById('sync-menu');
+  const idLabel = document.getElementById('sync-menu-id');
+  const pushBtn = document.getElementById('sync-menu-push');
+  const pullBtn = document.getElementById('sync-menu-pull');
+  const testBtn = document.getElementById('sync-menu-test');
+  const status = document.getElementById('sync-menu-status');
+  const settingsLink = document.getElementById('sync-menu-settings');
+  if (!toggle || !menu) return;
+
+  let statusTimer = null;
+  function setStatus(msg, autoClearMs = 0) {
+    if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
+    status.textContent = msg;
+    if (autoClearMs) {
+      statusTimer = setTimeout(() => { if (status.textContent === msg) status.textContent = ''; }, autoClearMs);
+    }
+  }
+
+  function refreshState() {
+    const token = getGistToken();
+    const id = getGistId();
+    if (id) {
+      idLabel.textContent = `gist ${id.slice(0, 8)}…`;
+    } else if (token) {
+      idLabel.textContent = 'no gist yet';
+    } else {
+      idLabel.textContent = 'not configured';
+    }
+    const hasToken = !!token;
+    pushBtn.disabled = !hasToken;
+    pullBtn.disabled = !hasToken || !id;
+    testBtn.disabled = !hasToken;
+    if (!hasToken) {
+      setStatus('Configure a GitHub PAT in Settings first');
+    } else if (!status.textContent || status.textContent === 'Configure a GitHub PAT in Settings first') {
+      setStatus('');
+    }
+  }
+
+  function openMenu() {
+    refreshState();
+    menu.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+  }
+  function closeMenu() {
+    menu.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (menu.hidden) openMenu(); else closeMenu();
+  });
+
+  // Click-outside dismiss
+  document.addEventListener('click', (e) => {
+    if (menu.hidden) return;
+    if (menu.contains(e.target) || toggle.contains(e.target)) return;
+    closeMenu();
+  });
+  // Esc dismiss
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !menu.hidden) closeMenu();
+  });
+
+  pushBtn?.addEventListener('click', async () => {
+    setStatus('⏳ Pushing…');
+    try {
+      const id = await doGistPush();
+      setStatus(`✓ Pushed to gist ${id.slice(0, 8)}…`, 3000);
+      refreshState();
+    } catch (e) {
+      setStatus(`✗ ${e.message}`, 5000);
+    }
+  });
+
+  pullBtn?.addEventListener('click', async () => {
+    setStatus('⏳ Pulling…');
+    try {
+      const payload = await doGistPull();
+      if (!confirmPullOverwrite(payload)) { setStatus(''); return; }
+      importPayload(payload);
+      setStatus('✓ Pulled — reloading…');
+      setTimeout(() => location.reload(), 500);
+    } catch (e) {
+      setStatus(`✗ ${e.message}`, 5000);
+    }
+  });
+
+  testBtn?.addEventListener('click', async () => {
+    setStatus('⏳ Testing…');
+    try {
+      const info = await doGistTest();
+      setStatus(`✓ Authenticated as @${info.login}`, 4000);
+    } catch (e) {
+      setStatus(`✗ ${e.message}`, 5000);
+    }
+  });
+
+  settingsLink?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeMenu();
+    document.getElementById('settings-toggle')?.click();
+    // Scroll the Gist section into view inside the overlay card
+    setTimeout(() => {
+      document.querySelector('.settings-gist')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   });
 }
 
@@ -1499,15 +1632,17 @@ function applyHash() {
 function setMode(mode, opts = {}) {
   State.mode = mode;
   document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-  for (const id of ['view-browse', 'view-quiz', 'view-docs']) {
-    const want = mode === id.replace(/^view-/, '');
-    document.getElementById(id).classList.toggle('active', want);
-    document.getElementById(id).hidden = !want;
-  }
+  // Iterate all .view containers so adding a new view = no setMode change required.
+  document.querySelectorAll('.view').forEach(v => {
+    const want = v.id === `view-${mode}`;
+    v.classList.toggle('active', want);
+    v.hidden = !want;
+  });
   if (mode === 'quiz' && !document.getElementById('quiz-domain-list').firstChild) {
     renderQuizSetup();
   }
   if (mode === 'browse') renderBrowse();
+  if (mode === 'help') renderHelpView();
   if (mode === 'docs') {
     if (!State.docs) {
       State.docs = { tree: buildDocsTree(State.allExercises), leaves: null, selectedUrl: null };
@@ -1522,6 +1657,79 @@ function setMode(mode, opts = {}) {
   }
   // Update URL hash to reflect the new mode (unless we came from a hash event)
   if (opts.source !== 'hash') updateHash(mode);
+}
+
+// ---------- Help view ----------
+
+let _helpRendered = false;
+
+function renderHelpView() {
+  if (_helpRendered) return;
+  const body = document.getElementById('help-body');
+  const toc = document.getElementById('help-toc');
+  if (!body || !toc) return;
+  const md = State.data && State.data.helpGuide;
+  if (!md) {
+    body.innerHTML = '<p class="muted">Help content not bundled — run <code>npm run build</code> to regenerate <code>exercises.json</code>.</p>';
+    return;
+  }
+  body.innerHTML = renderMarkdown(md);
+
+  // Assign id slugs to headings and build the TOC
+  const headings = body.querySelectorAll('h1, h2, h3');
+  const seen = new Set();
+  const items = [];
+  headings.forEach(h => {
+    if (h.tagName === 'H1') return; // skip the doc title
+    const text = h.textContent.trim();
+    let slug = text.toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 60) || 'section';
+    let unique = slug; let n = 2;
+    while (seen.has(unique)) unique = `${slug}-${n++}`;
+    seen.add(unique);
+    h.id = unique;
+    items.push({ level: h.tagName === 'H2' ? 2 : 3, id: unique, text });
+  });
+
+  const ul = document.createElement('ul');
+  items.forEach(it => {
+    const li = document.createElement('li');
+    if (it.level === 3) li.className = 'h3';
+    const a = document.createElement('a');
+    a.href = `#help-section-${it.id}`;
+    a.textContent = it.text;
+    a.dataset.target = it.id;
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById(it.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    li.appendChild(a);
+    ul.appendChild(li);
+  });
+  toc.innerHTML = '';
+  toc.appendChild(ul);
+
+  // Spy-scroll: highlight the TOC entry whose section is in view
+  if ('IntersectionObserver' in window && items.length) {
+    const linksById = new Map();
+    toc.querySelectorAll('a').forEach(a => linksById.set(a.dataset.target, a));
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(en => {
+        const a = linksById.get(en.target.id);
+        if (!a) return;
+        if (en.isIntersecting) {
+          toc.querySelectorAll('a.active').forEach(x => x.classList.remove('active'));
+          a.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+    headings.forEach(h => { if (h.id) obs.observe(h); });
+  }
+
+  _helpRendered = true;
 }
 
 // ---------- Theme ----------
@@ -1613,6 +1821,7 @@ function installKeyboardShortcuts() {
     if (ev.key === '1') { ev.preventDefault(); setMode('browse'); return; }
     if (ev.key === '2') { ev.preventDefault(); setMode('quiz'); return; }
     if (ev.key === '3') { ev.preventDefault(); setMode('docs'); return; }
+    if (ev.key === '4') { ev.preventDefault(); setMode('help'); return; }
 
     // j/↓ next, k/↑ prev (Browse only — Quiz has its own next/prev buttons)
     if (ev.key === 'j' || ev.key === 'ArrowDown') {
@@ -1689,6 +1898,9 @@ async function init() {
 
   // Settings overlay (LLM grading)
   installSettingsOverlay();
+
+  // Header ☁ sync popover
+  installSyncMenu();
 
   // Mobile: Filters / Outline toggle buttons (CSS hides these on desktop)
   document.getElementById('filter-bar-toggle')?.addEventListener('click', () => {

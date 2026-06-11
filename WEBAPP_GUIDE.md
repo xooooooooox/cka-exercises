@@ -75,11 +75,12 @@ Mirror of the kubernetes.io documentation tree, reverse-indexed against the exer
 
 | Control | Purpose |
 |---|---|
-| Mode tabs (📚 / 🎯 / 📖) | Switch between Browse, Quiz, Docs |
+| Mode tabs (📚 / 🎯 / 📖 / 📘) | Switch between Browse, Quiz, Docs, Help |
 | Search box | Free-text filter (Browse mode) |
 | ⏱ Timer | Live countdown during a timed quiz |
+| ☁ Sync | Quick Gist Push / Pull / Test popover (uses the same PAT + Gist ID configured in Settings) |
 | 🌓 Theme toggle | Light / dark mode (persisted) |
-| ❓ Help | Keyboard shortcut cheatsheet |
+| ⌨️ Help | Keyboard shortcut cheatsheet |
 | ⚙️ Settings | LLM grading config, Backup, Gist sync |
 
 ---
@@ -116,6 +117,8 @@ Same payload as Export/Import, but pushed to / pulled from a private GitHub Gist
 6. **⬇ Pull from Gist** — downloads from the gist, confirms a counts dialog, then replaces local state.
 
 > Push and Pull are **manual** — no auto-sync. Last-write-wins (no merge). API keys are not synced.
+
+After your PAT is configured here, you can also Push / Pull / Test from the **☁ Sync** icon in the header without re-opening Settings.
 
 ---
 
@@ -170,7 +173,7 @@ This SPA has **no backend**. Treat it like any other BYO-key web tool.
 |---|---|
 | <kbd>j</kbd> / <kbd>↓</kbd> | Next exercise (Browse) / next question (Quiz) |
 | <kbd>k</kbd> / <kbd>↑</kbd> | Previous |
-| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> | Switch to Browse / Quiz / Docs |
+| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> | Switch to Browse / Quiz / Docs / Help |
 | <kbd>/</kbd> | Focus the search box |
 | <kbd>Space</kbd> | Show / hide solution (focused Browse card) |
 | <kbd>d</kbd> | Toggle Done (focused Browse card) |

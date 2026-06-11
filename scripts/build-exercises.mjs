@@ -195,6 +195,9 @@ function parseFile(file, domainInfo) {
   return sections;
 }
 
+const guidePath = path.join(ROOT, 'WEBAPP_GUIDE.md');
+const helpGuide = fs.existsSync(guidePath) ? fs.readFileSync(guidePath, 'utf8') : '';
+
 const result = {
   generatedAt: new Date().toISOString(),
   domains: DOMAINS.map(d => ({
@@ -204,6 +207,7 @@ const result = {
     weight: d.weight,
     sections: parseFile(d.file, d),
   })),
+  helpGuide,
 };
 
 // Post-pass: assign a per-domain question number (1..N) in the order they

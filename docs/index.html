@@ -18,9 +18,28 @@
       <button data-mode="browse" class="mode-tab active" type="button">📚 Browse</button>
       <button data-mode="quiz" class="mode-tab" type="button">🎯 Quiz</button>
       <button data-mode="docs" class="mode-tab" type="button">📖 Docs</button>
+      <button data-mode="help" class="mode-tab" type="button">📘 Help</button>
     </nav>
     <div class="header-right">
       <span id="quiz-timer" hidden></span>
+      <div class="sync-menu-wrap">
+        <button id="sync-toggle" class="icon-btn" type="button" title="Sync to Gist" aria-label="Sync to Gist" aria-haspopup="true" aria-expanded="false">☁</button>
+        <div id="sync-menu" class="sync-menu" hidden role="menu" aria-label="Gist sync">
+          <div class="sync-menu-header">
+            <strong>Gist sync</strong>
+            <span id="sync-menu-id" class="muted"></span>
+          </div>
+          <div class="sync-menu-actions">
+            <button id="sync-menu-push" type="button">⬆ Push</button>
+            <button id="sync-menu-pull" type="button">⬇ Pull</button>
+            <button id="sync-menu-test" type="button">Test</button>
+          </div>
+          <div id="sync-menu-status" class="muted"></div>
+          <div class="sync-menu-foot muted">
+            <a href="#" id="sync-menu-settings">Configure in Settings →</a>
+          </div>
+        </div>
+      </div>
       <button id="settings-toggle" class="icon-btn" type="button" title="Grading settings" aria-label="Grading settings">⚙️</button>
       <button id="help-toggle" class="icon-btn" type="button" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨️</button>
       <a class="icon-btn" href="https://github.com/xooooooooox/cka-exercises" target="_blank" rel="noopener" title="View source on GitHub" aria-label="GitHub repository">
@@ -187,6 +206,14 @@
     </div>
   </div>
 
+  <!-- Help mode -->
+  <div id="view-help" class="view" hidden>
+    <aside id="help-toc" class="help-toc"></aside>
+    <article id="help-body" class="help-body markdown-body">
+      <p class="muted">Loading help…</p>
+    </article>
+  </div>
+
   <!-- Keyboard-shortcuts overlay -->
   <div id="help-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
     <div class="overlay-card">
@@ -199,7 +226,7 @@
           <tr><th colspan="2">Navigation</th></tr>
           <tr><td><kbd>j</kbd> / <kbd>↓</kbd></td><td>Next exercise (Browse) / next question (Quiz)</td></tr>
           <tr><td><kbd>k</kbd> / <kbd>↑</kbd></td><td>Previous</td></tr>
-          <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Switch to Browse / Quiz / Docs</td></tr>
+          <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></td><td>Switch to Browse / Quiz / Docs / Help</td></tr>
           <tr><td><kbd>/</kbd></td><td>Focus the search box</td></tr>
           <tr><th colspan="2">Card actions (Browse mode, focused card)</th></tr>
           <tr><td><kbd>Space</kbd></td><td>Show / hide solution</td></tr>
