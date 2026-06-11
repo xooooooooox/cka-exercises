@@ -11,7 +11,7 @@ A curated CKA (Certified Kubernetes Administrator) practice corpus, collected fr
 
 ## 🎯 Practice Web App
 
-**Live site:** <https://xooooooooox.github.io/cka-exercises/>
+**Live site:** <https://xooooooooox.github.io/cka-exercises/> · **Usage guide:** [`WEBAPP_GUIDE.md`](WEBAPP_GUIDE.md)
 
 A static SPA in [`docs/`](docs/) gives you searchable browse / quiz / docs-tree practice across all ~205 exercises. Filter by domain, tag (`CKA Past Exam` / `Killer.sh A / B` / general), bookmarks, or undone state. Quiz mode pulls random questions with optional time limits (30 / 60 / 120 min), self-graded scoring, and end-of-session summary. Docs mode mirrors the kubernetes.io navigation hierarchy and reverse-links each page to the exercises that drill it.
 
@@ -75,4 +75,4 @@ Three GitHub Actions workflows:
 
 ## Contributing
 
-See `CLAUDE.md` for the exercise-file format spec, tag conventions, and common-task recipes. PRs that touch `exercises/*.md` should be lint-clean (`npm run lint`) before merging.
+See `CLAUDE.md` for the exercise-file format spec, tag conventions, common-task recipes, and the **append-only ID-stability rule** (don't insert/delete H3 entries in the middle of a section — it silently shifts every subsequent ID and breaks existing users' progress). PRs that touch `exercises/*.md` should be lint-clean (`npm run lint`) before merging.

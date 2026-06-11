@@ -273,6 +273,36 @@
         <button id="settings-clear" type="button" class="danger">Clear all</button>
         <span id="settings-status" class="muted"></span>
       </div>
+
+      <div class="settings-section settings-backup">
+        <label class="settings-label">Backup &amp; restore</label>
+        <p class="backup-help muted">Download your progress (done state, bookmarks, saved answers, theme) as a JSON file. API keys are NOT included.</p>
+        <div class="backup-row">
+          <button id="backup-export" type="button">⬇ Export progress</button>
+          <button id="backup-import" type="button">⬆ Import progress…</button>
+          <input id="backup-file" type="file" accept=".json,application/json" hidden>
+          <span id="backup-status" class="muted"></span>
+        </div>
+      </div>
+
+      <div class="settings-section settings-gist">
+        <label class="settings-label">GitHub Gist sync (cross-device)</label>
+        <p class="muted backup-help">Push your progress to a private Gist and pull it on a different browser / device. Generate a token at <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">github.com/settings/tokens</a> with the <code>gist</code> scope only. API keys are NOT synced.</p>
+        <div class="settings-row">
+          <label class="settings-label" for="gist-token">GitHub PAT</label>
+          <input id="gist-token" type="password" placeholder="ghp_… (gist scope)" autocomplete="off">
+        </div>
+        <div class="settings-row">
+          <label class="settings-label" for="gist-id">Existing Gist ID <small class="muted">(leave blank to create on first Push)</small></label>
+          <input id="gist-id" type="text" placeholder="e.g. a1b2c3d4e5f6…" autocomplete="off">
+        </div>
+        <div class="backup-row">
+          <button id="gist-push" type="button">⬆ Push to Gist</button>
+          <button id="gist-pull" type="button">⬇ Pull from Gist</button>
+          <button id="gist-test" type="button">Test</button>
+          <span id="gist-status" class="muted"></span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -299,6 +329,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
   <script src="llm.js" defer></script>
+  <script src="sync.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>

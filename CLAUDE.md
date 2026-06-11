@@ -156,9 +156,24 @@ State management is in module-scope `State` object; no framework. Persistence vi
 
 1. Choose the right markdown file by curriculum domain.
 2. Choose the right H2 section (numbered curriculum sub-section, NOT the killer.sh section).
-3. Add a new H3 block following the format above. Include at least one `> 🔗 [breadcrumb](url)` line.
-4. Run `npm run build` to regenerate `docs/exercises.json`.
-5. Run `npm run serve` to preview locally.
+3. **Append the new H3 block at the END of that section** (see ID-stability rule below).
+4. Include at least one `> 🔗 [breadcrumb](url)` line.
+5. Run `npm run build` to regenerate `docs/exercises.json`.
+6. Run `npm run serve` to preview locally.
+
+### ⚠️ ID-stability rule — append-only
+
+Exercise IDs are sequence-based (`ca-1-001`, `sc-99-005`, …) and are computed by `scripts/build-exercises.mjs` from the H3's position within its section. These IDs are the **keys for every user's `localStorage` progress** (Done state, bookmarks, saved answers, last verdict).
+
+**The rule:** when adding a new exercise, **always append it at the END** of its section. Never insert in the middle. Never delete in the middle.
+
+- ✅ Append at end of section → existing IDs unchanged → existing users' progress survives
+- ❌ Insert in middle of section → every subsequent ID shifts by +1 → existing users see their Done-marks land on the wrong exercises
+- ❌ Delete in middle of section → every subsequent ID shifts by −1 → same silent breakage
+
+If a deletion is genuinely unavoidable, call it out in the commit message so users know to re-mark the affected entries. There is no automatic migration.
+
+Killer.sh exercises go at the end of `## Killer.sh Mock Exam Questions`. CKA Past Exam entries go at the end of their domain section. New "general" exercises append to whichever numbered section they fit.
 
 ### Adding a killer.sh question
 

@@ -1026,6 +1026,20 @@ kbd {
 }
 .settings-actions .muted { margin-left: auto; font-size: 12px; }
 
+.settings-backup, .settings-gist {
+  margin: 14px 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.backup-help { font-size: 12px; margin: 4px 0 8px; line-height: 1.4; }
+.backup-help a { color: var(--link); }
+.backup-row {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin-top: 6px;
+}
+.backup-row button { white-space: nowrap; }
+#backup-status, #gist-status { font-size: 12px; }
+
 /* Mobile tweaks */
 @media (max-width: 768px) {
   .provider-grid { grid-template-columns: 1fr; }

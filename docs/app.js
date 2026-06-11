@@ -32,6 +32,8 @@ const KEY = {
   llmSettings: 'cka:llm:settings',
   privacyAck: 'cka:llm:privacyAck',
   answerPrefix: 'cka:answer:',   // appended with <exerciseId>
+  gistToken: 'cka:gist:token',
+  gistId: 'cka:gist:id',
 };
 
 const LLM_DEFAULT_SETTINGS = {
@@ -449,6 +451,206 @@ function installSettingsOverlay() {
     } catch (e) {
       testStatus.className = 'test-status err';
       testStatus.textContent = `✗ ${e.message || String(e)}`;
+    }
+  });
+
+  installBackupHandlers();
+  installGistHandlers();
+}
+
+// ---------- Backup / Import ----------
+
+// Scrubs API key from llm settings; never includes the gist PAT.
+function collectExportable() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith('cka:')) continue;
+    if (k === KEY.gistToken) continue;
+    let val = storageGet(k, null);
+    if (k === KEY.llmSettings && val && typeof val === 'object') {
+      val = Object.assign({}, val, { apiKey: '' });
+    }
+    data[k] = val;
+  }
+  return { schemaVersion: 1, exportedAt: new Date().toISOString(), data };
+}
+
+function importPayload(payload) {
+  if (!payload || payload.schemaVersion !== 1 || !payload.data) {
+    throw new Error('Unrecognized backup format (schemaVersion mismatch).');
+  }
+  for (const [k, v] of Object.entries(payload.data)) {
+    if (!k.startsWith('cka:')) continue;
+    if (k === KEY.llmSettings && v && typeof v === 'object' && !v.apiKey) {
+      const existing = storageGet(k, {}) || {};
+      v.apiKey = existing.apiKey || '';
+    }
+    storageSet(k, v);
+  }
+}
+
+function summariseImport(payload) {
+  const data = payload?.data || {};
+  const done = Object.keys(data[KEY.done] || {}).length;
+  const bookmark = Object.keys(data[KEY.bookmark] || {}).length;
+  let answers = 0;
+  for (const k of Object.keys(data)) {
+    if (k.startsWith(KEY.answerPrefix)) answers++;
+  }
+  return { done, bookmark, answers };
+}
+
+function installBackupHandlers() {
+  const exportBtn = document.getElementById('backup-export');
+  const importBtn = document.getElementById('backup-import');
+  const fileInput = document.getElementById('backup-file');
+  const status = document.getElementById('backup-status');
+
+  function flash(msg, ms = 1500) {
+    if (!status) return;
+    status.textContent = msg;
+    if (ms) setTimeout(() => { if (status.textContent === msg) status.textContent = ''; }, ms);
+  }
+
+  exportBtn?.addEventListener('click', () => {
+    try {
+      const payload = collectExportable();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.download = `cka-progress-${stamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      flash('✓ Downloaded');
+    } catch (e) {
+      flash(`✗ ${e.message}`, 4000);
+    }
+  });
+
+  importBtn?.addEventListener('click', () => fileInput?.click());
+
+  fileInput?.addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    try {
+      const text = await f.text();
+      const payload = JSON.parse(text);
+      const c = summariseImport(payload);
+      const ok = confirm(
+        'Import will overwrite local state:\n' +
+        `  ${c.done} exercises marked Done\n` +
+        `  ${c.bookmark} bookmarks\n` +
+        `  ${c.answers} saved answers\n` +
+        '  + theme, last-quiz, docs-last-url settings\n\nContinue?'
+      );
+      if (!ok) { flash(''); return; }
+      importPayload(payload);
+      flash('✓ Imported — reloading…', 0);
+      setTimeout(() => location.reload(), 500);
+    } catch (err) {
+      flash(`✗ ${err.message}`, 5000);
+    } finally {
+      e.target.value = '';
+    }
+  });
+}
+
+// ---------- GitHub Gist sync ----------
+
+function getGistToken() { return storageGet(KEY.gistToken, '') || ''; }
+function setGistToken(v) { storageSet(KEY.gistToken, v || null); }
+function getGistId() { return storageGet(KEY.gistId, '') || ''; }
+function setGistId(v) { storageSet(KEY.gistId, v || null); }
+
+function installGistHandlers() {
+  const tokenInput = document.getElementById('gist-token');
+  const idInput = document.getElementById('gist-id');
+  const status = document.getElementById('gist-status');
+  const pushBtn = document.getElementById('gist-push');
+  const pullBtn = document.getElementById('gist-pull');
+  const testBtn = document.getElementById('gist-test');
+  if (!tokenInput || !idInput) return;
+
+  tokenInput.value = getGistToken();
+  idInput.value = getGistId();
+
+  function persist() {
+    setGistToken(tokenInput.value.trim());
+    setGistId(idInput.value.trim());
+  }
+  tokenInput.addEventListener('change', persist);
+  idInput.addEventListener('change', persist);
+
+  function setStatus(msg, cls = '') {
+    if (!status) return;
+    status.textContent = msg;
+    status.className = `muted ${cls}`.trim();
+  }
+
+  if (!window.GistSync) {
+    setStatus('✗ sync.js failed to load');
+    return;
+  }
+
+  pushBtn?.addEventListener('click', async () => {
+    persist();
+    const token = tokenInput.value.trim();
+    if (!token) { setStatus('✗ Need a GitHub PAT first'); return; }
+    setStatus('⏳ Pushing…');
+    try {
+      const payload = collectExportable();
+      let id = idInput.value.trim();
+      if (id) {
+        await window.GistSync.updateGist(token, id, payload);
+      } else {
+        const res = await window.GistSync.createGist(token, payload);
+        id = res.id;
+        idInput.value = id;
+        setGistId(id);
+      }
+      setStatus(`✓ Pushed to gist ${id.slice(0, 8)}…`);
+    } catch (e) {
+      setStatus(`✗ ${e.message}`);
+    }
+  });
+
+  pullBtn?.addEventListener('click', async () => {
+    persist();
+    const token = tokenInput.value.trim();
+    const id = idInput.value.trim();
+    if (!token || !id) { setStatus('✗ Need both PAT and Gist ID'); return; }
+    setStatus('⏳ Pulling…');
+    try {
+      const payload = await window.GistSync.readGist(token, id);
+      const c = summariseImport(payload);
+      const ok = confirm(
+        'Pull will overwrite local state:\n' +
+        `  ${c.done} exercises marked Done\n` +
+        `  ${c.bookmark} bookmarks\n` +
+        `  ${c.answers} saved answers\nContinue?`
+      );
+      if (!ok) { setStatus(''); return; }
+      importPayload(payload);
+      setStatus('✓ Pulled — reloading…');
+      setTimeout(() => location.reload(), 500);
+    } catch (e) {
+      setStatus(`✗ ${e.message}`);
+    }
+  });
+
+  testBtn?.addEventListener('click', async () => {
+    const token = tokenInput.value.trim();
+    if (!token) { setStatus('✗ Need a PAT'); return; }
+    setStatus('⏳ Testing…');
+    try {
+      const info = await window.GistSync.testAuth(token);
+      setStatus(`✓ Authenticated as @${info.login}`);
+    } catch (e) {
+      setStatus(`✗ ${e.message}`);
     }
   });
 }

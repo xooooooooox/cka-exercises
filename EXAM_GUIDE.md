@@ -34,7 +34,7 @@ In the webapp you can filter by any combination of these tags.
 
 ## 🎯 Open the practice webapp
 
-**Live:** <https://xooooooooox.github.io/cka-exercises/>
+**Live:** <https://xooooooooox.github.io/cka-exercises/> · **Usage guide:** [`WEBAPP_GUIDE.md`](WEBAPP_GUIDE.md)
 
 The webapp has three modes:
 

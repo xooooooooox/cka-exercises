@@ -11,7 +11,7 @@
 
 ## 🎯 在线练习页面
 
-**在线地址：** <https://xooooooooox.github.io/cka-exercises/>
+**在线地址：** <https://xooooooooox.github.io/cka-exercises/> · **使用指南：** [`WEBAPP_GUIDE_CN.md`](WEBAPP_GUIDE_CN.md)
 
 [`docs/`](docs/) 下是一个静态 SPA，提供浏览 / 测验 / 文档树 三种模式，覆盖全部 ~205 道题。支持按考点 / 标签（`CKA Past Exam` / `Killer.sh A / B` / 通用）/ 收藏 / 未完成多维过滤。测验模式可随机抽题、设置 30 / 60 / 120 分钟限时、自我打分、生成会话总结。Docs 模式镜像 kubernetes.io 导航树，每个文档页反向链接关联的题目。
 

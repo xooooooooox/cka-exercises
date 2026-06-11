@@ -34,7 +34,7 @@
 
 ## 🎯 打开在线练习页面
 
-**Live:** <https://xooooooooox.github.io/cka-exercises/>
+**Live:** <https://xooooooooox.github.io/cka-exercises/> · **使用指南：** [`WEBAPP_GUIDE_CN.md`](WEBAPP_GUIDE_CN.md)
 
 页面有三个模式：
 
