@@ -55,7 +55,10 @@
 | **✗ Missed** | 自评：没答对。**不会**标 Done — 而且会清除已有的 Done 标记，让你以后还能再看到它。 |
 | **↷ Skip** | 跳过不评分。Skip 的题会出现在结算页的"未评分"列表里。 |
 | **Next →** | 跳到下一题。不会改变你的批改结果。 |
+| **💾 Save snapshot** | 把整场 quiz 打个标签命名存起来，方便以后回来继续。保存后 active 槽位会清空，可以开新的 quiz；保存的 snapshot 出现在 setup 页。 |
 | **⏹ End session** | 立刻结束。会直接显示已完成部分的总结。 |
+
+**Resume 和 snapshot。** 每次答题动作都会自动保存到 `localStorage`。如果不小心关了 tab 或刷新了页面，Quiz setup 页顶部会出现 ⏸ 横幅，提示 **▶ Resume** 或 **✕ Discard**。只要存在未完成的会话，🎯 Quiz 标签上会有一个小 ● 提示。需要同时保留多场进行中的 quiz？点 **💾 Save snapshot** 命名当前会话，它会出现在 setup 页的 **💾 Snapshots** 列表里，直到你 Resume 或删除它。
 
 **结算页** — 显示：总数 / 答对 / 答错 / 跳过 / Flag 数，以及每题列表。点 **▶ New quiz** 重开。
 
@@ -75,7 +78,7 @@
 
 | 控件 | 作用 |
 |---|---|
-| 模式 Tab（📚 / 🎯 / 📖 / 📘）| 切换 Browse / Quiz / Docs / Help |
+| 模式 Tab（📚 / 🎯 / 📖 / ❓）| 切换 Browse / Quiz / Docs / Help |
 | 搜索框 | 自由文本过滤（Browse 模式） |
 | ⏱ 计时器 | Quiz 限时倒计时 |
 | ☁ 同步 | 快捷的 Gist Push / Pull / Test 弹层（使用 Settings 里配的 PAT + Gist ID） |
@@ -134,7 +137,8 @@ DevTools 里你能看到的 key：
 | `cka:bookmark` | `{ exerciseId: true, … }` |
 | `cka:answer:<exerciseId>` | 每题的答案 + 上次 LLM 批改结果 |
 | `cka:theme` | `"light"` / `"dark"` |
-| `cka:lastQuiz` | 上次 quiz 的配置（题量、时限、过滤） |
+| `cka:quiz:active` | 自动保存的进行中 quiz（单槽位，结束时自动清除） |
+| `cka:quiz:snapshots` | 命名快照列表（每个 snapshot 是一场独立的 quiz 会话） |
 | `cka:docs:lastUrl` | 上次打开的 docs 页 |
 | `cka:llm:settings` | Provider、API key、model、Auto-Done 阈值 |
 | `cka:llm:privacyAck` | 是否已经关闭首次使用时的隐私提示 |

@@ -55,7 +55,10 @@ Click **▶ Start quiz** to begin. The header shows a live timer (if a limit is 
 | **✗ Missed** | Self-grade: you didn't get it. Does **not** mark Done — and clears any existing Done flag on this exercise so you'll see it again. |
 | **↷ Skip** | Move on without grading. Skipped items appear in the summary as ungraded. |
 | **Next →** | Jump to the next question. Doesn't change your grading. |
+| **💾 Save snapshot** | Stash this whole quiz under a name so you can resume it later. The active slot becomes empty so you can start a new quiz; the snapshot appears on the setup screen. |
 | **⏹ End session** | Stop the quiz immediately. You'll see the summary for whatever you completed so far. |
+
+**Resume & snapshots.** Every action in an active quiz auto-saves to `localStorage`. If you accidentally close the tab or reload, you'll see a ⏸ banner at the top of the Quiz setup screen offering **▶ Resume** or **✕ Discard**. The 🎯 Quiz tab also shows a small ● dot whenever a saved session exists. Need to keep multiple quizzes side-by-side? Click **💾 Save snapshot** during a session — name it, and it lives under the **💾 Snapshots** list on the setup screen until you Resume or delete it.
 
 **Summary screen** — shows total / got / missed / skipped / flagged, with a per-question list. Click **▶ New quiz** to restart.
 
@@ -75,7 +78,7 @@ Mirror of the kubernetes.io documentation tree, reverse-indexed against the exer
 
 | Control | Purpose |
 |---|---|
-| Mode tabs (📚 / 🎯 / 📖 / 📘) | Switch between Browse, Quiz, Docs, Help |
+| Mode tabs (📚 / 🎯 / 📖 / ❓) | Switch between Browse, Quiz, Docs, Help |
 | Search box | Free-text filter (Browse mode) |
 | ⏱ Timer | Live countdown during a timed quiz |
 | ☁ Sync | Quick Gist Push / Pull / Test popover (uses the same PAT + Gist ID configured in Settings) |
@@ -134,7 +137,8 @@ Keys you'll see in DevTools:
 | `cka:bookmark` | `{ exerciseId: true, … }` |
 | `cka:answer:<exerciseId>` | Saved answer + last LLM verdict per exercise |
 | `cka:theme` | `"light"` / `"dark"` |
-| `cka:lastQuiz` | Last quiz setup choices (count, time, filters) |
+| `cka:quiz:active` | Auto-saved in-progress quiz (one slot) — auto-cleared on finish |
+| `cka:quiz:snapshots` | Named snapshots list (each is an independent saved quiz session) |
 | `cka:docs:lastUrl` | Last opened docs page |
 | `cka:llm:settings` | Provider, API key, model, auto-done threshold |
 | `cka:llm:privacyAck` | Whether you dismissed the first-use privacy notice |

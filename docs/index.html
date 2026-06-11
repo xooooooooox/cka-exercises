@@ -16,9 +16,9 @@
     </div>
     <nav class="mode-tabs" role="tablist">
       <button data-mode="browse" class="mode-tab active" type="button">📚 Browse</button>
-      <button data-mode="quiz" class="mode-tab" type="button">🎯 Quiz</button>
+      <button data-mode="quiz" class="mode-tab" type="button">🎯 Quiz<span class="tab-dot" hidden title="A quiz is in progress">●</span></button>
       <button data-mode="docs" class="mode-tab" type="button">📖 Docs</button>
-      <button data-mode="help" class="mode-tab" type="button">📘 Help</button>
+      <button data-mode="help" class="mode-tab" type="button">❓ Help</button>
     </nav>
     <div class="header-right">
       <span id="quiz-timer" hidden></span>
@@ -30,13 +30,13 @@
             <span id="sync-menu-id" class="muted"></span>
           </div>
           <div class="sync-menu-actions">
-            <button id="sync-menu-push" type="button">⬆ Push</button>
-            <button id="sync-menu-pull" type="button">⬇ Pull</button>
-            <button id="sync-menu-test" type="button">Test</button>
+            <button id="sync-menu-push" type="button" title="Upload local progress to your Gist (overwrites it)">⬆ Push</button>
+            <button id="sync-menu-pull" type="button" title="Replace local progress with content from your Gist">⬇ Pull</button>
+            <button id="sync-menu-test" type="button" title="Verify the configured PAT works against the GitHub API">Test</button>
           </div>
           <div id="sync-menu-status" class="muted"></div>
           <div class="sync-menu-foot muted">
-            <a href="#" id="sync-menu-settings">Configure in Settings →</a>
+            <a href="#" id="sync-menu-settings" title="Open the full Gist sync configuration in Settings">Configure in Settings →</a>
           </div>
         </div>
       </div>
@@ -57,7 +57,7 @@
       <!-- Mobile-only condensed toolbar (≤768px). On desktop this row is hidden. -->
       <div class="mobile-toolbar">
         <input id="filter-search-mobile" type="search" placeholder="🔎 Search…" autocomplete="off">
-        <button id="filter-bar-toggle" type="button" aria-expanded="false" aria-controls="filter-bar-content" title="Show / hide filters">⚙️ Filters</button>
+        <button id="filter-bar-toggle" type="button" aria-expanded="false" aria-controls="filter-bar-content" title="Show / hide filters">🎚 Filters</button>
         <button id="sidebar-toggle" type="button" aria-expanded="false" aria-controls="sidebar" title="Show / hide outline">📊 Outline</button>
         <span class="mobile-stats muted"></span>
       </div>
@@ -108,6 +108,9 @@
       <h2>🎯 Start a quiz session</h2>
       <p class="muted">Randomly pull questions from the question bank for focused practice. Self-grade your answers — there's no automatic checking (solutions are CLI/YAML).</p>
 
+      <!-- Resume / snapshots panel (populated by renderQuizResumePanel) -->
+      <div id="quiz-resume-panel" hidden></div>
+
       <fieldset>
         <legend>Source — domain</legend>
         <div id="quiz-domain-list" class="filter-list horizontal"></div>
@@ -152,7 +155,7 @@
       </fieldset>
 
       <div class="quiz-actions">
-        <button id="quiz-start-btn" type="button" class="primary">▶ Start quiz</button>
+        <button id="quiz-start-btn" type="button" class="primary" title="Begin a new quiz session with the selected filters and count">▶ Start quiz</button>
         <span id="quiz-eligible-count" class="muted"></span>
       </div>
     </section>
@@ -165,17 +168,18 @@
       </div>
       <div id="quiz-card" class="exercise-card"></div>
       <div class="quiz-controls">
-        <button id="quiz-prev" type="button">← Prev</button>
-        <button id="quiz-flag" type="button">🚩 Flag</button>
-        <button id="quiz-reveal" type="button">👁 Reveal solution</button>
+        <button id="quiz-prev" type="button" title="Go to the previous question (does not change grades)">← Prev</button>
+        <button id="quiz-flag" type="button" title="Mark this question to revisit in the end-of-session summary">🚩 Flag</button>
+        <button id="quiz-reveal" type="button" title="Show the reference solution; unlocks self-grading">👁 Reveal solution</button>
         <span class="spacer"></span>
-        <button id="quiz-grade-got" type="button" class="grade-got">✓ Got it</button>
-        <button id="quiz-grade-miss" type="button" class="grade-miss">✗ Missed</button>
-        <button id="quiz-skip" type="button">↷ Skip</button>
-        <button id="quiz-next" type="button">Next →</button>
+        <button id="quiz-grade-got" type="button" class="grade-got" title="Self-grade correct + mark this exercise Done globally">✓ Got it</button>
+        <button id="quiz-grade-miss" type="button" class="grade-miss" title="Self-grade incorrect; clears any existing Done mark on this exercise">✗ Missed</button>
+        <button id="quiz-skip" type="button" title="Move on without grading (counted as ungraded in the summary)">↷ Skip</button>
+        <button id="quiz-next" type="button" title="Go to the next question (does not change grades)">Next →</button>
       </div>
       <div class="quiz-end-row">
-        <button id="quiz-finish" type="button" class="danger">⏹ End session</button>
+        <button id="quiz-snapshot" type="button" title="Save this quiz as a named snapshot to resume later">💾 Save snapshot</button>
+        <button id="quiz-finish" type="button" class="danger" title="Stop the quiz now and view the summary (cannot resume after)">⏹ End session</button>
       </div>
     </section>
 
@@ -185,7 +189,7 @@
       <div id="quiz-summary-stats"></div>
       <ol id="quiz-summary-list"></ol>
       <div class="quiz-actions">
-        <button id="quiz-restart" type="button" class="primary">▶ New quiz</button>
+        <button id="quiz-restart" type="button" class="primary" title="Return to the setup screen to start another session">▶ New quiz</button>
       </div>
     </section>
   </div>
@@ -219,7 +223,7 @@
     <div class="overlay-card">
       <header>
         <h2 id="help-title">⌨️ Keyboard shortcuts</h2>
-        <button class="icon-btn" type="button" id="help-close" aria-label="Close">✕</button>
+        <button class="icon-btn" type="button" id="help-close" aria-label="Close" title="Close">✕</button>
       </header>
       <table class="shortcut-table">
         <tbody>
@@ -246,7 +250,7 @@
     <div class="overlay-card">
       <header>
         <h2 id="settings-title">⚙️ Grading settings</h2>
-        <button class="icon-btn" type="button" id="settings-close" aria-label="Close">✕</button>
+        <button class="icon-btn" type="button" id="settings-close" aria-label="Close" title="Close">✕</button>
       </header>
       <p class="muted">Configure an LLM provider to auto-grade your answers. Answers + tasks are sent to the chosen provider when you click <b>Check</b> on an exercise.</p>
 
@@ -305,8 +309,8 @@
         <label class="settings-label">Backup &amp; restore</label>
         <p class="backup-help muted">Download your progress (done state, bookmarks, saved answers, theme) as a JSON file. API keys are NOT included.</p>
         <div class="backup-row">
-          <button id="backup-export" type="button">⬇ Export progress</button>
-          <button id="backup-import" type="button">⬆ Import progress…</button>
+          <button id="backup-export" type="button" title="Download your progress as a JSON file (API keys excluded)">⬇ Export progress</button>
+          <button id="backup-import" type="button" title="Restore progress from a previously exported JSON file">⬆ Import progress…</button>
           <input id="backup-file" type="file" accept=".json,application/json" hidden>
           <span id="backup-status" class="muted"></span>
         </div>
@@ -324,9 +328,9 @@
           <input id="gist-id" type="text" placeholder="e.g. a1b2c3d4e5f6…" autocomplete="off">
         </div>
         <div class="backup-row">
-          <button id="gist-push" type="button">⬆ Push to Gist</button>
-          <button id="gist-pull" type="button">⬇ Pull from Gist</button>
-          <button id="gist-test" type="button">Test</button>
+          <button id="gist-push" type="button" title="Upload local progress to your Gist (creates one on first push)">⬆ Push to Gist</button>
+          <button id="gist-pull" type="button" title="Replace local progress with the Gist content (asks confirmation)">⬇ Pull from Gist</button>
+          <button id="gist-test" type="button" title="Verify the PAT works against the GitHub API">Test</button>
           <span id="gist-status" class="muted"></span>
         </div>
       </div>

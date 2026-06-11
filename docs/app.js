@@ -27,7 +27,8 @@ const KEY = {
   done: 'cka:done',
   bookmark: 'cka:bookmark',
   theme: 'cka:theme',
-  lastQuiz: 'cka:lastQuiz',
+  quizActive: 'cka:quiz:active',
+  quizSnapshots: 'cka:quiz:snapshots',
   docsLastUrl: 'cka:docs:lastUrl',
   llmSettings: 'cka:llm:settings',
   privacyAck: 'cka:llm:privacyAck',
@@ -1096,6 +1097,239 @@ function renderBrowse() {
 }
 
 // ---------- Quiz mode ----------
+
+// State.quiz contains Map (status) and Set (flagged, revealed) — convert to plain JSON.
+function serialiseQuiz(q) {
+  return {
+    schemaVersion: 1,
+    ids: [...q.ids],
+    idx: q.idx,
+    status: [...q.status.entries()],
+    flagged: [...q.flagged],
+    revealed: [...q.revealed],
+    deadline: q.deadline,
+    solutionsHidden: !!q.solutionsHidden,
+    totalMinutes: q.totalMinutes || 0,
+    startedAt: q.startedAt || Date.now(),
+    lastSavedAt: Date.now(),
+  };
+}
+
+function deserialiseQuiz(p) {
+  if (!p || p.schemaVersion !== 1) return null;
+  return {
+    ids: [...p.ids],
+    idx: p.idx | 0,
+    status: new Map(p.status || []),
+    flagged: new Set(p.flagged || []),
+    revealed: new Set(p.revealed || []),
+    deadline: p.deadline,
+    solutionsHidden: !!p.solutionsHidden,
+    totalMinutes: p.totalMinutes || 0,
+    startedAt: p.startedAt || Date.now(),
+  };
+}
+
+function saveActiveQuiz() {
+  if (!State.quiz) return;
+  try {
+    storageSet(KEY.quizActive, serialiseQuiz(State.quiz));
+    refreshQuizTabDot();
+  } catch (e) {
+    // localStorage quota etc — silently drop. User-visible feedback would be noise.
+  }
+}
+
+function clearActiveQuiz() {
+  storageSet(KEY.quizActive, null);
+  refreshQuizTabDot();
+}
+
+function refreshQuizTabDot() {
+  const dot = document.querySelector('.mode-tab[data-mode="quiz"] .tab-dot');
+  if (!dot) return;
+  const active = State.quiz || storageGet(KEY.quizActive, null);
+  dot.hidden = !active;
+}
+
+function getSnapshots() {
+  const raw = storageGet(KEY.quizSnapshots, []);
+  return Array.isArray(raw) ? raw : [];
+}
+
+function setSnapshots(list) {
+  storageSet(KEY.quizSnapshots, list);
+}
+
+function relativeTime(ms) {
+  const d = Date.now() - ms;
+  if (d < 60_000) return 'just now';
+  if (d < 3_600_000) return `${Math.floor(d / 60_000)}m ago`;
+  if (d < 86_400_000) return `${Math.floor(d / 3_600_000)}h ago`;
+  return `${Math.floor(d / 86_400_000)}d ago`;
+}
+
+function quizMinutesLeft(deadline) {
+  if (!deadline) return null;
+  const left = deadline - Date.now();
+  if (left <= 0) return 0;
+  return Math.ceil(left / 60_000);
+}
+
+function renderQuizResumePanel() {
+  const panel = document.getElementById('quiz-resume-panel');
+  if (!panel) return;
+  const saved = storageGet(KEY.quizActive, null);
+  const snaps = getSnapshots();
+  if (!saved && (!snaps || snaps.length === 0)) {
+    panel.hidden = true;
+    panel.innerHTML = '';
+    return;
+  }
+  panel.hidden = false;
+  panel.innerHTML = '';
+
+  if (saved) {
+    const card = el('div', { class: 'quiz-resume-active' });
+    const answered = (saved.status || []).length;
+    const total = (saved.ids || []).length;
+    const min = quizMinutesLeft(saved.deadline);
+    const expired = saved.deadline && min === 0;
+    const meta = expired
+      ? `${answered} / ${total} answered · ⏰ time expired · started ${relativeTime(saved.startedAt || Date.now())}`
+      : (saved.deadline
+        ? `${answered} / ${total} answered · ${min} min left · started ${relativeTime(saved.startedAt || Date.now())}`
+        : `${answered} / ${total} answered · no time limit · started ${relativeTime(saved.startedAt || Date.now())}`);
+    card.append(
+      el('div', { class: 'resume-headline' },
+        el('span', {}, '⏸ Saved quiz session'),
+        el('span', { class: 'muted' }, meta)
+      ),
+      el('div', { class: 'resume-actions' },
+        el('button', { type: 'button', class: 'primary', 'data-act': 'resume-active' }, '▶ Resume'),
+        el('button', { type: 'button', class: 'danger', 'data-act': 'discard-active' }, '✕ Discard'),
+      ),
+    );
+    panel.appendChild(card);
+  }
+
+  if (snaps && snaps.length) {
+    const wrap = el('div', { class: 'quiz-resume-snapshots' });
+    wrap.appendChild(el('h3', {}, '💾 Snapshots'));
+    const ul = el('ul', {});
+    snaps.forEach((s) => {
+      const answered = (s.status || []).length;
+      const total = (s.ids || []).length;
+      const min = quizMinutesLeft(s.deadline);
+      const expired = s.deadline && min === 0;
+      const metaStr = expired
+        ? `${answered}/${total} · ⏰ expired · saved ${relativeTime(s.lastSavedAt || s.startedAt)}`
+        : (s.deadline
+          ? `${answered}/${total} · ${min} min left · saved ${relativeTime(s.lastSavedAt || s.startedAt)}`
+          : `${answered}/${total} · no time limit · saved ${relativeTime(s.lastSavedAt || s.startedAt)}`);
+      ul.appendChild(el('li', {},
+        el('span', { class: 'snap-name' }, s.name || 'Untitled'),
+        el('span', { class: 'muted snap-meta' }, metaStr),
+        el('button', { type: 'button', 'data-act': 'resume-snap', 'data-snap-id': s.id, title: 'Resume this snapshot' }, '▶ Resume'),
+        el('button', { type: 'button', class: 'danger', 'data-act': 'delete-snap', 'data-snap-id': s.id, title: 'Delete this snapshot' }, '✕'),
+      ));
+    });
+    wrap.appendChild(ul);
+    panel.appendChild(wrap);
+  }
+
+  // Delegated handler
+  panel.onclick = (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    const act = btn.dataset.act;
+    if (act === 'resume-active') resumeActiveQuiz();
+    else if (act === 'discard-active') {
+      if (confirm('Discard the saved quiz session? This cannot be undone.')) {
+        clearActiveQuiz();
+        renderQuizResumePanel();
+      }
+    } else if (act === 'resume-snap') resumeSnapshot(btn.dataset.snapId);
+    else if (act === 'delete-snap') {
+      if (confirm('Delete this snapshot?')) {
+        deleteSnapshot(btn.dataset.snapId);
+        renderQuizResumePanel();
+      }
+    }
+  };
+}
+
+function resumeActiveQuiz() {
+  const saved = storageGet(KEY.quizActive, null);
+  if (!saved) return;
+  const restored = deserialiseQuiz(saved);
+  if (!restored) { alert("Saved session couldn't be loaded (schema mismatch). Discarding."); clearActiveQuiz(); renderQuizResumePanel(); return; }
+  State.quiz = restored;
+  document.getElementById('quiz-setup').hidden = true;
+  document.getElementById('quiz-active').hidden = false;
+  document.getElementById('quiz-summary').hidden = true;
+  document.getElementById('quiz-timer').hidden = !restored.deadline;
+  renderQuizCard();
+  if (restored.deadline) startQuizTimer();
+  refreshQuizTabDot();
+}
+
+function resumeSnapshot(id) {
+  const snaps = getSnapshots();
+  const idx = snaps.findIndex(s => s.id === id);
+  if (idx < 0) return;
+  // If an active session exists, ask before overwriting.
+  if (storageGet(KEY.quizActive, null)) {
+    if (!confirm('You have an auto-saved session. Discard it and resume this snapshot?')) return;
+  }
+  const payload = snaps[idx];
+  const restored = deserialiseQuiz(payload);
+  if (!restored) { alert("Snapshot couldn't be loaded."); return; }
+  // Move snapshot → active (snapshot list shrinks by one).
+  snaps.splice(idx, 1);
+  setSnapshots(snaps);
+  State.quiz = restored;
+  saveActiveQuiz();
+  document.getElementById('quiz-setup').hidden = true;
+  document.getElementById('quiz-active').hidden = false;
+  document.getElementById('quiz-summary').hidden = true;
+  document.getElementById('quiz-timer').hidden = !restored.deadline;
+  renderQuizCard();
+  if (restored.deadline) startQuizTimer();
+}
+
+function deleteSnapshot(id) {
+  setSnapshots(getSnapshots().filter(s => s.id !== id));
+}
+
+function saveAsSnapshot() {
+  if (!State.quiz) return;
+  const defaultName = `Snapshot ${new Date().toLocaleString()}`;
+  const name = prompt('Name this snapshot:', defaultName);
+  if (name === null) return; // cancelled
+  const trimmed = (name || defaultName).trim().slice(0, 80);
+  const payload = serialiseQuiz(State.quiz);
+  payload.name = trimmed;
+  payload.id = `snap-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const list = getSnapshots();
+  list.unshift(payload);
+  try {
+    setSnapshots(list);
+  } catch (e) {
+    alert(`Couldn't save snapshot: ${e.message}`);
+    return;
+  }
+  // The snapshot is now the source of truth; clear the active slot and exit to setup.
+  clearInterval(State.quizTimerHandle);
+  State.quiz = null;
+  clearActiveQuiz();
+  document.getElementById('quiz-active').hidden = true;
+  document.getElementById('quiz-timer').hidden = true;
+  document.getElementById('quiz-setup').hidden = false;
+  document.getElementById('quiz-summary').hidden = true;
+  renderQuizResumePanel();
+}
+
 function renderQuizSetup() {
   const list = document.getElementById('quiz-domain-list');
   list.innerHTML = '';
@@ -1109,6 +1343,7 @@ function renderQuizSetup() {
   document.getElementById('quiz-only-bookmarks').addEventListener('change', updateQuizEligibleCount);
   document.getElementById('quiz-only-undone').addEventListener('change', updateQuizEligibleCount);
   updateQuizEligibleCount();
+  renderQuizResumePanel();
 }
 
 function gatherQuizFilters() {
@@ -1160,6 +1395,7 @@ function startQuiz() {
     deadline,
     solutionsHidden,
     totalMinutes: tmin,
+    startedAt: Date.now(),
   };
 
   document.getElementById('quiz-setup').hidden = true;
@@ -1168,6 +1404,7 @@ function startQuiz() {
   document.getElementById('quiz-timer').hidden = !deadline;
   renderQuizCard();
   if (deadline) startQuizTimer();
+  saveActiveQuiz();
 }
 
 function renderQuizCard() {
@@ -1199,6 +1436,7 @@ function quizNext() {
   if (State.quiz.idx < State.quiz.ids.length - 1) {
     State.quiz.idx++;
     renderQuizCard();
+    saveActiveQuiz();
   } else {
     finishQuiz();
   }
@@ -1208,6 +1446,7 @@ function quizPrev() {
   if (State.quiz.idx > 0) {
     State.quiz.idx--;
     renderQuizCard();
+    saveActiveQuiz();
   }
 }
 
@@ -1229,12 +1468,14 @@ function quizFlag() {
   if (State.quiz.flagged.has(id)) State.quiz.flagged.delete(id);
   else State.quiz.flagged.add(id);
   renderQuizCard();
+  saveActiveQuiz();
 }
 
 function quizReveal() {
   const id = State.quiz.ids[State.quiz.idx];
   State.quiz.revealed.add(id);
   renderQuizCard();
+  saveActiveQuiz();
 }
 
 function startQuizTimer() {
@@ -1263,6 +1504,7 @@ function finishQuiz() {
   document.getElementById('quiz-timer').hidden = true;
   document.getElementById('quiz-active').hidden = true;
   document.getElementById('quiz-summary').hidden = false;
+  clearActiveQuiz();
 
   const q = State.quiz;
   const got = [...q.status.values()].filter(v => v === 'got').length;
@@ -1638,8 +1880,14 @@ function setMode(mode, opts = {}) {
     v.classList.toggle('active', want);
     v.hidden = !want;
   });
-  if (mode === 'quiz' && !document.getElementById('quiz-domain-list').firstChild) {
-    renderQuizSetup();
+  if (mode === 'quiz') {
+    if (!document.getElementById('quiz-domain-list').firstChild) {
+      renderQuizSetup();
+    } else if (!State.quiz) {
+      // Returning to Quiz with no active in-memory session — refresh the resume panel
+      // in case storage changed since last visit (e.g. cross-tab Push/Pull).
+      renderQuizResumePanel();
+    }
   }
   if (mode === 'browse') renderBrowse();
   if (mode === 'help') renderHelpView();
@@ -1674,6 +1922,18 @@ function renderHelpView() {
     return;
   }
   body.innerHTML = renderMarkdown(md);
+
+  // Rewrite repo-relative links → GitHub blob URLs (open in new tab).
+  // Same-page anchors (#…) and absolute URLs (https://…, mailto:…) are left untouched.
+  const REPO_BLOB = 'https://github.com/xooooooooox/cka-exercises/blob/main/';
+  body.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (!href) return;
+    if (/^([a-z][a-z0-9+.-]*:)|^#|^\/\//i.test(href)) return;
+    a.setAttribute('href', REPO_BLOB + href.replace(/^\.\//, ''));
+    a.setAttribute('target', '_blank');
+    a.setAttribute('rel', 'noopener noreferrer');
+  });
 
   // Assign id slugs to headings and build the TOC
   const headings = body.querySelectorAll('h1, h2, h3');
@@ -1902,6 +2162,9 @@ async function init() {
   // Header ☁ sync popover
   installSyncMenu();
 
+  // Reflect saved quiz state on the Quiz tab badge
+  refreshQuizTabDot();
+
   // Mobile: Filters / Outline toggle buttons (CSS hides these on desktop)
   document.getElementById('filter-bar-toggle')?.addEventListener('click', () => {
     const bar = document.getElementById('filter-bar');
@@ -1930,7 +2193,18 @@ async function init() {
   }
 
   // Quiz controls
-  document.getElementById('quiz-start-btn').addEventListener('click', startQuiz);
+  document.getElementById('quiz-start-btn').addEventListener('click', () => {
+    const saved = storageGet(KEY.quizActive, null);
+    if (saved) {
+      const answered = (saved.status || []).length;
+      const total = (saved.ids || []).length;
+      const ok = confirm(`A quiz is already in progress (${answered}/${total} answered). Discard it and start a new one?\n\nTip: cancel this dialog and click 💾 Save snapshot first if you want to keep it.`);
+      if (!ok) return;
+      clearActiveQuiz();
+    }
+    startQuiz();
+  });
+  document.getElementById('quiz-snapshot')?.addEventListener('click', saveAsSnapshot);
   document.getElementById('quiz-next').addEventListener('click', quizNext);
   document.getElementById('quiz-prev').addEventListener('click', quizPrev);
   document.getElementById('quiz-grade-got').addEventListener('click', () => quizGrade('got'));
@@ -1945,6 +2219,7 @@ async function init() {
     document.getElementById('quiz-summary').hidden = true;
     document.getElementById('quiz-setup').hidden = false;
     updateQuizEligibleCount();
+    renderQuizResumePanel();
   });
 }
 

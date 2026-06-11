@@ -1181,3 +1181,103 @@ kbd {
   #view-help.active { grid-template-columns: 1fr; }
   .help-toc { position: static; max-height: none; border-bottom: 1px solid var(--border); padding: 0 0 12px; margin-bottom: 12px; }
 }
+/* ============================================================ */
+/* Quiz resume panel + snapshots + tab dot                       */
+/* ============================================================ */
+
+/* Quiz tab "in-progress" dot */
+.mode-tab .tab-dot {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--accent);
+  font-size: 10px;
+  line-height: 1;
+  vertical-align: middle;
+  animation: pulse 2s ease-in-out infinite;
+}
+.mode-tab .tab-dot[hidden] { display: none; }
+
+/* Resume panel container */
+#quiz-resume-panel {
+  margin: 12px 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Auto-saved session card */
+.quiz-resume-active {
+  border: 1px solid var(--accent);
+  background: var(--bg-elev);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.quiz-resume-active .resume-headline {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.quiz-resume-active .resume-headline > span:first-child { font-weight: 600; }
+.quiz-resume-active .resume-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Snapshot list */
+.quiz-resume-snapshots {
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+.quiz-resume-snapshots h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.quiz-resume-snapshots ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.quiz-resume-snapshots li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+.quiz-resume-snapshots li:first-child { border-top: none; }
+.quiz-resume-snapshots .snap-name {
+  font-weight: 500;
+  flex: 0 0 auto;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quiz-resume-snapshots .snap-meta {
+  flex: 1;
+  font-size: 12px;
+}
+.quiz-resume-snapshots li button { white-space: nowrap; }
+
+/* Save-snapshot button spacing within quiz-end-row */
+.quiz-end-row {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+  .quiz-resume-snapshots li {
+    flex-wrap: wrap;
+  }
+  .quiz-resume-snapshots .snap-name { max-width: 100%; }
+}
