@@ -18,6 +18,15 @@ A 5-minute tour of the static SPA at <https://xooooooooox.github.io/cka-exercise
 
 Press <kbd>?</kbd> at any time for the keyboard shortcut cheatsheet.
 
+### 📲 Install as an app
+
+The webapp is a basic PWA — you can install it as a real app icon on iPhone and Mac.
+
+- **iPhone (Safari):** open the URL → tap Share → **Add to Home Screen** → name → Add. Tap the new icon to launch into a full-screen window (no Safari chrome).
+- **Mac (Safari 17+ on macOS Sonoma+):** open the URL → menu **File → Add to Dock** → Add. The app appears in your Dock and Launchpad, opens in its own window.
+
+The installed app is **online-only** (it still fetches `index.html` + `exercises.json` on each launch) but otherwise behaves identically: progress, bookmarks, saved answers, LLM grading, and ☁ Gist sync all work the same. Each install is its own browser profile, so progress on Mac and iPhone is **separate** unless you Push / Pull via Gist.
+
 ---
 
 ## 2. The Three Modes

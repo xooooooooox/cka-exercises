@@ -1281,3 +1281,111 @@ kbd {
   }
   .quiz-resume-snapshots .snap-name { max-width: 100%; }
 }
+
+/* ============================================================ */
+/* PWA standalone — iOS notch / Dynamic Island safe area         */
+/* ============================================================ */
+
+@supports (padding: env(safe-area-inset-top)) {
+  #app-header {
+    padding-top: calc(10px + env(safe-area-inset-top));
+    padding-left: calc(20px + env(safe-area-inset-left));
+    padding-right: calc(20px + env(safe-area-inset-right));
+  }
+}
+
+/* ============================================================ */
+/* Footer                                                         */
+/* ============================================================ */
+
+.app-footer {
+  text-align: center;
+  padding: 16px 20px;
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+  color: var(--fg-muted);
+  font-size: 12px;
+}
+.app-footer a { color: var(--fg-muted); }
+.app-footer a:hover { color: var(--accent); }
+@media print { .app-footer { display: none; } }
+
+/* ============================================================ */
+/* Mobile responsiveness pass                                     */
+/* ============================================================ */
+
+/* ≤768px — drop the keyboard-shortcuts toggle and the GitHub icon
+   (the latter lives in the footer now, so no functional loss).
+   Both are pure-desktop affordances. */
+@media (max-width: 768px) {
+  #help-toggle,
+  .header-right a.icon-btn[href*="github.com"] { display: none; }
+}
+
+/* ≤480px — narrow-phone tweaks (iPhone 17 Pro is 402pt; floor at 380pt). */
+@media (max-width: 480px) {
+  /* Mode tabs: emoji-only — collapse the text labels. We use a
+     transparent overflow trick instead of font-size:0 + ::first-letter
+     because emoji glyphs aren't reliably picked up by ::first-letter
+     across Safari/Chrome. */
+  .mode-tab {
+    padding: 4px 8px;
+    color: transparent;
+    text-shadow: 0 0 0 var(--fg);  /* keeps the emoji visible */
+    font-size: 18px;
+    overflow: hidden;
+    max-width: 2.2em;
+  }
+  .mode-tab.active { color: transparent; }
+  .mode-tab .tab-dot {
+    color: var(--accent);
+    text-shadow: none;
+    margin-left: 2px;
+  }
+  .header-right { gap: 4px; }
+  #app-header { gap: 8px; padding-left: 12px; padding-right: 12px; }
+  #quiz-timer { font-size: 12px; padding: 3px 7px; }
+
+  /* Quiz controls: 4 columns × 2 rows */
+  .quiz-controls {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .quiz-controls .spacer { display: none; }
+  .quiz-controls button {
+    padding: 8px 4px;
+    font-size: 12px;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .quiz-end-row {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .quiz-end-row button { width: 100%; }
+
+  /* Quiz setup screen — less horizontal padding */
+  .quiz-screen { padding: 0 12px; margin: 16px auto; }
+
+  /* ☁ Sync popover: keep inside viewport */
+  .sync-menu {
+    min-width: 0;
+    width: calc(100vw - 24px);
+    right: -8px;
+  }
+
+  /* Resume panel: stack the headline + actions vertically */
+  .quiz-resume-active .resume-headline {
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+  }
+  .quiz-resume-active .resume-actions { width: 100%; }
+  .quiz-resume-active .resume-actions button { flex: 1; }
+
+  /* Footer text scales down */
+  .app-footer { font-size: 11px; padding: 12px 12px; }
+}

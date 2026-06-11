@@ -6,9 +6,13 @@
   "description": "Static practice web app build tooling for cka-exercises",
   "scripts": {
     "build": "node scripts/build-exercises.mjs",
+    "build:icons": "node scripts/build-icons.mjs",
     "lint": "node scripts/lint-exercises.mjs",
     "link-check": "node scripts/check-links.mjs",
     "preserve": "node scripts/build-exercises.mjs",
     "serve": "python3 -m http.server 8080 --directory docs"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.0"
   }
 }

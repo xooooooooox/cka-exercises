@@ -18,6 +18,15 @@
 
 任意时候按 <kbd>?</kbd> 看快捷键。
 
+### 📲 安装到桌面
+
+这个 webapp 是基础 PWA，可以像原生 app 一样安装到 iPhone 和 Mac。
+
+- **iPhone（Safari）**：打开网址 → 点 Share（分享）→ **添加到主屏幕** → 命名 → 添加。点击新图标即可进入全屏（无 Safari 工具栏）。
+- **Mac（Safari 17+ / macOS Sonoma+）**：打开网址 → 菜单栏 **文件 → 添加到 Dock** → 添加。app 会出现在 Dock 和启动台中，独立窗口打开。
+
+安装后**仍需联网**（每次启动会拉 `index.html` + `exercises.json`），其它行为完全一致：进度、收藏、答案、LLM 批改、☁ Gist 同步都和浏览器版一模一样。每个安装实例是独立的 profile，所以 **Mac 和 iPhone 上的进度互相独立**，除非通过 Gist Push / Pull 同步。
+
 ---
 
 ## 2. 三种模式
