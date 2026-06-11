@@ -675,6 +675,7 @@ footer { padding: 12px 20px; border-top: 1px solid var(--border); background: va
   display: flex; align-items: center; justify-content: center;
   padding: 20px;
 }
+.overlay[hidden] { display: none; }      /* defeat the .overlay display:flex when hidden=true */
 .overlay-card {
   background: var(--bg);
   border: 1px solid var(--border);

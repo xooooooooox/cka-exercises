@@ -13,8 +13,9 @@ Currently 205 exercises across 5 domains. The repo has a small Node-based build 
 ```
 .
 ├── CLAUDE.md
-├── README.md / README_CN.md
-├── package.json                        # npm run build / serve / preserve
+├── README.md / README_CN.md            # engineering README (corpus + build + CI)
+├── EXAM_GUIDE.md / EXAM_GUIDE_CN.md    # study index for CKA exam takers
+├── package.json                        # npm run build / serve / preserve / lint / link-check
 ├── assets/                             # killer.sh Simulator A/B PDFs
 ├── exercises/                          # 5 markdown files, one per curriculum domain
 │   ├── cluster-architecture.md         # 25% — 100 exercises
@@ -24,11 +25,13 @@ Currently 205 exercises across 5 domains. The repo has a small Node-based build 
 │   └── troubleshooting.md              # 30% —  24 exercises
 ├── docs/                               # GitHub Pages source (the SPA)
 │   ├── index.html
-│   ├── app.js                          # ~1000 LOC, no framework
-│   ├── style.css                       # light/dark theme, ~500 LOC
+│   ├── app.js                          # ~1100 LOC, no framework
+│   ├── style.css                       # light/dark theme + print, ~800 LOC
 │   └── exercises.json                  # gitignored — generated artifact
 ├── scripts/
 │   ├── build-exercises.mjs             # MD → JSON build (used by CI)
+│   ├── lint-exercises.mjs              # exercise-format linter (used by CI)
+│   ├── check-links.mjs                 # kubernetes.io URL ping (used by weekly CI)
 │   ├── apply-enriched-tasks.mjs        # one-shot: killer.sh task-body enrichment
 │   ├── apply-killersh-polish.mjs       # one-shot: docs hints + title rewrites
 │   └── k8s-docs-map.json               # kubernetes.io breadcrumb → URL lookup
@@ -38,7 +41,9 @@ Currently 205 exercises across 5 domains. The repo has a small Node-based build 
     └── link-check.yml                  # weekly: ping every kubernetes.io URL
 ```
 
-Only `build-exercises.mjs` runs in CI. The two `apply-*.mjs` scripts are idempotent one-shots kept for provenance.
+`build-exercises.mjs`, `lint-exercises.mjs`, and `check-links.mjs` run in CI. The two `apply-*.mjs` scripts are idempotent one-shots kept for provenance.
+
+The split between `README.md` (engineering) and `EXAM_GUIDE.md` (study index) is intentional: anyone hitting the repo from a code/contribute angle reads README; anyone landing here to study for the CKA exam reads EXAM_GUIDE. Don't move exam-prep content (dotfiles, sync script, practice-lab links, curriculum table) back into README.
 
 ## Exercise File Format
 

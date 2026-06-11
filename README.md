@@ -1,166 +1,78 @@
-# CKA Exam Exercises
+# cka-exercises
 
 [Chinese version](README_CN.md)
 
-Certified Kubernetes Administrator (CKA) exam preparation, based on [CKA Curriculum v1.35](https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.35.pdf).
+A curated CKA (Certified Kubernetes Administrator) practice corpus, collected from the upstream [chadmcrowell/CKA-Exercises](https://github.com/chadmcrowell/CKA-Exercises) repository, the killer.sh Simulator A/B PDFs, and historical CKA exam questions sourced from study communities. Cleaned, normalized, tagged by source, and exposed in two forms:
 
-Exercises sourced from [chadmcrowell/CKA-Exercises](https://github.com/chadmcrowell/CKA-Exercises), reorganized by exam curriculum structure. Each exercise is annotated with the corresponding [kubernetes.io](https://kubernetes.io/docs/) documentation link.
+- **Markdown files** under [`exercises/`](exercises/) — one file per CKA curriculum domain, ~205 H3 entries total.
+- **Static SPA** in [`docs/`](docs/) — searchable browse / quiz / docs-tree practice. Built and deployed via GitHub Actions.
 
-## CKA Exam Curriculum
-
-| Domain | Weight | Exercises |
-|--------|--------|-----------|
-| [Cluster Architecture, Installation and Configuration](exercises/cluster-architecture.md) | 25% | 100 |
-| [Workloads & Scheduling](exercises/scheduling.md) | 15% | 39 |
-| [Services & Networking](exercises/networking.md) | 20% | 24 |
-| [Storage](exercises/storage.md) | 10% | 18 |
-| [Troubleshooting](exercises/troubleshooting.md) | 30% | 24 |
-
-Exercise tags:
-- **[CKA Past Exam]** — historical CKA exam questions integrated under the relevant curriculum sections (sourced from past-exam collections circulating in study communities)
-- **[Killer.sh A-Qn / B-Qn]** — questions from the killer.sh CKA simulator (Simulator A & B), grouped in a dedicated section at the end of each file. Source PDFs are in [`assets/`](assets/).
+> 👉 **Preparing for the CKA exam?** Start at [`EXAM_GUIDE.md`](EXAM_GUIDE.md) — it's the study index (curriculum, tag scheme, pre-exam dotfiles, sync script, references, other practice resources).
 
 ## 🎯 Practice Web App
 
-A static SPA in [`docs/`](docs/) gives you searchable browse / quiz / docs-tree practice across all ~205 exercises. Filter by domain, tag (CKA Past Exam / Killer.sh A / B / general), bookmarks, or undone state. Quiz mode pulls random questions with optional time limits (30 / 60 / 120 min), self-graded scoring, and end-of-session summary. Docs mode mirrors the kubernetes.io navigation hierarchy and reverse-links each page to the exercises that drill it.
+**Live site:** <https://xooooooooox.github.io/cka-exercises/>
 
-**Live site:** Pushed to `main`, GitHub Pages serves the app at `https://<owner>.github.io/cka-exercises/` (enable in repo Settings → Pages → Source = GitHub Actions).
+A static SPA in [`docs/`](docs/) gives you searchable browse / quiz / docs-tree practice across all ~205 exercises. Filter by domain, tag (`CKA Past Exam` / `Killer.sh A / B` / general), bookmarks, or undone state. Quiz mode pulls random questions with optional time limits (30 / 60 / 120 min), self-graded scoring, and end-of-session summary. Docs mode mirrors the kubernetes.io navigation hierarchy and reverse-links each page to the exercises that drill it.
 
-**Run locally:**
+GitHub Pages serves `docs/` automatically on push to `main` via [`.github/workflows/build-and-deploy-docs.yml`](.github/workflows/build-and-deploy-docs.yml) (enable in repo Settings → Pages → Source = GitHub Actions).
 
-```shell
-npm run serve   # auto-builds docs/exercises.json then serves docs/ on :8080
-# open http://localhost:8080
-```
-
-`docs/exercises.json` is a build artifact regenerated from `exercises/*.md` on every `npm run build`/`npm run serve` and on each Pages deploy. It is gitignored, so it never appears in PRs.
-
-Progress (✓ Done, ⭐ Bookmark, theme) persists in `localStorage`. Markdown is rendered via Marked.js loaded from CDN — no build step at runtime.
+Progress (✓ Done, ⭐ Bookmark, theme, last-selected docs page) persists in `localStorage`. Markdown is rendered via Marked.js loaded from CDN — no build step at runtime.
 
 ## Project Structure
 
 ```
 .
-├── README.md
-├── README_CN.md
-├── package.json                        # npm run build / npm run serve
-├── assets/                             # killer.sh Simulator A/B PDFs (provided after CKA registration)
-├── docs/                               # Practice SPA (GitHub Pages source)
+├── README.md / README_CN.md           # this file — engineering README
+├── EXAM_GUIDE.md / EXAM_GUIDE_CN.md   # study index for CKA exam takers
+├── CLAUDE.md                          # Claude Code guidance for this repo
+├── package.json                       # npm run build / lint / link-check / serve
+├── assets/                            # killer.sh Simulator A/B PDFs
+├── docs/                              # Practice SPA (GitHub Pages source)
 │   ├── index.html
 │   ├── app.js
 │   ├── style.css
-│   └── exercises.json                  # gitignored — generated by scripts/build-exercises.mjs
-├── exercises/                          # Exercises organized by exam curriculum
-│   ├── cluster-architecture.md         # Cluster Architecture, Installation & Configuration (25%)
-│   ├── scheduling.md                   # Workloads & Scheduling (15%)
-│   ├── networking.md                   # Services & Networking (20%)
-│   ├── storage.md                      # Storage (10%)
-│   └── troubleshooting.md              # Troubleshooting (30%)
+│   └── exercises.json                 # gitignored — generated by scripts/build-exercises.mjs
+├── exercises/                         # Source markdown — one file per CKA domain
+│   ├── cluster-architecture.md        # 25% — 100 exercises
+│   ├── scheduling.md                  # 15% —  39 exercises
+│   ├── networking.md                  # 20% —  24 exercises
+│   ├── storage.md                     # 10% —  18 exercises
+│   └── troubleshooting.md             # 30% —  24 exercises
 └── scripts/
-    ├── build-exercises.mjs             # MD → JSON extractor (runs on every build / Pages deploy)
-    ├── apply-enriched-tasks.mjs        # one-shot: enrich killer.sh task bodies from PDF Q&A
-    ├── apply-killersh-polish.mjs       # one-shot: add docs hints + shorten titles for killer.sh
-    └── k8s-docs-map.json               # kubernetes.io breadcrumb → URL lookup (used by polish script)
+    ├── build-exercises.mjs            # MD → JSON extractor (runs on every build / Pages deploy)
+    ├── lint-exercises.mjs             # validates exercise markdown format
+    ├── check-links.mjs                # pings every kubernetes.io URL
+    ├── apply-enriched-tasks.mjs       # one-shot: enrich killer.sh task bodies from PDF Q&A
+    ├── apply-killersh-polish.mjs      # one-shot: add docs hints + shorten titles for killer.sh
+    └── k8s-docs-map.json              # kubernetes.io breadcrumb → URL lookup (used by polish script)
 ```
 
-The two `apply-*.mjs` scripts are idempotent one-shots kept as provenance for how the killer.sh exercises were enriched. Only `build-exercises.mjs` runs in CI.
+The two `apply-*.mjs` scripts are idempotent one-shots kept as provenance for how the killer.sh exercises were enriched. Only `build-exercises.mjs` and `lint-exercises.mjs` run in CI.
 
-## Pre-exam Setup
+## Running Locally
 
-The CKA exam is an online proctored exam on the PSI platform. The following configurations should be applied immediately after the exam starts to speed up operations.
-
-> **Important:** Each question is solved on a different remote host (ssh'd from the candidate terminal). Configuring only the host terminal is not enough — use the [sync script](#sync-configs-to-remote-hosts) below to push your dotfiles to every target machine before you start.
-
-### .bashrc
+Requires **Node 20+** and Python 3 (for the static file server).
 
 ```shell
-# setup kubectl autocompletion
-source <(kubectl completion bash)
+npm run serve        # auto-builds docs/exercises.json then serves docs/ on :8080
+# open http://localhost:8080
 
-# aliases
-alias cl=clear
-alias vi=vim
-alias k=kubectl
-complete -o default -F __start_kubectl k
-
-# load extra aliases (helm, etc.) if present
-[ -f ~/.bash_aliases ] && . ~/.bash_aliases
+npm run build        # just regenerate docs/exercises.json
+npm run lint         # validate exercises/*.md format
+npm run link-check   # ping every kubernetes.io URL (slow — ~106 URLs)
 ```
 
-### .bash_aliases
+`docs/exercises.json` is a build artifact regenerated from `exercises/*.md` on every `npm run build` / `npm run serve` and on each Pages deploy. It is gitignored, so it never appears in PRs.
 
-```shell
-alias cl=clear
-alias vi=vim
-alias h=helm
-if command -v helm >/dev/null 2>&1; then
-    complete -o default -F __start_helm h
-fi
-```
+## CI
 
-### .vimrc
+Three GitHub Actions workflows:
 
-```vim
-set et                  " Expand Tab to Space
-set ts=2                " Tab equals 2 Spaces
-set sw=2                " Auto-indent unit is 2 spaces
-set nu                  " Enable line numbers
-set ai                  " Enable auto-indent
-inoremap jk <Esc>       " Use jk to exit insert mode
-```
+- **`build-and-deploy-docs.yml`** — on push to `main`: lint, build `exercises.json`, deploy `docs/` to Pages.
+- **`lint.yml`** — on push to any non-main branch and on PRs: lint + verify the build still works.
+- **`link-check.yml`** — weekly Monday cron + manual: pings every kubernetes.io URL referenced by an exercise.
 
-### .inputrc
+## Contributing
 
-```
-set editing-mode vi             " Use vim editing mode
-set show-mode-in-prompt on      " Show current vim mode in prompt
-$if mode=vi                     " Set vim keybindings
-    set keymap vi-insert
-    "jk": vi-movement-mode
-    "\C-n": next-history
-    "\C-p": previous-history
-$endif
-```
-
-### .tmux.conf
-
-```
-set -g display-panes-time 3000
-set-window-option -g mode-keys vi
-```
-
-### Sync configs to remote hosts
-
-In the exam, each question is solved on a different remote host you reach via ssh. Configuring your dotfiles only on the candidate terminal isn't enough — every target host has its own home directory. Use this script to push your dotfiles to all `cka*` hosts (the exam adds them to `/etc/hosts`):
-
-```shell
-#!/usr/bin/env bash
-
-FILES=(
-  "$HOME/.bash_aliases"
-  "$HOME/.vimrc"
-  "$HOME/.inputrc"
-  "$HOME/.tmux.conf"
-)
-
-for host in $(awk '/cka/{print $2}' /etc/hosts); do
-  echo ">>> $host"
-  for file in "${FILES[@]}"; do
-    scp "$file" "$host:~"
-  done
-done
-```
-
-Save it as e.g. `~/sync-dotfiles.sh`, `chmod +x ~/sync-dotfiles.sh`, then run once at the start of the exam.
-
-## References
-
-- [CKA Curriculum v1.35 (PDF)](https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.35.pdf)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
-- [kubectl Cheat Sheet](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
-
-## Additional Practice Labs
-
-- **[Killercoda CKA Mock Exam (sachin)](https://killercoda.com/sachin/course/CKA)** — 79+ interactive browser-based scenarios covering the full CKA curriculum (login required)
-- **[Killer.sh CKA Exam Simulator](https://killer.sh)** — official CKA simulator (2 sessions included with exam registration). Simulator A & B PDFs in [`assets/`](assets/); 34 questions integrated into exercises with `[Killer.sh A-Qn]` / `[Killer.sh B-Qn]` tags
-- [Killercoda CKA Exercises (chadmcrowell)](https://killercoda.com/cka)
+See `CLAUDE.md` for the exercise-file format spec, tag conventions, and common-task recipes. PRs that touch `exercises/*.md` should be lint-clean (`npm run lint`) before merging.
