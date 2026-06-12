@@ -1,0 +1,251 @@
+name: Answer-fix → draft PR
+
+# Manual-only. Maintainer triggers from the Actions tab.
+# Two run modes:
+#   - Single: pass `issue_number`; processes exactly that one.
+#   - Batch:  leave `issue_number` blank; the workflow discovers every open
+#             issue carrying the `answer-fix` label that doesn't already have
+#             a draft PR branch upstream, capped by `max_issues`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue # to triage. Leave blank to BATCH-process every open answer-fix issue.'
+        required: false
+        type: string
+      provider:
+        description: 'LLM provider for the fix.'
+        required: true
+        default: copilot
+        type: choice
+        options:
+          - copilot
+          - anthropic
+          - openai
+          - deepseek
+          - qwen
+          - doubao
+          - ollama
+      model:
+        description: 'Model id (blank = per-provider default).'
+        required: false
+        type: string
+      max_issues:
+        description: 'Safety cap for batch mode (default 10).'
+        required: false
+        default: '10'
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  models: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      issues: ${{ steps.list.outputs.issues }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_INPUT: ${{ inputs.issue_number }}
+          MAX_ISSUES: ${{ inputs.max_issues }}
+        run: |
+          set -euo pipefail
+          if [ -n "$ISSUE_INPUT" ]; then
+            echo "issues=[$ISSUE_INPUT]" >> "$GITHUB_OUTPUT"
+            { echo "### Discovered issues"; echo "Single: [$ISSUE_INPUT]"; } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          ALL=$(gh issue list --state open --label answer-fix \
+                  --limit "$MAX_ISSUES" --json number -q '.[].number')
+          PICKED=()
+          for N in $ALL; do
+            if git ls-remote --exit-code origin "refs/heads/answer-fix/${N}-*" >/dev/null 2>&1; then
+              continue
+            fi
+            PICKED+=("$N")
+          done
+          if [ "${#PICKED[@]}" -eq 0 ]; then
+            JSON='[]'
+          else
+            JSON=$(printf '[%s]' "$(IFS=,; echo "${PICKED[*]}")")
+          fi
+          echo "issues=$JSON" >> "$GITHUB_OUTPUT"
+          { echo "### Discovered issues"; echo "Picked: $JSON"; } >> "$GITHUB_STEP_SUMMARY"
+
+  process:
+    needs: discover
+    if: needs.discover.outputs.issues != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        issue: ${{ fromJson(needs.discover.outputs.issues) }}
+    env:
+      ISSUE: ${{ matrix.issue }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate label
+        run: |
+          set -euo pipefail
+          gh issue view "$ISSUE" --json title,body,labels,number > /tmp/issue.json
+          jq -e '.labels | map(.name) | index("answer-fix")' /tmp/issue.json >/dev/null \
+            || { gh issue comment "$ISSUE" --body "🚫 The \`answer-fix\` label is required to run this workflow."; exit 1; }
+
+      - name: Skip if a PR branch already exists
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code origin "refs/heads/answer-fix/${ISSUE}-*" >/dev/null 2>&1; then
+            EXISTING=$(git ls-remote origin "refs/heads/answer-fix/${ISSUE}-*" | head -1 | awk '{print $2}' | sed 's|refs/heads/||')
+            gh issue comment "$ISSUE" --body "ℹ️ A draft PR branch already exists for this issue: \`${EXISTING}\`. Skipping."
+            echo "skip=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+      - name: Extract context (env)
+        if: env.skip != '1'
+        run: |
+          set -euo pipefail
+          node scripts/answer-fix/extract-context.mjs --env < /tmp/issue.json > /tmp/ctx.env
+          cat /tmp/ctx.env >> "$GITHUB_ENV"
+
+      - name: Render prompt
+        if: env.skip != '1'
+        run: |
+          set -euo pipefail
+          node scripts/answer-fix/extract-context.mjs \
+            --prompt-template .github/answer-fix/prompt.md < /tmp/issue.json > /tmp/prompt.md
+
+      - name: Resolve provider routing
+        if: env.skip != '1'
+        id: route
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY:  ${{ secrets.DEEPSEEK_API_KEY }}
+          QWEN_API_KEY:      ${{ secrets.QWEN_API_KEY }}
+          DOUBAO_API_KEY:    ${{ secrets.DOUBAO_API_KEY }}
+          PROVIDER:          ${{ inputs.provider }}
+          MODEL_INPUT:       ${{ inputs.model }}
+        run: |
+          set -eo pipefail
+          M=""; B=""; K=""; KENV=""
+          case "$PROVIDER" in
+            copilot)
+              M="openai/gpt-4o-mini"
+              B="https://models.github.ai/inference"
+              K="${{ github.token }}"
+              KENV="OPENAI_API_KEY";;
+            anthropic)
+              M="anthropic/claude-opus-4-7"
+              K="$ANTHROPIC_API_KEY"; KENV="ANTHROPIC_API_KEY";;
+            openai)
+              M="openai/gpt-4o"
+              K="$OPENAI_API_KEY"; KENV="OPENAI_API_KEY";;
+            deepseek)
+              M="deepseek/deepseek-chat"
+              K="$DEEPSEEK_API_KEY"; KENV="DEEPSEEK_API_KEY";;
+            qwen)
+              M="openai/qwen-max"
+              B="https://dashscope.aliyuncs.com/compatible-mode/v1"
+              K="$QWEN_API_KEY"; KENV="OPENAI_API_KEY";;
+            doubao)
+              M="openai/doubao-pro-32k"
+              B="https://ark.cn-beijing.volces.com/api/v3"
+              K="$DOUBAO_API_KEY"; KENV="OPENAI_API_KEY";;
+            ollama)
+              M="ollama/llama3.1"
+              B="http://localhost:11434"
+              K="dummy"; KENV="OPENAI_API_KEY";;
+          esac
+          [ -n "$MODEL_INPUT" ] && M="$MODEL_INPUT"
+          if [ -z "$K" ] && [ "$PROVIDER" != "ollama" ]; then
+            gh issue comment "$ISSUE" --body "🚫 Provider \`${PROVIDER}\` selected but its API key secret is missing. Add the corresponding \`*_API_KEY\` to repo secrets or pick a different provider."
+            exit 1
+          fi
+          echo "model=$M" >> "$GITHUB_OUTPUT"
+          echo "::add-mask::$K"
+          echo "${KENV}=$K" >> "$GITHUB_ENV"
+          if [ -n "$B" ]; then echo "OPENAI_API_BASE=$B" >> "$GITHUB_ENV"; fi
+
+      - name: Install aider
+        if: env.skip != '1'
+        run: pipx install aider-chat
+
+      - name: Run aider
+        if: env.skip != '1'
+        run: |
+          set -eo pipefail
+          aider \
+            --model "${{ steps.route.outputs.model }}" \
+            --message "$(cat /tmp/prompt.md)" \
+            --yes-always \
+            --no-auto-commits \
+            --no-stream \
+            "${SOURCE_FILE}" CLAUDE.md \
+            > /tmp/aider.log 2>&1 || true
+          tail -80 /tmp/aider.log
+
+      - name: Bail if no changes
+        if: env.skip != '1'
+        run: |
+          set -eo pipefail
+          if git diff --quiet; then
+            BODY="🤷 No obvious fix to apply (provider=${{ inputs.provider }}, model=${{ steps.route.outputs.model }}). Please review manually."$'\n\n'"<details><summary>Editor log</summary>"$'\n\n'"\`\`\`"$'\n'"$(tail -80 /tmp/aider.log)"$'\n'"\`\`\`"$'\n\n'"</details>"
+            gh issue comment "$ISSUE" --body "$BODY"
+            echo "skip=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Tighten file scope
+        if: env.skip != '1'
+        run: |
+          set -eo pipefail
+          CHANGED=$(git diff --name-only | sort -u)
+          EXPECTED="${SOURCE_FILE}"
+          if [ "$CHANGED" != "$EXPECTED" ]; then
+            gh issue comment "$ISSUE" --body "🚫 The editor touched files outside \`${EXPECTED}\`:"$'\n\n'"\`\`\`"$'\n'"$CHANGED"$'\n'"\`\`\`"$'\n\n'"Reverted."
+            git checkout -- .
+            exit 1
+          fi
+
+      - name: Lint + build (guardrail)
+        if: env.skip != '1'
+        run: |
+          node scripts/lint-exercises.mjs
+          node scripts/build-exercises.mjs
+
+      - name: Open draft PR
+        if: env.skip != '1'
+        run: |
+          set -eo pipefail
+          BRANCH="answer-fix/${ISSUE}-${EXERCISE_ID}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add exercises/
+          git commit -m "fix(corpus): #${ISSUE} ${ISSUE_TYPE} — ${EXERCISE_ID}"
+          git push origin "$BRANCH"
+          BODY="Fixes #${ISSUE}."$'\n\n'"Auto-drafted via aider (provider=${{ inputs.provider }}, model=${{ steps.route.outputs.model }})."$'\n'"Maintainer review required — verify the edit matches the reporter's intent and the kubernetes.io docs link."$'\n\n'"<details><summary>Editor log</summary>"$'\n\n'"\`\`\`"$'\n'"$(tail -80 /tmp/aider.log)"$'\n'"\`\`\`"$'\n\n'"</details>"
+          PR_URL=$(gh pr create --draft --base main --head "$BRANCH" \
+            --title "fix(corpus): #${ISSUE} ${ISSUE_TYPE} — ${EXERCISE_ID}" \
+            --body "$BODY")
+          gh issue comment "$ISSUE" --body "🤖 Draft PR opened: ${PR_URL}"
