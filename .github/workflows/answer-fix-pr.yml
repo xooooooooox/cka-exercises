@@ -203,6 +203,18 @@ jobs:
           echo "${KENV}=$K" >> "$GITHUB_ENV"
           if [ -n "$B" ]; then echo "OPENAI_API_BASE=$B" >> "$GITHUB_ENV"; fi
 
+      - name: Extract H3 snippet
+        if: env.skip != '1'
+        run: |
+          set -eo pipefail
+          node scripts/answer-fix/h3-range.mjs \
+            --extract --source="$SOURCE_FILE" --id="$EXERCISE_ID" \
+            > /tmp/snippet.md
+          echo "Snippet: $(wc -l < /tmp/snippet.md) lines, $(wc -c < /tmp/snippet.md) bytes."
+          echo "::group::Snippet preview"
+          head -40 /tmp/snippet.md
+          echo "::endgroup::"
+
       - name: Install aider
         if: env.skip != '1'
         run: pipx install aider-chat
@@ -218,7 +230,9 @@ jobs:
             --yes-always \
             --no-auto-commits \
             --no-stream \
-            "${SOURCE_FILE}" CLAUDE.md \
+            --no-gitignore \
+            --map-tokens 0 \
+            /tmp/snippet.md \
             > /tmp/aider.log 2>&1
           RC=$?
           echo "exit_code=$RC" >> "$GITHUB_OUTPUT"
@@ -245,11 +259,29 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Fail loudly if aider crashed
-        if: env.skip != '1' && steps.aider.outputs.exit_code != '0'
+      - name: Fail loudly if aider crashed or hit the model
+        if: env.skip != '1'
         run: |
-          gh issue comment "$ISSUE" --body "🚨 The editor (aider, provider=\`${{ inputs.provider }}\`, model=\`${{ steps.route.outputs.model }}\`) crashed with exit code ${{ steps.aider.outputs.exit_code }}. See the run's \`aider-log-issue-${ISSUE}\` artifact for the full log."
-          exit 1
+          if [ "${{ steps.aider.outputs.exit_code }}" != "0" ]; then
+            gh issue comment "$ISSUE" --body "🚨 The editor (aider, provider=\`${{ inputs.provider }}\`, model=\`${{ steps.route.outputs.model }}\`) crashed with exit code ${{ steps.aider.outputs.exit_code }}. See the run's \`aider-log-issue-${ISSUE}\` artifact for the full log."
+            exit 1
+          fi
+          # Aider exits 0 even when litellm exhausts retries on a doomed request.
+          # Catch those patterns explicitly so we surface a real failure instead
+          # of silently flowing through `Bail if no changes` (which then mis-blames
+          # the prompt).
+          if grep -qE "Request body too large|litellm\.APIError|APIError: OpenAIException|Rate limit" /tmp/aider.log; then
+            gh issue comment "$ISSUE" --body "🚨 The model \`${{ steps.route.outputs.model }}\` rejected the request (token cap, rate limit, or auth). Try a different provider/model. Log excerpt is in the run's \`aider-log-issue-${ISSUE}\` artifact."
+            exit 1
+          fi
+
+      - name: Splice H3 snippet back
+        if: env.skip != '1'
+        run: |
+          set -eo pipefail
+          node scripts/answer-fix/h3-range.mjs \
+            --splice --source="$SOURCE_FILE" --id="$EXERCISE_ID" \
+            --snippet=/tmp/snippet.md
 
       - name: Bail if no changes
         if: env.skip != '1'
