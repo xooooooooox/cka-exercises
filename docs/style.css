@@ -1149,8 +1149,39 @@ body.answer-fullscreen-active { overflow: hidden; }
   letter-spacing: 0.6px; color: var(--fg-muted);
 }
 .report-required { color: var(--danger); }
-#report-whats-wrong,
-#report-suggested {
+.report-type-group {
+  display: flex; flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 6px;
+}
+.report-type-group label {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  font-size: 13px; line-height: 1.4;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.report-type-group label:hover { background: var(--bg-elev); color: var(--fg); }
+.report-type-group input[type="radio"] {
+  margin-top: 2px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.report-type-group label code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  background: var(--bg-elev);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+/* Checked highlight — :has() works in modern Safari/Chrome/Firefox. */
+.report-type-group label:has(input[type="radio"]:checked) {
+  color: var(--fg);
+  font-weight: 600;
+  background: var(--bg-elev);
+}
+#report-additional {
   width: 100%;
   font-family: inherit;
   font-size: 13px; line-height: 1.5;
@@ -1161,8 +1192,7 @@ body.answer-fullscreen-active { overflow: hidden; }
   border-radius: var(--radius);
   resize: vertical;
 }
-#report-whats-wrong:focus,
-#report-suggested:focus {
+#report-additional:focus {
   outline: 2px solid var(--accent); outline-offset: -1px;
   border-color: var(--accent);
 }

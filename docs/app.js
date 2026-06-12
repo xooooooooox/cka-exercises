@@ -157,8 +157,12 @@ function getAnswer(exerciseId) { return storageGet(KEY.answerPrefix + exerciseId
 function setAnswer(exerciseId, payload) { storageSet(KEY.answerPrefix + exerciseId, payload); }
 function getFixDraft(id) { return storageGet(KEY.fixDraftPrefix + id, null); }
 function setFixDraft(id, payload) {
-  // Drop empty drafts entirely so they don't show in Backup.
-  if (!payload || (!payload.whatsWrong && !payload.suggested)) {
+  // Drop empty drafts entirely so they don't show in Backup. A draft is empty
+  // if no type was chosen (or "other" with no additional text) and no
+  // free-text was entered.
+  const empty = !payload
+    || (!payload.additional && (!payload.type || payload.type === 'other'));
+  if (empty) {
     try { localStorage.removeItem(KEY.fixDraftPrefix + id); } catch {}
   } else {
     storageSet(KEY.fixDraftPrefix + id, payload);
@@ -1392,23 +1396,124 @@ function extractReferenceCode(solutionMd) {
   return m ? m[1].trimEnd() : solutionMd.trim();
 }
 
+// Issue-type catalog. Each option carries the templated bodies used to build
+// the GitHub Issue, plus a GitHub label and an optional list of keywords used
+// to auto-pre-select the type from a low-score LLM verdict's "missed" list.
+// `whatsWrong: null` marks "Other" — it forces the user to put a note in the
+// Additional Context field before they can submit.
+const REPORT_TYPES = [
+  {
+    id: 'verification-bundled',
+    label: 'Reference bundles verification commands with the actual answer',
+    ghLabel: 'kind/verification-bundled',
+    autoMissedKeywords: [
+      'auth can-i', 'can-i', 'verify', 'verification', 'verifying',
+      'kubectl get', 'kubectl describe', 'kubectl logs', 'check ',
+    ],
+    whatsWrong:
+      "The reference solution's code-block includes verification commands " +
+      "(e.g. `kubectl auth can-i`, `kubectl get`, `kubectl describe`) that " +
+      "are not part of the task being asked. The LLM grader treats them as " +
+      "required steps and penalises correct answers that omit them.",
+    suggested:
+      "Move verification commands out of the main solution code-block, or " +
+      "split them with a `---` divider so the grader treats them as " +
+      "supplementary. Keep only the commands that directly satisfy the task.",
+  },
+  {
+    id: 'wrong-resource',
+    label: 'Reference uses a wrong resource name / namespace / kind',
+    ghLabel: 'kind/wrong-resource',
+    autoMissedKeywords: [],
+    whatsWrong:
+      "The reference solution's resource details (name, namespace, kind, " +
+      "label, etc.) don't match what the task asks for, so even a literally " +
+      "correct answer is graded as incorrect.",
+    suggested:
+      "Align the reference resource name / namespace / kind with the task " +
+      "statement.",
+  },
+  {
+    id: 'outdated-flag',
+    label: 'Reference uses an outdated or wrong kubectl flag / syntax',
+    ghLabel: 'kind/outdated-flag',
+    autoMissedKeywords: ['deprecated', 'unknown flag'],
+    whatsWrong:
+      "The reference uses a kubectl flag or syntax that's been deprecated, " +
+      "renamed, or doesn't exist in the targeted k8s version.",
+    suggested:
+      "Replace with the current flag/syntax. Verify against " +
+      "`kubectl <verb> -h` for the targeted version.",
+  },
+  {
+    id: 'missing-step',
+    label: 'Reference is incomplete (missing a required step)',
+    ghLabel: 'kind/missing-step',
+    autoMissedKeywords: [],
+    whatsWrong:
+      "The reference solution doesn't actually fulfil the task — at least " +
+      "one required step is missing or stops short.",
+    suggested: "Add the missing step(s) so the reference is end-to-end correct.",
+  },
+  {
+    id: 'typo',
+    label: 'Typo / formatting issue',
+    ghLabel: 'kind/typo',
+    autoMissedKeywords: [],
+    whatsWrong:
+      "There's a typo or formatting issue in the reference (broken code " +
+      "fence, wrong indentation, wrong character, etc.).",
+    suggested: "Apply a small text correction.",
+  },
+  {
+    id: 'other',
+    label: 'Other (describe below)',
+    ghLabel: 'kind/other',
+    autoMissedKeywords: [],
+    whatsWrong: null,
+    suggested: null,
+  },
+];
+
+function getReportType(id) {
+  return REPORT_TYPES.find(t => t.id === id) || REPORT_TYPES[REPORT_TYPES.length - 1];
+}
+
+function autoDetectType(ctx) {
+  if (!ctx || !ctx.verdict || !Array.isArray(ctx.verdict.missed)) return null;
+  const haystack = ctx.verdict.missed.join(' ').toLowerCase();
+  for (const t of REPORT_TYPES) {
+    if (t.autoMissedKeywords && t.autoMissedKeywords.some(k => haystack.includes(k))) {
+      return t.id;
+    }
+  }
+  return null;
+}
+
 function renderReportMarkdown(ex, draft, ctx) {
   const exerciseHash = `https://xooooooooox.github.io/cka-exercises/#/exercise/${ex.id}`;
   const sourceFile = ex.sourceFile || 'exercises/(unknown).md';
   const refCode = extractReferenceCode(ex.solution);
+  const t = getReportType(draft.type);
   const lines = [];
   lines.push('## Exercise');
   lines.push(`- **ID:** \`${ex.id}\``);
   lines.push(`- **Title:** ${ex.title || ex.displayTitle || ex.fullTitle || ''}`);
   lines.push(`- **Source file:** \`${sourceFile}\``);
   lines.push(`- **App link:** ${exerciseHash}`);
+  lines.push(`- **Issue type:** ${t.label}`);
   lines.push('');
-  lines.push('## What looks wrong');
-  lines.push(draft.whatsWrong || '_(not provided)_');
-  lines.push('');
-  if (draft.suggested) {
+  if (t.whatsWrong) {
+    lines.push('## What looks wrong');
+    lines.push(t.whatsWrong);
+    lines.push('');
     lines.push('## Suggested fix');
-    lines.push(draft.suggested);
+    lines.push(t.suggested);
+    lines.push('');
+  }
+  if (draft.additional) {
+    lines.push('## Additional context');
+    lines.push(draft.additional);
     lines.push('');
   }
   lines.push('## Current reference solution');
@@ -1416,14 +1521,14 @@ function renderReportMarkdown(ex, draft, ctx) {
   lines.push(refCode);
   lines.push('```');
   lines.push('');
-  if (ctx?.includeContext && ctx?.answer) {
+  if (ctx && ctx.includeContext && ctx.answer) {
     lines.push('## My answer');
     lines.push('```bash');
     lines.push(String(ctx.answer).trim());
     lines.push('```');
     lines.push('');
   }
-  if (ctx?.includeContext && ctx?.verdict) {
+  if (ctx && ctx.includeContext && ctx.verdict) {
     const v = ctx.verdict;
     lines.push('## LLM verdict');
     lines.push(`- Score: **${v.score} / 100**`);
@@ -1445,12 +1550,13 @@ function renderReportMarkdown(ex, draft, ctx) {
 }
 
 function buildIssueUrl(ex, draft, ctx) {
+  const t = getReportType(draft.type);
   const title = `[${ex.id}] Reference solution mismatch: ${truncate(ex.title || ex.displayTitle || ex.fullTitle || '', 60)}`;
   const body = renderReportMarkdown(ex, draft, ctx);
   const u = new URL(`https://github.com/${GH_REPO}/issues/new`);
   u.searchParams.set('title', title);
   u.searchParams.set('body', body);
-  u.searchParams.set('labels', 'answer-fix');
+  u.searchParams.set('labels', `answer-fix,${t.ghLabel}`);
   return u.toString();
 }
 
@@ -1464,8 +1570,8 @@ function openFixReportModal(ex, ctx = {}) {
   const currentSol = $('report-current-solution');
   const verdictBlock = $('report-verdict-block');
   const verdictBody = $('report-verdict-body');
-  const whatsWrong = $('report-whats-wrong');
-  const suggested = $('report-suggested');
+  const radios = overlay.querySelectorAll('input[name="report-type"]');
+  const addl = $('report-additional');
   const includeCtxBox = $('report-include-context');
   const statusEl = $('report-status');
   const saveBtn = $('report-save-draft');
@@ -1501,25 +1607,47 @@ function openFixReportModal(ex, ctx = {}) {
     verdictBody.innerHTML = '';
   }
 
+  // Pre-select priority: saved draft → auto-detect from verdict → 'other'.
   const draft = getFixDraft(ex.id) || {};
-  whatsWrong.value = draft.whatsWrong || '';
-  suggested.value = draft.suggested || '';
+  const initialType = (draft.type && REPORT_TYPES.some(t => t.id === draft.type))
+    ? draft.type
+    : (autoDetectType(ctx) || 'other');
+  radios.forEach(r => { r.checked = (r.value === initialType); });
+
+  addl.value = draft.additional || '';
   includeCtxBox.checked = (draft.includeContext !== undefined) ? !!draft.includeContext : true;
   statusEl.textContent = '';
   overlay.hidden = false;
-  setTimeout(() => whatsWrong.focus(), 30);
+  // Focus the picker so keyboard users can immediately Tab/arrow through it,
+  // but don't force the textarea open on mobile.
+  setTimeout(() => {
+    const checked = overlay.querySelector('input[name="report-type"]:checked');
+    (checked || radios[0])?.focus();
+  }, 30);
 
-  const collect = () => ({
-    whatsWrong: whatsWrong.value.trim(),
-    suggested: suggested.value.trim(),
-    includeContext: includeCtxBox.checked,
-  });
+  const collect = () => {
+    const checked = overlay.querySelector('input[name="report-type"]:checked');
+    return {
+      type: checked ? checked.value : 'other',
+      additional: addl.value.trim(),
+      includeContext: includeCtxBox.checked,
+    };
+  };
 
   const buildCtx = () => ({
     verdict: ctx.verdict || null,
     answer: ctx.answer || '',
     includeContext: includeCtxBox.checked,
   });
+
+  const requireOtherText = (d) => {
+    if (getReportType(d.type).whatsWrong === null && !d.additional) {
+      statusEl.textContent = '✗ Add a short description for "Other" before submitting.';
+      addl.focus();
+      return false;
+    }
+    return true;
+  };
 
   const cleanup = () => {
     overlay.hidden = true;
@@ -1541,17 +1669,14 @@ function openFixReportModal(ex, ctx = {}) {
   saveBtn.onclick = () => {
     const d = collect();
     setFixDraft(ex.id, d);
-    statusEl.textContent = d.whatsWrong || d.suggested
+    statusEl.textContent = (d.type !== 'other' || d.additional)
       ? '✓ Draft saved locally.'
       : '✓ Draft cleared.';
   };
 
   copyBtn.onclick = async () => {
     const d = collect();
-    if (!d.whatsWrong) {
-      statusEl.textContent = '✗ Add a short note in "What looks wrong?" first.';
-      return;
-    }
+    if (!requireOtherText(d)) return;
     const md = renderReportMarkdown(ex, d, buildCtx());
     try {
       await navigator.clipboard.writeText(md);
@@ -1563,15 +1688,11 @@ function openFixReportModal(ex, ctx = {}) {
 
   openBtn.onclick = () => {
     const d = collect();
-    if (!d.whatsWrong) {
-      statusEl.textContent = '✗ Add a short note in "What looks wrong?" first.';
-      whatsWrong.focus();
-      return;
-    }
-    setFixDraft(ex.id, d);  // persist before opening
+    if (!requireOtherText(d)) return;
+    setFixDraft(ex.id, d);
     const url = buildIssueUrl(ex, d, buildCtx());
     window.open(url, '_blank', 'noopener');
-    statusEl.textContent = '✓ Opened a new tab — fill in any extra context on GitHub.';
+    statusEl.textContent = '✓ Opened a new tab — review and submit on GitHub.';
   };
 }
 
