@@ -1051,11 +1051,42 @@ kbd {
   color: var(--accent);
   font-weight: 600;
 }
-#settings-providers-count {
-  font-size: 12px;
+#settings-providers-count,
+#settings-grading-count {
+  font-size: 11px;
   font-weight: 400;
   color: var(--fg-muted);
-  margin-left: 8px;
+  margin-left: 6px;
+}
+
+/* Settings dialog subtabs — same visual pattern as .tools-subtabs. */
+.settings-subtabs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-subtabs button[data-settings-tab] {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 6px 14px;
+  margin-bottom: -1px;
+  color: var(--fg);
+  cursor: pointer;
+}
+.settings-subtabs button[data-settings-tab].active {
+  background: var(--bg);
+  border-color: var(--border);
+  font-weight: 600;
+}
+.settings-tab-panel[hidden] { display: none; }
+
+@media (max-width: 480px) {
+  .settings-subtabs button[data-settings-tab] { padding: 4px 8px; font-size: 13px; }
+  #settings-grading-count { display: none; }
 }
 
 /* Small "Use" pill on configured-but-not-active provider cards.

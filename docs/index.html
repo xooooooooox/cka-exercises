@@ -359,9 +359,17 @@
   <div id="settings-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <div class="overlay-card">
       <header>
-        <h2 id="settings-title">⚙️ Grading settings <span id="settings-providers-count" class="muted"></span></h2>
+        <h2 id="settings-title">⚙️ Settings</h2>
         <button class="icon-btn" type="button" id="settings-close" aria-label="Close" title="Close">✕</button>
       </header>
+
+      <nav class="settings-subtabs" role="tablist" aria-label="Settings categories">
+        <button data-settings-tab="grading" type="button" class="active" title="LLM provider config used by the Check button">🤖 Grading <span id="settings-grading-count" class="muted"></span></button>
+        <button data-settings-tab="backup"  type="button" title="Export / import your local progress as JSON">💾 Backup</button>
+        <button data-settings-tab="sync"    type="button" title="Push / pull your progress via a private GitHub Gist">☁ Sync</button>
+      </nav>
+
+      <section data-settings-tab="grading" class="settings-tab-panel">
       <p class="muted">Configure an LLM provider to auto-grade your answers. Answers + tasks are sent to the chosen provider when you click <b>Check</b> on an exercise.</p>
 
       <div class="settings-section">
@@ -416,20 +424,20 @@
         <span id="settings-status" class="muted"></span>
       </div>
 
-      <div class="settings-section settings-backup">
-        <label class="settings-label">Backup &amp; restore</label>
-        <p class="backup-help muted">Download your progress (done state, bookmarks, saved answers, theme) as a JSON file. API keys are NOT included.</p>
+      </section>
+
+      <section data-settings-tab="backup" class="settings-tab-panel" hidden>
+        <p class="muted">Download your progress (done state, bookmarks, saved answers, theme) as a JSON file. API keys are NOT included.</p>
         <div class="backup-row">
           <button id="backup-export" type="button" title="Download your progress as a JSON file (API keys excluded)">⬇ Export progress</button>
           <button id="backup-import" type="button" title="Restore progress from a previously exported JSON file">⬆ Import progress…</button>
           <input id="backup-file" type="file" accept=".json,application/json" hidden>
           <span id="backup-status" class="muted"></span>
         </div>
-      </div>
+      </section>
 
-      <div class="settings-section settings-gist">
-        <label class="settings-label">GitHub Gist sync (cross-device)</label>
-        <p class="muted backup-help">Push your progress to a private Gist and pull it on a different browser / device. Generate a token at <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">github.com/settings/tokens</a> with the <code>gist</code> scope only. API keys are NOT synced.</p>
+      <section data-settings-tab="sync" class="settings-tab-panel" hidden>
+        <p class="muted">Push your progress to a private Gist and pull it on a different browser / device. Generate a token at <a href="https://github.com/settings/tokens?type=beta" target="_blank" rel="noopener">github.com/settings/tokens</a> with the <code>gist</code> scope only. API keys are NOT synced.</p>
         <div class="settings-row">
           <label class="settings-label" for="gist-token">GitHub PAT</label>
           <input id="gist-token" type="password" placeholder="ghp_… (gist scope)" autocomplete="off">
@@ -444,7 +452,7 @@
           <button id="gist-test" type="button" title="Verify the PAT works against the GitHub API">Test</button>
           <span id="gist-status" class="muted"></span>
         </div>
-      </div>
+      </section>
     </div>
   </div>
 

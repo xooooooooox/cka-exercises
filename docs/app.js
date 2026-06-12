@@ -42,6 +42,7 @@ const KEY = {
   quizSnapshots: 'cka:quiz:snapshots',
   quizOrder: 'cka:quiz:lastOrder',
   toolsSubtab: 'cka:tools:lastSubtab',
+  settingsTab: 'cka:settings:lastTab',
   toolsKind: 'cka:tools:lastKind',
   toolsPath: 'cka:tools:lastPath',
   toolsCmd: 'cka:tools:lastCmd',
@@ -462,7 +463,8 @@ function installSettingsOverlay() {
   const testStatus = document.getElementById('settings-test-status');
 
   const clearOne = document.getElementById('settings-clear-one');
-  const providersCount = document.getElementById('settings-providers-count');
+  const providersCount = document.getElementById('settings-grading-count')
+                       || document.getElementById('settings-providers-count');
 
   function currentProvider() {
     return [...providerInputs].find(r => r.checked)?.value || 'anthropic';
@@ -552,7 +554,24 @@ function installSettingsOverlay() {
     refreshProviderBadges();
   }
 
-  function open() { loadIntoForm(); overlay.hidden = false; }
+  // Subtab switching inside the Settings dialog.
+  const settingsSubtabs = overlay.querySelectorAll('.settings-subtabs button[data-settings-tab]');
+  const settingsPanels  = overlay.querySelectorAll('.settings-tab-panel');
+  function showSettingsTab(name) {
+    const target = (['grading', 'backup', 'sync'].includes(name)) ? name : 'grading';
+    settingsPanels.forEach(p => { p.hidden = (p.dataset.settingsTab !== target); });
+    settingsSubtabs.forEach(b => { b.classList.toggle('active', b.dataset.settingsTab === target); });
+    storageSet(KEY.settingsTab, target);
+  }
+  settingsSubtabs.forEach(b => {
+    b.addEventListener('click', () => showSettingsTab(b.dataset.settingsTab));
+  });
+
+  function open() {
+    loadIntoForm();
+    showSettingsTab(storageGet(KEY.settingsTab, 'grading'));
+    overlay.hidden = false;
+  }
   function shut() { overlay.hidden = true; status.textContent = ''; }
 
   toggle?.addEventListener('click', open);

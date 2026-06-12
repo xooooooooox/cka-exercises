@@ -124,7 +124,9 @@ Bundle size is ~30KB per version, lazy-loaded only when you first open the Nodes
 
 ## 4. ⚙️ Settings Panel
 
-### LLM Grading (optional)
+The dialog is split into three subtabs: **🤖 Grading**, **💾 Backup**, **☁ Sync**. Only one is visible at a time so the dialog stays compact — no big scrollbar. The last-opened tab is remembered via `cka:settings:lastTab` so the dialog re-opens where you left off.
+
+### 🤖 Grading (LLM grading, optional)
 
 Lets the **✓ Check** button on each Browse card send your answer to an LLM and get back a verdict (Correct / Partial / Not yet), a 0–100 score, what you got right, and what you missed.
 
@@ -185,6 +187,7 @@ Keys you'll see in DevTools:
 | `cka:tools:lastPath` | Current drill path in Explain (e.g. `["spec","containers","resources"]`) |
 | `cka:tools:lastCmd` | Last command opened in Tools › kubectl -h (e.g. `"create deployment"`) |
 | `cka:tools:version` | Selected kubernetes minor in the Tools / Nodes tabs (e.g. `"1.35"`); default `1.35` when unset |
+| `cka:settings:lastTab` | Last-opened Settings sub-tab — `"grading"` / `"backup"` / `"sync"` (default `grading`) |
 | `cka:nodes:lastRole` | Active Nodes role — `"controlplane"` or `"worker"` |
 | `cka:nodes:lastPath` | Last file opened in Nodes (e.g. `"/etc/kubernetes/manifests/kube-apiserver.yaml"`) |
 | `cka:docs:lastUrl` | Last opened docs page |
