@@ -299,7 +299,19 @@
     </section>
   </div>
 
-  <!-- Footer -->
+  <!-- Mobile bottom tab bar — visible only on ≤768px (CSS-gated).
+       Duplicates the header .mode-tabs so the top header has room on narrow
+       viewports. setMode() / click handlers already iterate all .mode-tab
+       buttons, so both navs stay in sync without JS changes. -->
+  <nav id="mobile-mode-tabs" class="mobile-mode-tabs" role="tablist" aria-label="Modes">
+    <button data-mode="browse" class="mode-tab active" type="button"><span class="tab-icon">📚</span><span class="tab-label">Browse</span></button>
+    <button data-mode="quiz"   class="mode-tab"        type="button"><span class="tab-icon">🎯</span><span class="tab-label">Quiz</span><span class="tab-dot" hidden title="A quiz is in progress">●</span></button>
+    <button data-mode="docs"   class="mode-tab"        type="button"><span class="tab-icon">📖</span><span class="tab-label">Docs</span></button>
+    <button data-mode="help"   class="mode-tab"        type="button"><span class="tab-icon">❓</span><span class="tab-label">Help</span></button>
+    <button data-mode="tools"  class="mode-tab"        type="button"><span class="tab-icon">🔧</span><span class="tab-label">Tools</span></button>
+    <button data-mode="nodes"  class="mode-tab"        type="button"><span class="tab-icon">🖥</span><span class="tab-label">Nodes</span></button>
+  </nav>
+
   <!-- Update-available banner — shown when the deployed version.json's
        generatedAt differs from the bundled exercises.json's generatedAt.
        Mainly for iOS PWA standalone where forced quit is otherwise needed. -->

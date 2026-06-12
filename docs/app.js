@@ -1207,10 +1207,11 @@ function clearActiveQuiz() {
 }
 
 function refreshQuizTabDot() {
-  const dot = document.querySelector('.mode-tab[data-mode="quiz"] .tab-dot');
-  if (!dot) return;
+  // Update both the top-header dot and the bottom-bar (mobile) dot.
+  const dots = document.querySelectorAll('.mode-tab[data-mode="quiz"] .tab-dot');
+  if (!dots.length) return;
   const active = State.quiz || storageGet(KEY.quizActive, null);
-  dot.hidden = !active;
+  dots.forEach(d => { d.hidden = !active; });
 }
 
 function getSnapshots() {

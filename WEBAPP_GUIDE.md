@@ -111,7 +111,7 @@ Bundle size is ~30KB per version, lazy-loaded only when you first open the Nodes
 
 | Control | Purpose |
 |---|---|
-| Mode tabs (📚 / 🎯 / 📖 / ❓ / 🔧 / 🖥) | Switch between Browse, Quiz, Docs, Help, Tools, Nodes |
+| Mode tabs (📚 / 🎯 / 📖 / ❓ / 🔧 / 🖥) | Switch between Browse, Quiz, Docs, Help, Tools, Nodes. **On mobile (≤768px) the tabs move to a fixed bar at the bottom of the screen** (iOS-PWA style) so the top header stays uncluttered. |
 | Search box | Free-text filter (Browse mode) |
 | ⏱ Timer | Live countdown during a timed quiz |
 | ☁ Sync | Quick Gist Push / Pull / Test popover (uses the same PAT + Gist ID configured in Settings) |
