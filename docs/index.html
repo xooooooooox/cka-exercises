@@ -32,6 +32,7 @@
       <button data-mode="docs" class="mode-tab" type="button">📖 Docs</button>
       <button data-mode="help" class="mode-tab" type="button">❓ Help</button>
       <button data-mode="tools" class="mode-tab" type="button">🔧 Tools</button>
+      <button data-mode="nodes" class="mode-tab" type="button">🖥 Nodes</button>
     </nav>
     <div class="header-right">
       <span id="quiz-timer" hidden></span>
@@ -264,6 +265,31 @@
     </section>
   </div>
 
+  <!-- Nodes mode: read-only kubeadm filesystem snapshot (CP + worker) -->
+  <div id="view-nodes" class="view" hidden>
+    <nav class="nodes-subtabs" role="tablist">
+      <button data-nodes-role="controlplane" class="active" type="button" title="Control-plane node filesystem">👑 Control plane</button>
+      <button data-nodes-role="worker" type="button" title="Worker node filesystem">🛠 Worker</button>
+      <label class="tools-version-picker" title="Pick the k8s minor — shared with the Tools tab">
+        Version
+        <select id="nodes-version-select" aria-label="Select kubernetes version"></select>
+      </label>
+      <span id="nodes-meta" class="muted"></span>
+    </nav>
+
+    <p class="nodes-banner muted">📷 Read-only snapshot from a canonical kubeadm cluster — actual exam files may vary slightly (CNI choice, version pin, hostname). Private keys / tokens are redacted.</p>
+
+    <section class="nodes-panel">
+      <aside class="nodes-tree-pane">
+        <input id="nodes-search" type="search" placeholder="🔎 Filter files (e.g. kube-apiserver, kubelet)" autocomplete="off">
+        <nav id="nodes-tree"></nav>
+      </aside>
+      <article id="nodes-detail" class="nodes-detail">
+        <p class="muted">Pick a file on the left to see its contents — exactly what you'd <code>cat</code> on the node.</p>
+      </article>
+    </section>
+  </div>
+
   <!-- Footer -->
   <footer class="app-footer">
     © 2026 <a href="https://github.com/xooooooooox" target="_blank" rel="noopener">xooooooooox</a>
@@ -284,7 +310,7 @@
           <tr><th colspan="2">Navigation</th></tr>
           <tr><td><kbd>j</kbd> / <kbd>↓</kbd></td><td>Next exercise (Browse) / next question (Quiz)</td></tr>
           <tr><td><kbd>k</kbd> / <kbd>↑</kbd></td><td>Previous</td></tr>
-          <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd></td><td>Switch to Browse / Quiz / Docs / Help / Tools</td></tr>
+          <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd> <kbd>6</kbd></td><td>Switch to Browse / Quiz / Docs / Help / Tools / Nodes</td></tr>
           <tr><td><kbd>/</kbd></td><td>Focus the search box</td></tr>
           <tr><th colspan="2">Card actions (Browse mode, focused card)</th></tr>
           <tr><td><kbd>Space</kbd></td><td>Show / hide solution</td></tr>

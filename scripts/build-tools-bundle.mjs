@@ -142,16 +142,24 @@ async function buildOne(minor) {
     'scripts/build-kubectl-tools.mjs',
     `--minor=${minor}`,
   ]);
+  runChild([
+    'scripts/build-nodes-snapshot.mjs',
+    `--minor=${minor}`,
+  ]);
   // Verify output + size
   const outFile = path.join(DOCS, `tools-${minor}.json`);
   const bytes = fs.statSync(outFile).size;
   if (bytes > 800 * 1024) throw new Error(`tools-${minor}.json exceeds 800KB (got ${bytes})`);
+  const nodesFile = `nodes-${minor}.json`;
+  const nodesBytes = fs.existsSync(path.join(DOCS, nodesFile)) ? fs.statSync(path.join(DOCS, nodesFile)).size : 0;
   return {
     minor,
     kubectl: patch,
     openapi: `release-${minor}`,
     file: `tools-${minor}.json`,
+    nodesFile,
     bytes,
+    nodesBytes,
     generatedAt: new Date().toISOString(),
   };
 }
@@ -187,8 +195,8 @@ async function main() {
     schemaVersion: 1,
     default: defaultMinor,
     generatedAt: new Date().toISOString(),
-    versions: results.map(({ minor, kubectl, openapi, file, generatedAt }) =>
-      ({ minor, kubectl, openapi, file, generatedAt })),
+    versions: results.map(({ minor, kubectl, openapi, file, nodesFile, generatedAt }) =>
+      ({ minor, kubectl, openapi, file, nodesFile, generatedAt })),
   };
   const manifestPath = path.join(DOCS, 'tools-versions.json');
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');

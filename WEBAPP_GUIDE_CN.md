@@ -92,13 +92,25 @@
 
 每个版本的内容在部署时从对应的 Kubernetes 发布版本和 kubectl 二进制中提取。每个 bundle 约 ~580KB 原始 / ~110KB gzipped，**只在你第一次打开 Tools 标签或切换版本时**才会懒加载，对初始页面打开速度没影响。
 
+### 🖥 Nodes
+
+CKA 考试跑在 kubeadm 装出来的集群上。🖥 Nodes 标签内置了一个 CP + worker 节点的**只读文件系统快照**，用来回答"这个文件在哪里？"/"static pod manifest 长什么样？"/"kubelet 读什么配置？"，即使没有真实集群也能查。
+
+- **子标签：** **👑 Control plane**（~15 个文件：`/etc/kubernetes/manifests/*`、`admin.conf` / `super-admin.conf` / `*.conf`、`pki` 目录列表、kubelet config + service unit、containerd、CNI）和 **🛠 Worker**（~7 个文件：kubelet config、worker `kubelet.conf`、`pki/` 中只有 `ca.crt`、containerd、CNI）。
+- **左侧文件树**，右侧文件内容 + **📋 Copy** 按钮。搜索框按路径过滤（如 `kube-apiserver`、`kubelet`、`containerd`）。
+- **版本下拉**与 Tools 共享 `cka:tools:version` — 在任一标签切换版本，另一个也会跟着变。Static pod manifests 里的镜像 tag（如 `registry.k8s.io/kube-apiserver:v1.35.5`）按所选 minor 模板化。
+- **脱敏：** 不会内置任何真实私钥、token、base64 secret — 敏感字节统一替换为 `LS0tLS1CRUdJTiBSRURBQ1RFRC1...` sentinel，格式可识别但内容不可还原。
+- **只读。** 这不是模拟器 — 不能编辑、不能 `kubectl apply`、不能 drain。只用来查"标准文件长啥样"。
+
+每个版本 bundle 约 30KB，**只在你第一次打开 Nodes 标签时**才会懒加载。
+
 ---
 
 ## 3. 顶栏控件
 
 | 控件 | 作用 |
 |---|---|
-| 模式 Tab（📚 / 🎯 / 📖 / ❓ / 🔧）| 切换 Browse / Quiz / Docs / Help / Tools |
+| 模式 Tab（📚 / 🎯 / 📖 / ❓ / 🔧 / 🖥）| 切换 Browse / Quiz / Docs / Help / Tools / Nodes |
 | 搜索框 | 自由文本过滤（Browse 模式） |
 | ⏱ 计时器 | Quiz 限时倒计时 |
 | ☁ 同步 | 快捷的 Gist Push / Pull / Test 弹层（使用 Settings 里配的 PAT + Gist ID） |
@@ -163,7 +175,9 @@ DevTools 里你能看到的 key：
 | `cka:tools:lastKind` | Tools › Explain 上次打开的 kind |
 | `cka:tools:lastPath` | Explain 当前的钻取路径（如 `["spec","containers","resources"]`） |
 | `cka:tools:lastCmd` | Tools › kubectl -h 上次打开的命令（如 `"create deployment"`） |
-| `cka:tools:version` | Tools 标签当前选中的 k8s minor 版本（如 `"1.35"`）；未设置时默认 `1.35` |
+| `cka:tools:version` | Tools / Nodes 标签当前选中的 k8s minor 版本（如 `"1.35"`）；未设置时默认 `1.35` |
+| `cka:nodes:lastRole` | Nodes 当前角色 — `"controlplane"` 或 `"worker"` |
+| `cka:nodes:lastPath` | Nodes 上次打开的文件路径（如 `"/etc/kubernetes/manifests/kube-apiserver.yaml"`） |
 | `cka:docs:lastUrl` | 上次打开的 docs 页 |
 | `cka:llm:settings` | Provider、API key、model、Auto-Done 阈值 |
 | `cka:llm:privacyAck` | 是否已经关闭首次使用时的隐私提示 |
@@ -202,7 +216,7 @@ DevTools 里你能看到的 key：
 |---|---|
 | <kbd>j</kbd> / <kbd>↓</kbd> | 下一题（Browse） / 下一道（Quiz） |
 | <kbd>k</kbd> / <kbd>↑</kbd> | 上一题 |
-| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd> | 切到 Browse / Quiz / Docs / Help / Tools |
+| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd> <kbd>6</kbd> | 切到 Browse / Quiz / Docs / Help / Tools / Nodes |
 | <kbd>/</kbd> | 聚焦搜索框 |
 | <kbd>Space</kbd> | 展开 / 收起解答（聚焦的 Browse 卡片） |
 | <kbd>d</kbd> | 切换 Done（聚焦的 Browse 卡片） |

@@ -6,5 +6,6 @@ node_modules
 # `npm run build` / `npm run build:tools-bundle` locally).
 docs/exercises.json
 docs/tools*.json
+docs/nodes*.json
 tools/kubectl-help*.json
 tools/.bin/

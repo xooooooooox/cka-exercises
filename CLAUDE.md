@@ -132,6 +132,12 @@ Run locally: `npm run build:tools-bundle` (auto-detects minors) or `npm run buil
 
 Low-level scripts both accept `--minor=X.Y` to emit version-suffixed paths; without `--minor` they use legacy single-version paths (`tools/kubectl-help.json`, `docs/tools.json`) for backwards compatibility, though nothing in the current pipeline uses that mode.
 
+### `scripts/build-nodes-snapshot.mjs`
+
+Produces the read-only filesystem snapshot for the 🖥 Nodes mode tab (kubeadm CP + worker). Reads source files committed under `tools/nodes/snapshot/files/{controlplane,worker}/<actual-fs-path>`, applies `{{KUBE_VERSION_FULL}}` / `{{PAUSE_VERSION}}` / etc. placeholder substitution from `tools/nodes/snapshot/versions.json`, and writes `docs/nodes-<minor>.json` (~30KB, gitignored). Called by `build-tools-bundle.mjs` per minor; manifest entries gain a `nodesFile` field so the SPA can locate each version's payload.
+
+To refresh content (e.g. after a kubeadm template change): edit source files directly, rerun `npm run build:tools-bundle -- --minors=1.35`. See `tools/nodes/snapshot/README.md` for provenance + redaction policy.
+
 ### Tag identifier rename
 
 Tags were renamed from Chinese (`CKA 真题`, `4分`) to English (`CKA Past Exam`, `4 pts`) for consistency. The `extractPoints()` regex still matches both forms for safety — but new entries should use the English form.

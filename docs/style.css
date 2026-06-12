@@ -1649,3 +1649,163 @@ kbd {
   .kubectl-help { font-size: 11.5px; padding: 10px 12px; }
   .explain-header { font-size: 12px; padding: 8px 10px; }
 }
+
+/* ============================================================ */
+/* Nodes view — read-only kubeadm filesystem snapshot            */
+/* ============================================================ */
+
+#view-nodes { padding: 16px 20px; }
+#view-nodes.active { display: block; }
+
+.nodes-subtabs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.nodes-subtabs button[data-nodes-role] {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 6px 14px;
+  margin-bottom: -1px;
+}
+.nodes-subtabs button[data-nodes-role].active {
+  background: var(--bg);
+  border-color: var(--border);
+  font-weight: 600;
+}
+#nodes-meta {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  margin-left: 8px;
+}
+
+.nodes-banner {
+  font-size: 12px;
+  padding: 8px 12px;
+  background: var(--bg-elev);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin-bottom: 14px;
+}
+
+.nodes-panel {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.nodes-tree-pane {
+  position: sticky;
+  top: 70px;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.nodes-tree-pane input[type="search"] {
+  width: 100%;
+  margin-bottom: 12px;
+}
+#nodes-tree details {
+  margin: 0;
+}
+#nodes-tree details > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 3px 6px;
+  font-size: 13px;
+  color: var(--fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  border-radius: 4px;
+}
+#nodes-tree details > summary:hover {
+  background: var(--bg-elev);
+}
+#nodes-tree details > summary::-webkit-details-marker { display: none; }
+#nodes-tree details > summary::before {
+  content: "▸ ";
+  color: var(--fg-muted);
+}
+#nodes-tree details[open] > summary::before {
+  content: "▾ ";
+}
+#nodes-tree .file-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 2px 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--fg-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#nodes-tree .file-row:hover {
+  background: var(--bg-elev);
+  color: var(--fg);
+}
+#nodes-tree .file-row.active {
+  background: var(--bg-elev);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.nodes-detail {
+  max-width: 980px;
+  line-height: 1.55;
+}
+.nodes-detail .nodes-file-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--bg-elev);
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+.nodes-detail .nodes-file-path { font-weight: 600; }
+.nodes-detail .nodes-file-copy { margin-left: auto; }
+.nodes-detail pre.nodes-file-body {
+  margin: 0;
+  padding: 14px 16px;
+  background: var(--bg-code);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  white-space: pre;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.nodes-detail pre.nodes-file-body code {
+  background: none;
+  padding: 0;
+}
+
+@media (max-width: 900px) {
+  .nodes-panel { grid-template-columns: 1fr; }
+  .nodes-tree-pane {
+    position: static;
+    max-height: 40vh;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  #view-nodes { padding: 12px; }
+  .nodes-subtabs button[data-nodes-role] { padding: 4px 8px; font-size: 13px; }
+  #nodes-meta { display: none; }
+  .nodes-detail pre.nodes-file-body { font-size: 11.5px; padding: 10px 12px; }
+}

@@ -92,13 +92,25 @@ Two reference tools that mirror what you reach for in the real exam terminal —
 
 The content for each version is pre-built at deploy time from the pinned Kubernetes release and kubectl binary. Each bundle is ~580KB raw / ~110KB gzipped, lazy-loaded only when you first open the Tools tab and again when you switch versions — no impact on initial page load.
 
+### 🖥 Nodes
+
+The exam runs on a kubeadm-installed cluster. The 🖥 Nodes tab ships a curated read-only snapshot of the filesystem from a canonical CP + worker so you can practice "where is this file?" / "what's in the static pod manifest?" / "what flag does kubelet read?" without an actual cluster.
+
+- **Subtabs:** **👑 Control plane** (~15 files: `/etc/kubernetes/manifests/*`, `admin.conf` / `super-admin.conf` / `*.conf`, `pki` listing, kubelet config + service unit, containerd, CNI) and **🛠 Worker** (~7 files: kubelet config, worker `kubelet.conf`, only `ca.crt` in `pki/`, containerd, CNI).
+- **Tree on the left**, file content on the right with a **📋 Copy** button. Search filter narrows by path (e.g. `kube-apiserver`, `kubelet`, `containerd`).
+- **Version dropdown** shares state with the Tools tab via `cka:tools:version` — switching version in either tab updates the other. Image tags in static pod manifests (`registry.k8s.io/kube-apiserver:v1.35.5`) are templated per minor.
+- **Redaction:** no real private keys, tokens, or base64 secret payloads are bundled — sensitive bytes are replaced with the `LS0tLS1CRUdJTiBSRURBQ1RFRC1...` sentinel so the format is unambiguous but nothing leaks.
+- **Read-only.** This is not a simulator — you can't edit, can't `kubectl apply`, can't drain a node. It's a reference for "what does the canonical file look like" only.
+
+Bundle size is ~30KB per version, lazy-loaded only when you first open the Nodes tab.
+
 ---
 
 ## 3. Header Controls
 
 | Control | Purpose |
 |---|---|
-| Mode tabs (📚 / 🎯 / 📖 / ❓ / 🔧) | Switch between Browse, Quiz, Docs, Help, Tools |
+| Mode tabs (📚 / 🎯 / 📖 / ❓ / 🔧 / 🖥) | Switch between Browse, Quiz, Docs, Help, Tools, Nodes |
 | Search box | Free-text filter (Browse mode) |
 | ⏱ Timer | Live countdown during a timed quiz |
 | ☁ Sync | Quick Gist Push / Pull / Test popover (uses the same PAT + Gist ID configured in Settings) |
@@ -163,7 +175,9 @@ Keys you'll see in DevTools:
 | `cka:tools:lastKind` | Last kind opened in Tools › Explain (e.g. `io.k8s.api.core.v1.Pod`) |
 | `cka:tools:lastPath` | Current drill path in Explain (e.g. `["spec","containers","resources"]`) |
 | `cka:tools:lastCmd` | Last command opened in Tools › kubectl -h (e.g. `"create deployment"`) |
-| `cka:tools:version` | Selected kubernetes minor in the Tools tab (e.g. `"1.35"`); default `1.35` when unset |
+| `cka:tools:version` | Selected kubernetes minor in the Tools / Nodes tabs (e.g. `"1.35"`); default `1.35` when unset |
+| `cka:nodes:lastRole` | Active Nodes role — `"controlplane"` or `"worker"` |
+| `cka:nodes:lastPath` | Last file opened in Nodes (e.g. `"/etc/kubernetes/manifests/kube-apiserver.yaml"`) |
 | `cka:docs:lastUrl` | Last opened docs page |
 | `cka:llm:settings` | Provider, API key, model, auto-done threshold |
 | `cka:llm:privacyAck` | Whether you dismissed the first-use privacy notice |
@@ -202,7 +216,7 @@ This SPA has **no backend**. Treat it like any other BYO-key web tool.
 |---|---|
 | <kbd>j</kbd> / <kbd>↓</kbd> | Next exercise (Browse) / next question (Quiz) |
 | <kbd>k</kbd> / <kbd>↑</kbd> | Previous |
-| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd> | Switch to Browse / Quiz / Docs / Help / Tools |
+| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd> <kbd>6</kbd> | Switch to Browse / Quiz / Docs / Help / Tools / Nodes |
 | <kbd>/</kbd> | Focus the search box |
 | <kbd>Space</kbd> | Show / hide solution (focused Browse card) |
 | <kbd>d</kbd> | Toggle Done (focused Browse card) |

@@ -27,6 +27,10 @@ const State = {
   toolsExplain: { kindRef: null, path: [] },
   toolsKubectl: { cmdPath: null },
   toolsSubtab: 'explain',
+  nodes: null,                   // active version's nodes payload
+  nodesByMinor: new Map(),
+  nodesCurrentMinor: null,
+  nodesRole: 'controlplane',
 };
 
 // ---------- Storage ----------
@@ -41,6 +45,8 @@ const KEY = {
   toolsPath: 'cka:tools:lastPath',
   toolsCmd: 'cka:tools:lastCmd',
   toolsVersion: 'cka:tools:version',
+  nodesRole: 'cka:nodes:lastRole',
+  nodesPath: 'cka:nodes:lastPath',
   docsLastUrl: 'cka:docs:lastUrl',
   llmSettings: 'cka:llm:settings',
   privacyAck: 'cka:llm:privacyAck',
@@ -1848,7 +1854,7 @@ function parseHash() {
   if (!h) return { mode: null };
   const [mode, ...rest] = h.split('/');
   const arg = rest.length ? decodeURIComponent(rest.join('/')) : null;
-  if (['browse', 'quiz', 'docs', 'help', 'tools'].includes(mode)) return { mode, arg };
+  if (['browse', 'quiz', 'docs', 'help', 'tools', 'nodes'].includes(mode)) return { mode, arg };
   return { mode: null };
 }
 
@@ -1904,6 +1910,7 @@ function setMode(mode, opts = {}) {
   if (mode === 'browse') renderBrowse();
   if (mode === 'help') renderHelpView();
   if (mode === 'tools') renderToolsView();
+  if (mode === 'nodes') renderNodesView();
   if (mode === 'docs') {
     if (!State.docs) {
       State.docs = { tree: buildDocsTree(State.allExercises), leaves: null, selectedUrl: null };
@@ -2442,6 +2449,251 @@ function renderKubectlDetail() {
   detail.appendChild(pre);
 }
 
+// ---------- Nodes view (read-only kubeadm filesystem snapshot) ----------
+
+let _nodesRendered = false;
+let _nodesHandlersInstalled = false;
+
+async function loadNodesVersion(minor) {
+  if (State.nodesByMinor.has(minor)) {
+    State.nodes = State.nodesByMinor.get(minor);
+    State.nodesCurrentMinor = minor;
+    return State.nodes;
+  }
+  const manifest = await loadToolsManifest();
+  const v = manifest.versions.find(x => x.minor === minor)
+        || manifest.versions.find(x => x.minor === manifest.default)
+        || manifest.versions[0];
+  if (!v?.nodesFile) throw new Error(`No nodesFile registered for v${minor} in tools-versions.json`);
+  const resp = await fetch(v.nodesFile);
+  if (!resp.ok) throw new Error(`${v.nodesFile} HTTP ${resp.status}`);
+  const payload = await resp.json();
+  State.nodesByMinor.set(v.minor, payload);
+  State.nodes = payload;
+  State.nodesCurrentMinor = v.minor;
+  return payload;
+}
+
+function populateNodesVersionSelect() {
+  const sel = document.getElementById('nodes-version-select');
+  if (!sel || sel.options.length) return;
+  for (const v of State.toolsManifest.versions) {
+    const opt = document.createElement('option');
+    opt.value = v.minor;
+    opt.textContent = `v${v.minor}`;
+    sel.appendChild(opt);
+  }
+  sel.value = State.nodesCurrentMinor;
+}
+
+function updateNodesMetaLine() {
+  const meta = document.getElementById('nodes-meta');
+  if (!meta) return;
+  const minor = State.nodesCurrentMinor;
+  const v = State.toolsManifest?.versions?.find(x => x.minor === minor);
+  meta.textContent = v ? `kubectl ${v.kubectl}` : '';
+}
+
+async function renderNodesView() {
+  const detail = document.getElementById('nodes-detail');
+  if (!detail) return;
+
+  if (!State.nodes) {
+    detail.innerHTML = '<p class="muted">Loading…</p>';
+    try {
+      await loadToolsManifest();
+      const saved = storageGet(KEY.toolsVersion, null);
+      const valid = State.toolsManifest.versions.some(v => v.minor === saved);
+      const targetMinor = valid ? saved : State.toolsManifest.default;
+      await loadNodesVersion(targetMinor);
+    } catch (e) {
+      detail.innerHTML = `<p class="muted">Couldn't load nodes bundle: ${e.message}. Run <code>npm run build:tools-bundle</code>.</p>`;
+      return;
+    }
+  }
+
+  if (_nodesRendered) {
+    populateNodesVersionSelect();
+    updateNodesMetaLine();
+    return;
+  }
+
+  detail.innerHTML = '<p class="muted">Pick a file on the left to see its contents — exactly what you\'d <code>cat</code> on the node.</p>';
+
+  populateNodesVersionSelect();
+  updateNodesMetaLine();
+
+  // Restore last role
+  const lastRole = storageGet(KEY.nodesRole, 'controlplane');
+  State.nodesRole = (lastRole === 'worker') ? 'worker' : 'controlplane';
+  document.querySelectorAll('.nodes-subtabs button[data-nodes-role]').forEach(b =>
+    b.classList.toggle('active', b.dataset.nodesRole === State.nodesRole));
+
+  renderNodesTree('');
+
+  // Restore last opened file
+  const lastPath = storageGet(KEY.nodesPath, null);
+  if (lastPath) renderNodesFile(lastPath);
+
+  installNodesHandlers();
+  _nodesRendered = true;
+}
+
+function getNodesActiveTree() {
+  if (!State.nodes) return [];
+  return State.nodesRole === 'worker' ? (State.nodes.worker?.tree || []) : (State.nodes.controlPlane?.tree || []);
+}
+
+// Walks the tree, calls visit(file) for each file node. Used by both the tree
+// renderer (with a parent-collector callback) and search.
+function walkNodesTree(nodes, visit) {
+  for (const n of nodes) {
+    if (n.type === 'file') visit(n);
+    else if (n.children) walkNodesTree(n.children, visit);
+  }
+}
+
+function renderNodesTree(query) {
+  const root = document.getElementById('nodes-tree');
+  if (!root) return;
+  root.innerHTML = '';
+  const tree = getNodesActiveTree();
+  const q = (query || '').trim().toLowerCase();
+
+  // For search: a file matches if its full path contains q. A directory is
+  // shown only if any descendant file matches.
+  function pathMatches(p) { return !q || p.toLowerCase().includes(q); }
+
+  function renderNode(node, parentEl, depth) {
+    if (node.type === 'dir') {
+      // Skip dirs whose subtree has no matches in search mode
+      if (q) {
+        let any = false;
+        walkNodesTree(node.children || [], f => { if (pathMatches(f.path)) any = true; });
+        if (!any) return;
+      }
+      const det = document.createElement('details');
+      // Auto-expand when searching so matches are visible.
+      det.open = q ? true : (depth < 1);
+      const sum = document.createElement('summary');
+      sum.textContent = node.name + '/';
+      sum.style.paddingLeft = `${depth * 14}px`;
+      det.appendChild(sum);
+      for (const child of node.children || []) renderNode(child, det, depth + 1);
+      parentEl.appendChild(det);
+    } else {
+      if (!pathMatches(node.path)) return;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'file-row';
+      btn.textContent = node.name;
+      btn.title = node.path;
+      btn.style.paddingLeft = `${depth * 14 + 22}px`;
+      btn.dataset.nodesFilePath = node.path;
+      if (node.path === storageGet(KEY.nodesPath, null)) btn.classList.add('active');
+      btn.addEventListener('click', () => {
+        storageSet(KEY.nodesPath, node.path);
+        document.querySelectorAll('#nodes-tree .file-row.active').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderNodesFile(node.path);
+      });
+      parentEl.appendChild(btn);
+    }
+  }
+
+  for (const n of tree) renderNode(n, root, 0);
+  if (!root.children.length) {
+    root.appendChild(el('p', { class: 'muted' }, q ? 'No matches.' : 'No files in this snapshot.'));
+  }
+}
+
+function findNodesFile(tree, targetPath) {
+  for (const n of tree) {
+    if (n.type === 'file' && n.path === targetPath) return n;
+    if (n.type === 'dir' && n.children) {
+      const f = findNodesFile(n.children, targetPath);
+      if (f) return f;
+    }
+  }
+  return null;
+}
+
+function renderNodesFile(filePath) {
+  const detail = document.getElementById('nodes-detail');
+  if (!detail) return;
+  const file = findNodesFile(getNodesActiveTree(), filePath);
+  if (!file) {
+    // Not in current role — maybe user clicked a CP file but switched to worker
+    detail.innerHTML = `<p class="muted">File <code>${filePath}</code> not in this role's snapshot. Switch role or pick another file.</p>`;
+    return;
+  }
+  detail.innerHTML = '';
+  const head = el('div', { class: 'nodes-file-head' },
+    el('span', { class: 'nodes-file-path' }, filePath),
+  );
+  const copyBtn = el('button', { type: 'button', class: 'nodes-file-copy', title: 'Copy file contents to clipboard' }, '📋 Copy');
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(file.content || '');
+      copyBtn.textContent = '✓ Copied';
+      setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 1500);
+    } catch { copyBtn.textContent = '✗ Failed'; }
+  });
+  head.appendChild(copyBtn);
+  detail.appendChild(head);
+  const pre = el('pre', { class: 'nodes-file-body' });
+  pre.appendChild(el('code', {}, file.content || ''));
+  detail.appendChild(pre);
+}
+
+function switchNodesRole(role) {
+  const r = (role === 'worker') ? 'worker' : 'controlplane';
+  State.nodesRole = r;
+  storageSet(KEY.nodesRole, r);
+  document.querySelectorAll('.nodes-subtabs button[data-nodes-role]').forEach(b =>
+    b.classList.toggle('active', b.dataset.nodesRole === r));
+  renderNodesTree(document.getElementById('nodes-search')?.value || '');
+  // Try to restore last file in the new role's tree; otherwise show empty hint
+  const lastPath = storageGet(KEY.nodesPath, null);
+  if (lastPath && findNodesFile(getNodesActiveTree(), lastPath)) {
+    renderNodesFile(lastPath);
+  } else {
+    document.getElementById('nodes-detail').innerHTML = '<p class="muted">Pick a file on the left to see its contents — exactly what you\'d <code>cat</code> on the node.</p>';
+  }
+}
+
+async function switchNodesVersion(minor) {
+  storageSet(KEY.toolsVersion, minor);  // shared with Tools tab
+  try {
+    await loadNodesVersion(minor);
+  } catch (e) {
+    alert(`Couldn't load nodes v${minor}: ${e.message}`);
+    return;
+  }
+  renderNodesTree(document.getElementById('nodes-search')?.value || '');
+  const lastPath = storageGet(KEY.nodesPath, null);
+  if (lastPath && findNodesFile(getNodesActiveTree(), lastPath)) {
+    renderNodesFile(lastPath);
+  } else {
+    document.getElementById('nodes-detail').innerHTML = '<p class="muted">Pick a file on the left to see its contents — exactly what you\'d <code>cat</code> on the node.</p>';
+  }
+  updateNodesMetaLine();
+}
+
+function installNodesHandlers() {
+  if (_nodesHandlersInstalled) return;
+  _nodesHandlersInstalled = true;
+  document.querySelectorAll('.nodes-subtabs button[data-nodes-role]').forEach(b => {
+    b.addEventListener('click', () => switchNodesRole(b.dataset.nodesRole));
+  });
+  document.getElementById('nodes-version-select')?.addEventListener('change', (e) => {
+    switchNodesVersion(e.target.value);
+  });
+  document.getElementById('nodes-search')?.addEventListener('input', (e) => {
+    renderNodesTree(e.target.value);
+  });
+}
+
 // ---------- Theme ----------
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -2533,6 +2785,7 @@ function installKeyboardShortcuts() {
     if (ev.key === '3') { ev.preventDefault(); setMode('docs'); return; }
     if (ev.key === '4') { ev.preventDefault(); setMode('help'); return; }
     if (ev.key === '5') { ev.preventDefault(); setMode('tools'); return; }
+    if (ev.key === '6') { ev.preventDefault(); setMode('nodes'); return; }
 
     // j/↓ next, k/↑ prev (Browse only — Quiz has its own next/prev buttons)
     if (ev.key === 'j' || ev.key === 'ArrowDown') {

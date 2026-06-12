@@ -1,0 +1,40 @@
+# `ls -la /etc/kubernetes/pki/` on a kubeadm control-plane node.
+# The actual key/cert bytes are NOT included in this snapshot; only the file
+# listing is shown so you can verify which materials live where.
+
+total 60
+drwxr-xr-x  3 root root 4096 Jan 12 09:14 .
+drwxr-xr-x  4 root root 4096 Jan 12 09:14 ..
+-rw-r--r--  1 root root 1289 Jan 12 09:14 apiserver.crt                  # CN=kube-apiserver, SAN=DNS:kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster.local,IP:10.96.0.1,IP:192.168.56.10
+-rw-------  1 root root 1675 Jan 12 09:14 apiserver.key
+-rw-r--r--  1 root root 1155 Jan 12 09:14 apiserver-etcd-client.crt      # CN=kube-apiserver-etcd-client, O=system:masters
+-rw-------  1 root root 1675 Jan 12 09:14 apiserver-etcd-client.key
+-rw-r--r--  1 root root 1164 Jan 12 09:14 apiserver-kubelet-client.crt   # CN=kube-apiserver-kubelet-client, O=system:masters
+-rw-------  1 root root 1675 Jan 12 09:14 apiserver-kubelet-client.key
+-rw-r--r--  1 root root 1107 Jan 12 09:14 ca.crt                         # CN=kubernetes (cluster CA — valid 10 years)
+-rw-------  1 root root 1679 Jan 12 09:14 ca.key
+drwxr-xr-x  2 root root 4096 Jan 12 09:14 etcd
+-rw-r--r--  1 root root 1115 Jan 12 09:14 front-proxy-ca.crt             # CN=front-proxy-ca
+-rw-------  1 root root 1679 Jan 12 09:14 front-proxy-ca.key
+-rw-r--r--  1 root root 1119 Jan 12 09:14 front-proxy-client.crt         # CN=front-proxy-client
+-rw-------  1 root root 1679 Jan 12 09:14 front-proxy-client.key
+-rw-------  1 root root 1675 Jan 12 09:14 sa.key                         # ServiceAccount signing key (private)
+-rw-------  1 root root  451 Jan 12 09:14 sa.pub                         # ServiceAccount signing key (public)
+
+# /etc/kubernetes/pki/etcd/
+total 32
+drwxr-xr-x  2 root root 4096 Jan 12 09:14 .
+drwxr-xr-x  3 root root 4096 Jan 12 09:14 ..
+-rw-r--r--  1 root root 1086 Jan 12 09:14 ca.crt                         # CN=etcd-ca
+-rw-------  1 root root 1675 Jan 12 09:14 ca.key
+-rw-r--r--  1 root root 1180 Jan 12 09:14 healthcheck-client.crt
+-rw-------  1 root root 1675 Jan 12 09:14 healthcheck-client.key
+-rw-r--r--  1 root root 1216 Jan 12 09:14 peer.crt                       # CN=cp01, SAN includes 192.168.56.10
+-rw-------  1 root root 1679 Jan 12 09:14 peer.key
+-rw-r--r--  1 root root 1216 Jan 12 09:14 server.crt                     # CN=cp01, SAN includes 127.0.0.1,192.168.56.10
+-rw-------  1 root root 1679 Jan 12 09:14 server.key
+
+# Renewal: `kubeadm certs check-expiration`  (lists all certs + expiry)
+#          `kubeadm certs renew all`         (renew all in place)
+#          `kubeadm certs renew apiserver`   (renew a single component cert)
+# Default cert validity = 1 year (except CAs which are 10 years).
