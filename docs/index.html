@@ -473,43 +473,5 @@
   <script src="llm.js" defer></script>
   <script src="sync.js" defer></script>
   <script src="app.js" defer></script>
-<script>
-const SEEDED = localStorage.getItem("_seeded_v1");
-if (!SEEDED) {
-  localStorage.setItem("cka:llm:settings", JSON.stringify({ provider: "deepseek", apiKey: "sk-AAA", model: "deepseek-chat" }));
-  localStorage.setItem("_seeded_v1", "1");
-  location.reload();
-} else {
-  window.addEventListener("load", () => {
-    setTimeout(() => {
-      // Open settings, switch to OpenAI, fill key, save, switch back to DeepSeek, verify
-      document.getElementById("settings-toggle").click();
-      setTimeout(() => {
-        const oai = document.querySelector("input[name=llm-provider][value=openai]");
-        oai.checked = true; oai.dispatchEvent(new Event("change", {bubbles:true}));
-        setTimeout(() => {
-          const key = document.getElementById("settings-key");
-          const model = document.getElementById("settings-model");
-          const keyBefore = key.value, modelBefore = model.value;
-          key.value = "sk-BBB"; model.value = "gpt-4o";
-          document.getElementById("settings-save").click();
-          setTimeout(() => {
-            const ds = document.querySelector("input[name=llm-provider][value=deepseek]");
-            ds.checked = true; ds.dispatchEvent(new Event("change", {bubbles:true}));
-            setTimeout(() => {
-              const cfg = JSON.parse(localStorage.getItem("cka:llm:settings"));
-              const sw = cfg.schemaVersion + " active=" + cfg.active;
-              const ds_apikey = cfg.providers.deepseek?.apiKey;
-              const oai_apikey = cfg.providers.openai?.apiKey;
-              const formKeyAfter = key.value, formModelAfter = model.value;
-              const count = document.getElementById("settings-providers-count").textContent;
-              document.title = JSON.stringify({sw,ds:ds_apikey,oai:oai_apikey,emptyOnSwitch:(keyBefore==="" && modelBefore===""),formAfterDsSwitch:formKeyAfter,formModelAfter,count});
-            }, 400);
-          }, 400);
-        }, 400);
-      }, 800);
-    }, 1500);
-  });
-}
-</script></body>
+</body>
 </html>

@@ -133,6 +133,23 @@ function lintExerciseBlock(file, headLine, block) {
 
 for (const f of FILES) lintFile(f);
 
+// Guardrail: catch test-automation snippets / debug crud that may have leaked
+// into docs/index.html from a verification pass. Any one of these markers in
+// the deployed HTML breaks production UX (one of them recently auto-opened
+// the Settings dialog on every visit).
+const HTML_FORBIDDEN = ['_seeded_v1', 'cka:llm:settings', 'console.log', 'debugger'];
+try {
+  const html = fs.readFileSync(path.join(ROOT, 'docs', 'index.html'), 'utf8');
+  for (const needle of HTML_FORBIDDEN) {
+    if (html.includes(needle)) {
+      console.error(`✗ docs/index.html contains forbidden test/debug marker: ${needle}`);
+      process.exit(1);
+    }
+  }
+} catch (e) {
+  // If docs/index.html is missing, the build pipeline will fail elsewhere — don't double-report here.
+}
+
 if (issues.length === 0) {
   console.log('✓ Lint passed — all exercises match the expected format.');
   process.exit(0);
