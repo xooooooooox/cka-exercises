@@ -7,9 +7,12 @@
   "scripts": {
     "build": "node scripts/build-exercises.mjs",
     "build:icons": "node scripts/build-icons.mjs",
+    "build:kubectl-help": "node scripts/build-kubectl-help.mjs",
+    "build:tools": "node scripts/build-kubectl-tools.mjs",
+    "build:tools-bundle": "node scripts/build-kubectl-help.mjs && node scripts/build-kubectl-tools.mjs",
     "lint": "node scripts/lint-exercises.mjs",
     "link-check": "node scripts/check-links.mjs",
-    "preserve": "node scripts/build-exercises.mjs",
+    "preserve": "node scripts/build-exercises.mjs && node scripts/build-kubectl-tools.mjs",
     "serve": "python3 -m http.server 8080 --directory docs"
   },
   "devDependencies": {

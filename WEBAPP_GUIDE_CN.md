@@ -81,13 +81,22 @@
 - 点任一文档页 → 右侧内联渲染 kubernetes.io 的内容 + 列出关联到这页的题目
 - 用于反向打开思路："想专门刷 ConfigMap 相关的题 — 题目分布在哪些位置？"
 
+### 🔧 Tools
+
+两个工具，对标考试时在终端里最常用的两个动作 — 离线打包进 SPA，第一次打开后离线可用。
+
+- **📘 Explain** — 一个 `kubectl explain` 的 schema 浏览器。左侧挑一个 kind（Pod / Deployment / Service / …），右侧像 CLI 一样显示 `KIND / VERSION / DESCRIPTION / FIELDS`。点任何带 sub-schema 的字段可以下钻（`Pod → spec → containers → resources → limits`），breadcrumb 可以回上一层。搜索框支持按 kind 名或字段名搜索（输入 "affinity" 会同时命中 Pod、Deployment 等）。
+- **📋 kubectl -h** — **逐字**收录了 ~80 个 kubectl 子命令的 `kubectl <verb> -h` 输出（包括 `kubectl create deployment`、`kubectl set image`、`kubectl rollout undo` 等等），跟考试 shell 里看到的完全一致，monospace 渲染。顶部的 **📋 Copy** 按钮一键把 `kubectl <cmd>` 复制到剪贴板。
+
+内容在部署时从固定的 Kubernetes 发布版本（当前 v1.34）和 kubectl 二进制中提取。Bundle 大小 ~580KB 原始 / ~110KB gzipped，**只在你第一次点开 Tools 标签时**才会懒加载，对初始页面打开速度没影响。
+
 ---
 
 ## 3. 顶栏控件
 
 | 控件 | 作用 |
 |---|---|
-| 模式 Tab（📚 / 🎯 / 📖 / ❓）| 切换 Browse / Quiz / Docs / Help |
+| 模式 Tab（📚 / 🎯 / 📖 / ❓ / 🔧）| 切换 Browse / Quiz / Docs / Help / Tools |
 | 搜索框 | 自由文本过滤（Browse 模式） |
 | ⏱ 计时器 | Quiz 限时倒计时 |
 | ☁ 同步 | 快捷的 Gist Push / Pull / Test 弹层（使用 Settings 里配的 PAT + Gist ID） |
@@ -148,6 +157,10 @@ DevTools 里你能看到的 key：
 | `cka:theme` | `"light"` / `"dark"` |
 | `cka:quiz:active` | 自动保存的进行中 quiz（单槽位，结束时自动清除） |
 | `cka:quiz:snapshots` | 命名快照列表（每个 snapshot 是一场独立的 quiz 会话） |
+| `cka:tools:lastSubtab` | `"explain"` 或 `"kubectl"` — 回到 Tools 标签时恢复 |
+| `cka:tools:lastKind` | Tools › Explain 上次打开的 kind |
+| `cka:tools:lastPath` | Explain 当前的钻取路径（如 `["spec","containers","resources"]`） |
+| `cka:tools:lastCmd` | Tools › kubectl -h 上次打开的命令（如 `"create deployment"`） |
 | `cka:docs:lastUrl` | 上次打开的 docs 页 |
 | `cka:llm:settings` | Provider、API key、model、Auto-Done 阈值 |
 | `cka:llm:privacyAck` | 是否已经关闭首次使用时的隐私提示 |
@@ -186,7 +199,7 @@ DevTools 里你能看到的 key：
 |---|---|
 | <kbd>j</kbd> / <kbd>↓</kbd> | 下一题（Browse） / 下一道（Quiz） |
 | <kbd>k</kbd> / <kbd>↑</kbd> | 上一题 |
-| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> | 切到 Browse / Quiz / Docs / Help |
+| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd> | 切到 Browse / Quiz / Docs / Help / Tools |
 | <kbd>/</kbd> | 聚焦搜索框 |
 | <kbd>Space</kbd> | 展开 / 收起解答（聚焦的 Browse 卡片） |
 | <kbd>d</kbd> | 切换 Done（聚焦的 Browse 卡片） |

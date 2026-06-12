@@ -31,6 +31,7 @@
       <button data-mode="quiz" class="mode-tab" type="button">🎯 Quiz<span class="tab-dot" hidden title="A quiz is in progress">●</span></button>
       <button data-mode="docs" class="mode-tab" type="button">📖 Docs</button>
       <button data-mode="help" class="mode-tab" type="button">❓ Help</button>
+      <button data-mode="tools" class="mode-tab" type="button">🔧 Tools</button>
     </nav>
     <div class="header-right">
       <span id="quiz-timer" hidden></span>
@@ -230,6 +231,35 @@
     </article>
   </div>
 
+  <!-- Tools mode: in-app kubectl explain + kubectl -h browser -->
+  <div id="view-tools" class="view" hidden>
+    <nav class="tools-subtabs" role="tablist">
+      <button data-tools-tab="explain" class="active" type="button" title="Browse the kubernetes API schema (kubectl explain)">📘 Explain</button>
+      <button data-tools-tab="kubectl" type="button" title="Look up the verbatim kubectl &lt;cmd&gt; -h output">📋 kubectl -h</button>
+      <span id="tools-meta" class="muted"></span>
+    </nav>
+
+    <section id="tools-explain" class="tools-panel">
+      <aside class="tools-tree">
+        <input id="tools-explain-search" type="search" placeholder="🔎 Search (e.g. pod.spec.affinity)" autocomplete="off">
+        <div id="tools-kind-list"></div>
+      </aside>
+      <article id="tools-explain-detail" class="tools-detail">
+        <p class="muted">Pick a kind on the left, then click any field to drill into its sub-schema (just like <code>kubectl explain pod.spec.containers</code>).</p>
+      </article>
+    </section>
+
+    <section id="tools-kubectl" class="tools-panel" hidden>
+      <aside class="tools-tree">
+        <input id="tools-kubectl-search" type="search" placeholder="🔎 Search commands (e.g. rollout, set image)" autocomplete="off">
+        <div id="tools-cmd-list"></div>
+      </aside>
+      <article id="tools-kubectl-detail" class="tools-detail">
+        <p class="muted">Pick a kubectl command on the left to see the same <code>kubectl &lt;cmd&gt; -h</code> output you'd get in the exam terminal.</p>
+      </article>
+    </section>
+  </div>
+
   <!-- Footer -->
   <footer class="app-footer">
     © 2026 <a href="https://github.com/xooooooooox" target="_blank" rel="noopener">xooooooooox</a>
@@ -250,7 +280,7 @@
           <tr><th colspan="2">Navigation</th></tr>
           <tr><td><kbd>j</kbd> / <kbd>↓</kbd></td><td>Next exercise (Browse) / next question (Quiz)</td></tr>
           <tr><td><kbd>k</kbd> / <kbd>↑</kbd></td><td>Previous</td></tr>
-          <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></td><td>Switch to Browse / Quiz / Docs / Help</td></tr>
+          <tr><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd></td><td>Switch to Browse / Quiz / Docs / Help / Tools</td></tr>
           <tr><td><kbd>/</kbd></td><td>Focus the search box</td></tr>
           <tr><th colspan="2">Card actions (Browse mode, focused card)</th></tr>
           <tr><td><kbd>Space</kbd></td><td>Show / hide solution</td></tr>

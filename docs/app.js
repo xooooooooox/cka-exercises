@@ -20,6 +20,10 @@ const State = {
   quiz: null,                    // { ids, idx, status: Map<id, 'got'|'missed'|'skipped'>, flagged: Set, revealed: Set, deadline, solutionsHidden }
   quizTimerHandle: null,
   docs: null,                    // { tree, leaves: Map<url, leaf>, selectedUrl }
+  tools: null,                   // { rootKinds, definitions, kubectl: { version, commands } }
+  toolsExplain: { kindRef: null, path: [] },
+  toolsKubectl: { cmdPath: null },
+  toolsSubtab: 'explain',
 };
 
 // ---------- Storage ----------
@@ -29,6 +33,10 @@ const KEY = {
   theme: 'cka:theme',
   quizActive: 'cka:quiz:active',
   quizSnapshots: 'cka:quiz:snapshots',
+  toolsSubtab: 'cka:tools:lastSubtab',
+  toolsKind: 'cka:tools:lastKind',
+  toolsPath: 'cka:tools:lastPath',
+  toolsCmd: 'cka:tools:lastCmd',
   docsLastUrl: 'cka:docs:lastUrl',
   llmSettings: 'cka:llm:settings',
   privacyAck: 'cka:llm:privacyAck',
@@ -1891,6 +1899,7 @@ function setMode(mode, opts = {}) {
   }
   if (mode === 'browse') renderBrowse();
   if (mode === 'help') renderHelpView();
+  if (mode === 'tools') renderToolsView();
   if (mode === 'docs') {
     if (!State.docs) {
       State.docs = { tree: buildDocsTree(State.allExercises), leaves: null, selectedUrl: null };
@@ -1992,6 +2001,287 @@ function renderHelpView() {
   _helpRendered = true;
 }
 
+// ---------- Tools view (kubectl explain + kubectl -h) ----------
+
+let _toolsRendered = false;
+let _toolsLoadingPromise = null;
+
+async function loadTools() {
+  if (State.tools) return State.tools;
+  if (_toolsLoadingPromise) return _toolsLoadingPromise;
+  _toolsLoadingPromise = (async () => {
+    const resp = await fetch('tools.json');
+    if (!resp.ok) throw new Error(`tools.json HTTP ${resp.status}`);
+    State.tools = await resp.json();
+    return State.tools;
+  })();
+  return _toolsLoadingPromise;
+}
+
+async function renderToolsView() {
+  const explainBody = document.getElementById('tools-explain-detail');
+  const kubectlBody = document.getElementById('tools-kubectl-detail');
+  if (!explainBody || !kubectlBody) return;
+
+  if (!State.tools) {
+    explainBody.innerHTML = '<p class="muted">Loading…</p>';
+    kubectlBody.innerHTML = '<p class="muted">Loading…</p>';
+    try {
+      await loadTools();
+    } catch (e) {
+      explainBody.innerHTML = `<p class="muted">Couldn't load <code>tools.json</code>: ${e.message}. Run <code>npm run build:tools-bundle</code>.</p>`;
+      return;
+    }
+  }
+
+  if (_toolsRendered) {
+    showToolsSubtab(State.toolsSubtab);
+    return;
+  }
+
+  // Meta line in the subtabs strip
+  const meta = document.getElementById('tools-meta');
+  if (meta) {
+    const t = State.tools;
+    meta.textContent = `${t.k8sVersion || ''}${t.kubectl?.version ? ' · kubectl ' + t.kubectl.version : ''}`;
+  }
+
+  renderExplainKindList();
+  renderKubectlCommandList();
+
+  // Restore last sub-tab + selection
+  const lastTab = storageGet(KEY.toolsSubtab, 'explain');
+  State.toolsSubtab = (lastTab === 'kubectl') ? 'kubectl' : 'explain';
+  showToolsSubtab(State.toolsSubtab);
+
+  const lastKind = storageGet(KEY.toolsKind, null);
+  const lastPath = storageGet(KEY.toolsPath, []) || [];
+  if (lastKind && State.tools.definitions[lastKind]) {
+    State.toolsExplain = { kindRef: lastKind, path: Array.isArray(lastPath) ? lastPath : [] };
+    renderExplainDetail();
+  }
+
+  const lastCmd = storageGet(KEY.toolsCmd, null);
+  if (lastCmd && State.tools.kubectl?.commands?.some(c => c.path === lastCmd)) {
+    State.toolsKubectl.cmdPath = lastCmd;
+    renderKubectlDetail();
+  }
+
+  installToolsHandlers();
+  _toolsRendered = true;
+}
+
+function showToolsSubtab(name) {
+  const sub = (name === 'kubectl') ? 'kubectl' : 'explain';
+  State.toolsSubtab = sub;
+  storageSet(KEY.toolsSubtab, sub);
+  document.querySelectorAll('.tools-subtabs button[data-tools-tab]').forEach(b =>
+    b.classList.toggle('active', b.dataset.toolsTab === sub));
+  document.getElementById('tools-explain').hidden = sub !== 'explain';
+  document.getElementById('tools-kubectl').hidden = sub !== 'kubectl';
+}
+
+function installToolsHandlers() {
+  document.querySelectorAll('.tools-subtabs button[data-tools-tab]').forEach(b => {
+    b.addEventListener('click', () => showToolsSubtab(b.dataset.toolsTab));
+  });
+  document.getElementById('tools-explain-search')?.addEventListener('input', (e) => {
+    renderExplainKindList(e.target.value.trim().toLowerCase());
+  });
+  document.getElementById('tools-kubectl-search')?.addEventListener('input', (e) => {
+    renderKubectlCommandList(e.target.value.trim().toLowerCase());
+  });
+}
+
+// --- Explain panel ---
+
+function renderExplainKindList(query = '') {
+  const list = document.getElementById('tools-kind-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const kinds = State.tools.rootKinds;
+
+  // If there's a query, also search across reachable field paths so users can
+  // type "affinity" and see Pod/PodSpec rows.
+  let matchedRefs = null;
+  if (query) {
+    matchedRefs = new Set();
+    for (const k of kinds) {
+      if (k.name.toLowerCase().includes(query)) matchedRefs.add(k.ref);
+    }
+    // Field-name search: walk reachable defs once
+    for (const k of kinds) {
+      const def = State.tools.definitions[k.ref];
+      if (!def) continue;
+      for (const f of def.fields || []) {
+        if (f.name.toLowerCase().includes(query)) matchedRefs.add(k.ref);
+      }
+    }
+  }
+
+  for (const k of kinds) {
+    if (matchedRefs && !matchedRefs.has(k.ref)) continue;
+    const btn = el('button', {
+      type: 'button',
+      'data-kind-ref': k.ref,
+      title: `${k.name} (${k.group || 'core'}/${k.version})`,
+    }, k.name);
+    if (k.ref === State.toolsExplain.kindRef) btn.classList.add('active');
+    btn.addEventListener('click', () => {
+      State.toolsExplain = { kindRef: k.ref, path: [] };
+      storageSet(KEY.toolsKind, k.ref);
+      storageSet(KEY.toolsPath, []);
+      renderExplainKindList(query);
+      renderExplainDetail();
+    });
+    list.appendChild(btn);
+  }
+  if (list.childElementCount === 0) {
+    list.appendChild(el('p', { class: 'muted' }, query ? 'No matches.' : 'No kinds loaded.'));
+  }
+}
+
+function renderExplainDetail() {
+  const detail = document.getElementById('tools-explain-detail');
+  if (!detail) return;
+  detail.innerHTML = '';
+  const { kindRef, path } = State.toolsExplain;
+  if (!kindRef) return;
+
+  // Walk the path from the root kind to the current node
+  let cursorRef = kindRef;
+  for (const seg of path) {
+    const def = State.tools.definitions[cursorRef];
+    if (!def) break;
+    const field = (def.fields || []).find(f => f.name === seg);
+    if (!field?.ref) break;
+    cursorRef = field.ref;
+  }
+  const def = State.tools.definitions[cursorRef];
+  if (!def) {
+    detail.appendChild(el('p', { class: 'muted' }, `Schema not bundled: ${cursorRef}`));
+    return;
+  }
+
+  // Header — KIND / VERSION / RESOURCE / DESCRIPTION
+  const rootKind = State.tools.rootKinds.find(k => k.ref === kindRef);
+  const header = el('div', { class: 'explain-header' });
+  header.appendChild(el('div', {}, el('strong', {}, 'KIND:     '), rootKind?.name || ''));
+  if (rootKind?.version) header.appendChild(el('div', {}, el('strong', {}, 'VERSION:  '), `${rootKind.group ? rootKind.group + '/' : ''}${rootKind.version}`));
+  if (path.length) header.appendChild(el('div', {}, el('strong', {}, 'FIELD:    '), [rootKind?.name, ...path].join('.')));
+  detail.appendChild(header);
+
+  // Breadcrumb
+  if (path.length) {
+    const crumbs = el('div', { class: 'explain-breadcrumb' });
+    const rootLink = el('a', { 'data-crumb-idx': '-1' }, rootKind?.name || 'root');
+    rootLink.addEventListener('click', () => navigateExplain([]));
+    crumbs.appendChild(rootLink);
+    path.forEach((seg, i) => {
+      crumbs.appendChild(document.createTextNode(' › '));
+      const a = el('a', { 'data-crumb-idx': String(i) }, seg);
+      a.addEventListener('click', () => navigateExplain(path.slice(0, i + 1)));
+      crumbs.appendChild(a);
+    });
+    detail.appendChild(crumbs);
+  }
+
+  // Description
+  if (def.description) {
+    detail.appendChild(el('div', { class: 'explain-desc' }, el('strong', {}, 'DESCRIPTION:\n     '), def.description));
+  }
+
+  // Fields
+  const fields = def.fields || [];
+  if (fields.length) {
+    detail.appendChild(el('div', { class: 'explain-section' }, el('strong', {}, 'FIELDS:')));
+    for (const f of fields) {
+      const row = el('div', { class: 'field-row' });
+      const head = el('div', { class: 'field-head' });
+      const nameSpan = el('span', { class: 'field-name' }, f.name);
+      const typeSpan = el('span', { class: 'field-type' }, ` <${f.type}>${f.required ? ' -required-' : ''}`);
+      if (f.ref) {
+        const drill = el('button', { type: 'button', class: 'field-drill', title: 'Drill into this sub-schema' }, '↳');
+        drill.addEventListener('click', () => navigateExplain([...path, f.name]));
+        head.append(nameSpan, typeSpan, drill);
+        nameSpan.addEventListener('click', () => navigateExplain([...path, f.name]));
+        nameSpan.style.cursor = 'pointer';
+      } else {
+        head.append(nameSpan, typeSpan);
+      }
+      row.appendChild(head);
+      if (f.description) row.appendChild(el('div', { class: 'field-desc' }, f.description));
+      detail.appendChild(row);
+    }
+  } else {
+    detail.appendChild(el('p', { class: 'muted' }, '(scalar / no sub-fields)'));
+  }
+}
+
+function navigateExplain(newPath) {
+  State.toolsExplain.path = newPath;
+  storageSet(KEY.toolsPath, newPath);
+  renderExplainDetail();
+}
+
+// --- kubectl -h panel ---
+
+function renderKubectlCommandList(query = '') {
+  const list = document.getElementById('tools-cmd-list');
+  if (!list) return;
+  list.innerHTML = '';
+  const commands = State.tools.kubectl?.commands || [];
+  let shown = 0;
+  for (const c of commands) {
+    if (query) {
+      const hay = (c.path + ' ' + (c.summary || '')).toLowerCase();
+      if (!hay.includes(query)) continue;
+    }
+    const depth = c.path.split(' ').length - 1;
+    const btn = el('button', { type: 'button', 'data-cmd-path': c.path, title: c.summary || '' });
+    btn.style.paddingLeft = `${8 + depth * 12}px`;
+    btn.textContent = c.path.split(' ').pop();
+    if (c.path === State.toolsKubectl.cmdPath) btn.classList.add('active');
+    btn.addEventListener('click', () => {
+      State.toolsKubectl.cmdPath = c.path;
+      storageSet(KEY.toolsCmd, c.path);
+      renderKubectlCommandList(query);
+      renderKubectlDetail();
+    });
+    list.appendChild(btn);
+    shown++;
+  }
+  if (!shown) list.appendChild(el('p', { class: 'muted' }, query ? 'No matches.' : 'No commands loaded.'));
+}
+
+function renderKubectlDetail() {
+  const detail = document.getElementById('tools-kubectl-detail');
+  if (!detail) return;
+  const cmd = State.tools.kubectl?.commands?.find(c => c.path === State.toolsKubectl.cmdPath);
+  if (!cmd) {
+    detail.innerHTML = '<p class="muted">Pick a command on the left.</p>';
+    return;
+  }
+  detail.innerHTML = '';
+  const heading = el('div', { class: 'kubectl-heading' });
+  heading.appendChild(el('div', { class: 'kubectl-path' }, `$ kubectl ${cmd.path} -h`));
+  if (cmd.summary) heading.appendChild(el('div', { class: 'kubectl-summary muted' }, cmd.summary));
+  const copyBtn = el('button', { type: 'button', class: 'kubectl-copy', title: 'Copy "kubectl <cmd>" to clipboard' }, '📋 Copy');
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(`kubectl ${cmd.path}`);
+      copyBtn.textContent = '✓ Copied';
+      setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 1500);
+    } catch { copyBtn.textContent = '✗ Failed'; }
+  });
+  heading.appendChild(copyBtn);
+  detail.appendChild(heading);
+
+  const pre = el('pre', { class: 'kubectl-help' });
+  pre.appendChild(el('code', {}, cmd.rawHelp || ''));
+  detail.appendChild(pre);
+}
+
 // ---------- Theme ----------
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -2082,6 +2372,7 @@ function installKeyboardShortcuts() {
     if (ev.key === '2') { ev.preventDefault(); setMode('quiz'); return; }
     if (ev.key === '3') { ev.preventDefault(); setMode('docs'); return; }
     if (ev.key === '4') { ev.preventDefault(); setMode('help'); return; }
+    if (ev.key === '5') { ev.preventDefault(); setMode('tools'); return; }
 
     // j/↓ next, k/↑ prev (Browse only — Quiz has its own next/prev buttons)
     if (ev.key === 'j' || ev.key === 'ArrowDown') {

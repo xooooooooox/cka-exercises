@@ -81,13 +81,22 @@ Mirror of the kubernetes.io documentation tree, reverse-indexed against the exer
 - Click any docs page → see the kubernetes.io content rendered inline, plus a list of exercises that drill it.
 - Useful for **the other direction**: "I want to drill ConfigMaps — where are the questions?"
 
+### 🔧 Tools
+
+Two reference tools that mirror what you reach for in the real exam terminal — bundled into the SPA so they work offline once loaded.
+
+- **📘 Explain** — a `kubectl explain` schema browser. Pick a kind on the left (Pod, Deployment, Service, …) and the right pane shows `KIND / VERSION / DESCRIPTION / FIELDS` exactly like the CLI. Click any field that references a sub-schema to drill in (`Pod → spec → containers → resources → limits`). Use the breadcrumb to walk back up. Search box on the left filters by kind name or by any field name reachable from a kind ("affinity" finds Pod, Deployment, …).
+- **📋 kubectl -h** — the **verbatim** `kubectl <verb> -h` output for every kubectl subcommand (~80 of them, including `kubectl create deployment`, `kubectl set image`, `kubectl rollout undo`, …). Identical to what you'd see in the exam shell, rendered monospace. A **📋 Copy** button on top copies `kubectl <cmd>` to your clipboard.
+
+The content is pre-built at deploy time from the pinned Kubernetes release (currently v1.34) and kubectl binary. Bundle size is ~580KB raw / ~110KB gzipped, lazy-loaded only when you first open the Tools tab — no impact on initial page load.
+
 ---
 
 ## 3. Header Controls
 
 | Control | Purpose |
 |---|---|
-| Mode tabs (📚 / 🎯 / 📖 / ❓) | Switch between Browse, Quiz, Docs, Help |
+| Mode tabs (📚 / 🎯 / 📖 / ❓ / 🔧) | Switch between Browse, Quiz, Docs, Help, Tools |
 | Search box | Free-text filter (Browse mode) |
 | ⏱ Timer | Live countdown during a timed quiz |
 | ☁ Sync | Quick Gist Push / Pull / Test popover (uses the same PAT + Gist ID configured in Settings) |
@@ -148,6 +157,10 @@ Keys you'll see in DevTools:
 | `cka:theme` | `"light"` / `"dark"` |
 | `cka:quiz:active` | Auto-saved in-progress quiz (one slot) — auto-cleared on finish |
 | `cka:quiz:snapshots` | Named snapshots list (each is an independent saved quiz session) |
+| `cka:tools:lastSubtab` | `"explain"` or `"kubectl"` — restored on revisit |
+| `cka:tools:lastKind` | Last kind opened in Tools › Explain (e.g. `io.k8s.api.core.v1.Pod`) |
+| `cka:tools:lastPath` | Current drill path in Explain (e.g. `["spec","containers","resources"]`) |
+| `cka:tools:lastCmd` | Last command opened in Tools › kubectl -h (e.g. `"create deployment"`) |
 | `cka:docs:lastUrl` | Last opened docs page |
 | `cka:llm:settings` | Provider, API key, model, auto-done threshold |
 | `cka:llm:privacyAck` | Whether you dismissed the first-use privacy notice |
@@ -186,7 +199,7 @@ This SPA has **no backend**. Treat it like any other BYO-key web tool.
 |---|---|
 | <kbd>j</kbd> / <kbd>↓</kbd> | Next exercise (Browse) / next question (Quiz) |
 | <kbd>k</kbd> / <kbd>↑</kbd> | Previous |
-| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> | Switch to Browse / Quiz / Docs / Help |
+| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd> | Switch to Browse / Quiz / Docs / Help / Tools |
 | <kbd>/</kbd> | Focus the search box |
 | <kbd>Space</kbd> | Show / hide solution (focused Browse card) |
 | <kbd>d</kbd> | Toggle Done (focused Browse card) |

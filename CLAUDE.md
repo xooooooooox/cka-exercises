@@ -117,6 +117,15 @@ Pure Node (no deps; built-ins only). For each markdown file:
 
 Output: `docs/exercises.json`. Gitignored. Regenerated on every `npm run build`, `npm run serve` (via `preserve` hook), and CI deploy.
 
+### `scripts/build-kubectl-help.mjs` + `scripts/build-kubectl-tools.mjs`
+
+These two scripts produce the Tools-tab payload (in-app `kubectl explain` schema browser + verbatim `kubectl <cmd> -h` output).
+
+- `build-kubectl-help.mjs` — invokes the local `kubectl` binary, walks the command tree by parsing "Available Commands" / "Basic Commands" headings in each `-h` output, captures `path / summary / rawHelp` per command. Writes `tools/kubectl-help.json` (gitignored, ~220KB). **Requires kubectl on PATH** — locally it uses whatever you have installed; CI pins `v1.34.0` via `azure/setup-kubectl@v4`.
+- `build-kubectl-tools.mjs` — fetches the OpenAPI spec from `kubernetes/kubernetes@release-1.34`, walks a curated `INCLUDED_KINDS` list (32 CKA-relevant resources) plus transitively reachable sub-schemas, compacts each definition to `{ description, fields }`, merges in the kubectl help bundle, and writes `docs/tools.json` (gitignored, ~580KB combined). `STOP_AT_REF` blocks `JSONSchemaProps` recursion to keep size in check; the budget cap is 800KB.
+
+Run both together: `npm run build:tools-bundle`. `npm run serve` and CI both call them via the `preserve` hook / workflow steps.
+
 ### Tag identifier rename
 
 Tags were renamed from Chinese (`CKA 真题`, `4分`) to English (`CKA Past Exam`, `4 pts`) for consistency. The `extractPoints()` regex still matches both forms for safety — but new entries should use the English form.
