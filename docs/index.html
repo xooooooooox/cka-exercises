@@ -54,6 +54,7 @@
           </div>
         </div>
       </div>
+      <button id="refresh-toggle" class="icon-btn" type="button" title="Reload the latest content from the server" aria-label="Reload">🔄</button>
       <button id="settings-toggle" class="icon-btn" type="button" title="Grading settings" aria-label="Grading settings">⚙️</button>
       <button id="help-toggle" class="icon-btn" type="button" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨️</button>
       <a class="icon-btn" href="https://github.com/xooooooooox/cka-exercises" target="_blank" rel="noopener" title="View source on GitHub" aria-label="GitHub repository">
@@ -160,6 +161,14 @@
         <label><input type="radio" name="quiz-time" value="30"> 30 min</label>
         <label><input type="radio" name="quiz-time" value="60"> 60 min</label>
         <label><input type="radio" name="quiz-time" value="120"> 120 min</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Order</legend>
+        <label><input type="radio" name="quiz-order" value="random" checked> 🎲 Random</label>
+        <label><input type="radio" name="quiz-order" value="sequential"> ↑ Sequential (by question number)</label>
+        <label><input type="radio" name="quiz-order" value="tag"> 🏷 By source tag (general → past exam → killer.sh A → B)</label>
+        <label><input type="radio" name="quiz-order" value="section"> 📑 By section (§1 → §2 → …)</label>
       </fieldset>
 
       <fieldset>
@@ -291,6 +300,15 @@
   </div>
 
   <!-- Footer -->
+  <!-- Update-available banner — shown when the deployed version.json's
+       generatedAt differs from the bundled exercises.json's generatedAt.
+       Mainly for iOS PWA standalone where forced quit is otherwise needed. -->
+  <div id="update-banner" class="update-banner" hidden role="status" aria-live="polite">
+    <span>✨ New content available.</span>
+    <button id="update-refresh" type="button">Refresh</button>
+    <button id="update-dismiss" type="button" class="muted" title="Dismiss until next launch" aria-label="Dismiss">✕</button>
+  </div>
+
   <footer class="app-footer">
     © 2026 <a href="https://github.com/xooooooooox" target="_blank" rel="noopener">xooooooooox</a>
     · <a href="https://github.com/xooooooooox/cka-exercises/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a>

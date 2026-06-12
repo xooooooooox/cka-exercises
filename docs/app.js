@@ -40,6 +40,7 @@ const KEY = {
   theme: 'cka:theme',
   quizActive: 'cka:quiz:active',
   quizSnapshots: 'cka:quiz:snapshots',
+  quizOrder: 'cka:quiz:lastOrder',
   toolsSubtab: 'cka:tools:lastSubtab',
   toolsKind: 'cka:tools:lastKind',
   toolsPath: 'cka:tools:lastPath',
@@ -807,6 +808,46 @@ function installSyncMenu() {
   });
 }
 
+// ---------- Header 🔄 refresh + update-available banner ----------
+
+function installRefreshAffordances() {
+  document.getElementById('refresh-toggle')?.addEventListener('click', () => {
+    // Belt-and-suspenders for iOS standalone PWA: location.reload() picks up
+    // fresh HTML when cache headers are honoured; appending a cache-buster on
+    // top forces the browser to re-fetch even when standalone mode hangs onto
+    // the bootstrap HTML.
+    const u = new URL(location.href);
+    u.searchParams.set('_rev', String(Date.now()));
+    location.replace(u.toString());
+  });
+  document.getElementById('update-refresh')?.addEventListener('click', () => {
+    const u = new URL(location.href);
+    u.searchParams.set('_rev', String(Date.now()));
+    location.replace(u.toString());
+  });
+  document.getElementById('update-dismiss')?.addEventListener('click', () => {
+    const b = document.getElementById('update-banner');
+    if (b) b.hidden = true;
+  });
+  // Run the check after we've yielded so the first paint isn't blocked.
+  setTimeout(checkForUpdate, 1500);
+}
+
+async function checkForUpdate() {
+  try {
+    const resp = await fetch('version.json', { cache: 'no-cache' });
+    if (!resp.ok) return;
+    const v = await resp.json();
+    if (!v?.generatedAt || !State.data?.generatedAt) return;
+    if (v.generatedAt !== State.data.generatedAt) {
+      const banner = document.getElementById('update-banner');
+      if (banner) banner.hidden = false;
+    }
+  } catch {
+    // Offline / CORS / fetch blocked — silently ignore.
+  }
+}
+
 // ---------- Auto-grading UI (textarea + Check + verdict) ----------
 
 function renderAnswerBox(ex, opts = {}) {
@@ -1130,6 +1171,7 @@ function serialiseQuiz(q) {
     totalMinutes: q.totalMinutes || 0,
     startedAt: q.startedAt || Date.now(),
     lastSavedAt: Date.now(),
+    order: q.order || 'random',
   };
 }
 
@@ -1145,6 +1187,7 @@ function deserialiseQuiz(p) {
     solutionsHidden: !!p.solutionsHidden,
     totalMinutes: p.totalMinutes || 0,
     startedAt: p.startedAt || Date.now(),
+    order: p.order || 'random',
   };
 }
 
@@ -1360,6 +1403,10 @@ function renderQuizSetup() {
   document.querySelectorAll('[name="quiz-tag"]').forEach(cb => cb.addEventListener('change', updateQuizEligibleCount));
   document.getElementById('quiz-only-bookmarks').addEventListener('change', updateQuizEligibleCount);
   document.getElementById('quiz-only-undone').addEventListener('change', updateQuizEligibleCount);
+  // Restore last-used Order radio (cka:quiz:lastOrder)
+  const savedOrder = storageGet(KEY.quizOrder, 'random');
+  const orderInput = document.querySelector(`[name="quiz-order"][value="${savedOrder}"]`);
+  if (orderInput) orderInput.checked = true;
   updateQuizEligibleCount();
   renderQuizResumePanel();
 }
@@ -1389,6 +1436,47 @@ function updateQuizEligibleCount() {
   document.getElementById('quiz-start-btn').disabled = c === 0;
 }
 
+// Uniform Fisher-Yates shuffle in place. Replaces the older biased
+// Array.prototype.sort(() => Math.random() - 0.5) pattern.
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function pickQuizExercises(eligible, count, order) {
+  if (order === 'sequential') {
+    // Eligible is already in source order (ca-1-001, ca-1-002, …)
+    return eligible.slice(0, count);
+  }
+  if (order === 'tag') {
+    const TAG_ORDER = ['general', 'cka-past-exam', 'killersh-a', 'killersh-b'];
+    const groups = new Map(TAG_ORDER.map(t => [t, []]));
+    for (const ex of eligible) {
+      if (groups.has(ex.tag)) groups.get(ex.tag).push(ex);
+    }
+    const out = [];
+    for (const t of TAG_ORDER) out.push(...shuffleInPlace(groups.get(t) || []));
+    return out.slice(0, count);
+  }
+  if (order === 'section') {
+    // Group by (domain, section), keep groups in source order, shuffle within.
+    const groups = new Map();
+    for (const ex of eligible) {
+      const k = `${ex.domain.key}/${ex.section.number}`;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(ex);
+    }
+    const out = [];
+    for (const arr of groups.values()) out.push(...shuffleInPlace(arr));
+    return out.slice(0, count);
+  }
+  // 'random' (default) — proper Fisher-Yates
+  return shuffleInPlace([...eligible]).slice(0, count);
+}
+
 function startQuiz() {
   const eligible = getEligibleForQuiz();
   if (eligible.length === 0) return;
@@ -1396,8 +1484,10 @@ function startQuiz() {
   const countRadio = document.querySelector('[name="quiz-count"]:checked').value;
   let count = countRadio === 'custom' ? parseInt(document.getElementById('quiz-count-custom').value, 10) : parseInt(countRadio, 10);
   count = Math.min(Math.max(1, count || 10), eligible.length);
-  // Shuffle and pick
-  const shuffled = [...eligible].sort(() => Math.random() - 0.5).slice(0, count);
+  // Order
+  const order = document.querySelector('[name="quiz-order"]:checked')?.value || 'random';
+  storageSet(KEY.quizOrder, order);
+  const picked = pickQuizExercises(eligible, count, order);
   // Time limit
   const tmin = parseInt(document.querySelector('[name="quiz-time"]:checked').value, 10);
   const deadline = tmin > 0 ? Date.now() + tmin * 60 * 1000 : null;
@@ -1405,7 +1495,7 @@ function startQuiz() {
   const solutionsHidden = document.querySelector('[name="quiz-solutions"]:checked').value === 'hidden';
 
   State.quiz = {
-    ids: shuffled.map(e => e.id),
+    ids: picked.map(e => e.id),
     idx: 0,
     status: new Map(), // id -> 'got' | 'missed' | 'skipped'
     flagged: new Set(),
@@ -1414,6 +1504,7 @@ function startQuiz() {
     solutionsHidden,
     totalMinutes: tmin,
     startedAt: Date.now(),
+    order,
   };
 
   document.getElementById('quiz-setup').hidden = true;
@@ -2865,6 +2956,9 @@ async function init() {
 
   // Header ☁ sync popover
   installSyncMenu();
+
+  // Header 🔄 refresh + auto-detect "new content" banner
+  installRefreshAffordances();
 
   // Reflect saved quiz state on the Quiz tab badge
   refreshQuizTabDot();

@@ -1308,6 +1308,45 @@ kbd {
 }
 .app-footer a { color: var(--fg-muted); }
 .app-footer a:hover { color: var(--accent); }
+
+/* Update-available banner — sticky pill at the bottom of the viewport. */
+.update-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  font-size: 13px;
+  z-index: 200;
+  max-width: calc(100vw - 24px);
+}
+.update-banner[hidden] { display: none; }
+.update-banner button {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 3px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.update-banner button.muted {
+  background: transparent;
+  color: var(--fg-muted);
+  border-color: transparent;
+  padding: 0 4px;
+}
+@media (max-width: 480px) {
+  .update-banner { font-size: 12px; padding: 6px 12px; gap: 6px; }
+}
+@media print { .update-banner { display: none !important; } }
 @media print { .app-footer { display: none; } }
 
 /* ============================================================ */

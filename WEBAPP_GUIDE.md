@@ -49,6 +49,7 @@ Random-draw practice under exam-like conditions.
 - Source filters (domain, tags, only bookmarks, only not-yet-done)
 - Question count (5 / 10 / 17 full mock / custom up to 500)
 - Time limit (none / 30 / 60 / 120 min)
+- **Order:** 🎲 Random (default — uniform shuffle), ↑ Sequential (by question number, source order), 🏷 By source tag (general → past exam → killer.sh A → B, shuffled within group), 📑 By section (§1 → §2 → …, shuffled within section)
 - Solutions visibility (hidden until you click **Reveal**, or always visible)
 
 Click **▶ Start quiz** to begin. The header shows a live timer (if a limit is set).
@@ -114,6 +115,7 @@ Bundle size is ~30KB per version, lazy-loaded only when you first open the Nodes
 | Search box | Free-text filter (Browse mode) |
 | ⏱ Timer | Live countdown during a timed quiz |
 | ☁ Sync | Quick Gist Push / Pull / Test popover (uses the same PAT + Gist ID configured in Settings) |
+| 🔄 Refresh | Force-reload the latest deployment from the server — useful on iOS PWA standalone, where the app otherwise caches aggressively until you force-quit. A small "✨ New content available" banner also auto-appears at the bottom whenever a newer deploy is detected (compared against a tiny `version.json` fetched fresh on each launch). |
 | 🌓 Theme toggle | Light / dark mode (persisted) |
 | ⌨️ Help | Keyboard shortcut cheatsheet |
 | ⚙️ Settings | LLM grading config, Backup, Gist sync |
@@ -171,6 +173,7 @@ Keys you'll see in DevTools:
 | `cka:theme` | `"light"` / `"dark"` |
 | `cka:quiz:active` | Auto-saved in-progress quiz (one slot) — auto-cleared on finish |
 | `cka:quiz:snapshots` | Named snapshots list (each is an independent saved quiz session) |
+| `cka:quiz:lastOrder` | Last-used quiz Order — `"random"` / `"sequential"` / `"tag"` / `"section"` (default `random`) |
 | `cka:tools:lastSubtab` | `"explain"` or `"kubectl"` — restored on revisit |
 | `cka:tools:lastKind` | Last kind opened in Tools › Explain (e.g. `io.k8s.api.core.v1.Pod`) |
 | `cka:tools:lastPath` | Current drill path in Explain (e.g. `["spec","containers","resources"]`) |

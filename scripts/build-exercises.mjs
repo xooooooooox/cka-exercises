@@ -225,6 +225,13 @@ for (const dom of result.domains) {
 fs.mkdirSync(path.join(ROOT, 'docs'), { recursive: true });
 fs.writeFileSync(OUTPUT, JSON.stringify(result, null, 2) + '\n');
 
+// Tiny version marker that the SPA fetches { cache: 'no-cache' } at launch
+// to detect when a newer deploy is available (banner prompts the user to
+// reload — important on iOS PWA standalone where forced quit is otherwise
+// the only way to refresh).
+const VERSION_OUT = path.join(ROOT, 'docs', 'version.json');
+fs.writeFileSync(VERSION_OUT, JSON.stringify({ generatedAt: result.generatedAt }) + '\n');
+
 const totalExercises = result.domains.reduce(
   (s, d) => s + d.sections.reduce((ss, sec) => ss + sec.exercises.length, 0), 0,
 );
