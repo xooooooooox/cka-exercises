@@ -50,6 +50,22 @@ jobs:
       issues: ${{ steps.list.outputs.issues }}
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure repo labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          create() {
+            gh label create "$1" --description "$2" --color "$3" --force >/dev/null 2>&1 || true
+          }
+          # answer-fix is red; the six kind/* dispatch labels share a yellow hue.
+          create "answer-fix"                "Reference solution mismatch reported via the SPA" "d73a4a"
+          create "kind/verification-bundled" "Reference solution bundles verification commands" "fbca04"
+          create "kind/wrong-resource"       "Reference uses wrong resource details"            "fbca04"
+          create "kind/outdated-flag"        "Reference uses deprecated kubectl flag / syntax"  "fbca04"
+          create "kind/missing-step"         "Reference is incomplete (missing required step)"  "fbca04"
+          create "kind/typo"                 "Typo / formatting issue"                          "fbca04"
+          create "kind/other"                "Other (described in issue body)"                  "fbca04"
       - id: list
         env:
           GH_TOKEN: ${{ github.token }}
@@ -193,8 +209,9 @@ jobs:
 
       - name: Run aider
         if: env.skip != '1'
+        id: aider
         run: |
-          set -eo pipefail
+          set +e
           aider \
             --model "${{ steps.route.outputs.model }}" \
             --message "$(cat /tmp/prompt.md)" \
@@ -202,8 +219,37 @@ jobs:
             --no-auto-commits \
             --no-stream \
             "${SOURCE_FILE}" CLAUDE.md \
-            > /tmp/aider.log 2>&1 || true
+            > /tmp/aider.log 2>&1
+          RC=$?
+          echo "exit_code=$RC" >> "$GITHUB_OUTPUT"
+          set -e
+          {
+            echo "### Aider run"
+            echo
+            echo "- provider: \`${{ inputs.provider }}\`"
+            echo "- model: \`${{ steps.route.outputs.model }}\`"
+            echo "- exit code: \`$RC\`"
+            echo
+            echo '```'
+            tail -200 /tmp/aider.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
           tail -80 /tmp/aider.log
+
+      - name: Upload aider log
+        if: always() && env.skip != '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aider-log-issue-${{ env.ISSUE }}
+          path: /tmp/aider.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Fail loudly if aider crashed
+        if: env.skip != '1' && steps.aider.outputs.exit_code != '0'
+        run: |
+          gh issue comment "$ISSUE" --body "🚨 The editor (aider, provider=\`${{ inputs.provider }}\`, model=\`${{ steps.route.outputs.model }}\`) crashed with exit code ${{ steps.aider.outputs.exit_code }}. See the run's \`aider-log-issue-${ISSUE}\` artifact for the full log."
+          exit 1
 
       - name: Bail if no changes
         if: env.skip != '1'

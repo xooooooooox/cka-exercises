@@ -1,15 +1,26 @@
 #!/usr/bin/env node
 // Reads a `gh issue view --json title,body,labels,number` payload from stdin
-// and emits a shell-sourceable env block describing the issue, plus a
-// substituted prompt to stdout when --prompt-template=<path> is passed.
+// and emits one of three outputs:
+//   --env                   $GITHUB_ENV-compatible KEY=VALUE lines (no
+//                           `export`, no quotes). Cat the output directly
+//                           into $GITHUB_ENV.
+//   --prompt-template=<p>   Substituted prompt to stdout.
+//   (default)               JSON manifest for ad-hoc debugging.
 //
-// Usage from the workflow:
-//   gh issue view "$ISSUE" --json title,body,labels,number \
-//     | node scripts/answer-fix/extract-context.mjs --env > /tmp/ctx.env
-//   . /tmp/ctx.env
+// Workflow usage:
+//   gh issue view "$ISSUE" --json title,body,labels,number > /tmp/issue.json
+//   node scripts/answer-fix/extract-context.mjs --env < /tmp/issue.json \
+//     >> "$GITHUB_ENV"
 //   node scripts/answer-fix/extract-context.mjs \
-//     --prompt-template .github/answer-fix/prompt.md < /tmp/issue.json \
+//     --prompt-template=.github/answer-fix/prompt.md < /tmp/issue.json \
 //     > /tmp/prompt.md
+//
+// Issue-type resolution order:
+//   1. `kind/<id>` label (set by the SPA's pre-filled URL once the labels
+//      exist on the repo).
+//   2. Body fallback — parses the `**Issue type:** …` line and reverse-maps
+//      to a kind id. Handles issues filed before the labels existed.
+//   3. Default `other`.
 //
 // Exit codes:
 //   0 — parsed OK
@@ -51,7 +62,29 @@ const labels = (issue.labels || []).map(l => l.name || l);
 const exerciseId  = body.match(/\*\*ID:\*\*\s*`([^`]+)`/)?.[1];
 const sourceFile  = body.match(/\*\*Source file:\*\*\s*`([^`]+)`/)?.[1];
 const appLink     = body.match(/\*\*App link:\*\*\s*(https?:\S+)/)?.[1] || '';
-const issueType   = (labels.find(l => l.startsWith('kind/')) || '').slice(5) || 'other';
+
+// Reverse-map the human-readable "Issue type" string emitted by the SPA's
+// renderReportMarkdown() back to the kind id used by the prompt + GitHub
+// labels. Used as a fallback when the kind/* label didn't make it onto the
+// issue (e.g. the SPA pre-fill URL referenced labels that didn't exist yet).
+const KIND_BY_BODY_SNIPPET = [
+  ['bundles verification',  'verification-bundled'],
+  ['wrong resource',        'wrong-resource'],
+  ['outdated',              'outdated-flag'],
+  ['incomplete',            'missing-step'],
+  ['missing a required',    'missing-step'],
+  ['typo',                  'typo'],
+  ['formatting',            'typo'],
+];
+
+let issueType = (labels.find(l => l.startsWith('kind/')) || '').slice(5);
+if (!issueType) {
+  const m = body.match(/\*\*Issue type:\*\*\s*(.+)/i)?.[1]?.toLowerCase() || '';
+  for (const [needle, id] of KIND_BY_BODY_SNIPPET) {
+    if (m.includes(needle)) { issueType = id; break; }
+  }
+}
+issueType = issueType || 'other';
 
 if (!exerciseId || !sourceFile) {
   console.error(`Issue #${number} body is missing **ID:** or **Source file:** markers.`);
@@ -60,15 +93,16 @@ if (!exerciseId || !sourceFile) {
 }
 
 if (args.env) {
-  const shEsc = (s) => "'" + String(s).replace(/'/g, `'\\''`) + "'";
-  const out = [
-    `export ISSUE=${shEsc(number)}`,
-    `export EXERCISE_ID=${shEsc(exerciseId)}`,
-    `export SOURCE_FILE=${shEsc(sourceFile)}`,
-    `export ISSUE_TYPE=${shEsc(issueType)}`,
-    `export APP_LINK=${shEsc(appLink)}`,
-  ].join('\n') + '\n';
-  process.stdout.write(out);
+  // $GITHUB_ENV expects plain KEY=VALUE lines — no `export`, no surrounding
+  // quotes. All values here are simple single-line strings.
+  const lines = [
+    `ISSUE=${number}`,
+    `EXERCISE_ID=${exerciseId}`,
+    `SOURCE_FILE=${sourceFile}`,
+    `ISSUE_TYPE=${issueType}`,
+    `APP_LINK=${appLink}`,
+  ];
+  process.stdout.write(lines.join('\n') + '\n');
   process.exit(0);
 }
 
