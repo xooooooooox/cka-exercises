@@ -503,6 +503,24 @@ function installSettingsOverlay() {
                           : '';
         badge.classList.toggle('is-active', p === v2.active);
       }
+      // "Use" button: shown only on configured providers that aren't the
+      // currently-active one. Clicking it sets active without requiring Save.
+      const useBtn = card.querySelector('.provider-use');
+      if (useBtn) {
+        useBtn.hidden = !(hasConfig && p !== v2.active);
+        // Re-bind every refresh — keeps closure references current.
+        useBtn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setActiveProvider(p);
+          providerInputs.forEach(rr => { rr.checked = (rr.value === p); });
+          loadSlotIntoForm(p);
+          refreshProviderBadges();
+          status.textContent = `✓ ${p} is now active`;
+          setTimeout(() => { status.textContent = ''; }, 1500);
+          if (State.mode === 'browse') renderBrowse();
+        };
+      }
       if (hasConfig) configured++;
     }
     if (providersCount) {
@@ -560,9 +578,15 @@ function installSettingsOverlay() {
     v2.active = provider;
     v2.autoDoneThreshold = parseInt(autoDoneSelect.value, 10);
     writeLLMConfig(v2);
+    // Defensive: re-anchor the form DOM to the freshly-saved active slot in
+    // case anything in the click path drifted.
+    providerInputs.forEach(r => { r.checked = (r.value === v2.active); });
+    loadSlotIntoForm(v2.active);
     refreshProviderBadges();
-    status.textContent = '✓ Saved';
-    setTimeout(() => { status.textContent = ''; }, 1200);
+    // Make activation explicit in the confirmation so the user can never wonder
+    // "which provider just became active?"
+    status.textContent = `✓ Saved — ${provider} is now active`;
+    setTimeout(() => { status.textContent = ''; }, 1800);
     // Refresh the visible cards so the answer-box hint reflects the new provider/key state.
     if (State.mode === 'browse') renderBrowse();
   });

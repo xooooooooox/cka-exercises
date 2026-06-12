@@ -1058,6 +1058,27 @@ kbd {
   margin-left: 8px;
 }
 
+/* Small "Use" pill on configured-but-not-active provider cards.
+   Clicking sets that provider active without going through Save. */
+.provider-card .provider-use {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.provider-card .provider-use:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.provider-card .provider-use[hidden] { display: none; }
+
 .settings-row {
   margin: 12px 0;
   display: flex; flex-direction: column; gap: 4px;

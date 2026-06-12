@@ -135,7 +135,11 @@ Lets the **✓ Check** button on each Browse card send your answer to an LLM and
 5. **Auto-mark Done at score ≥ N** — when the grader returns a score ≥ this threshold, the exercise is auto-marked Done.
 6. **Save** persists. **🧽 Clear this provider** wipes just the current radio's slot; **🗑 Clear all** drops every provider's saved config. Your progress is never affected.
 
-**Per-provider memory.** Each provider's API key, model, baseUrl, and last-tested model list are stored **separately**. Clicking another provider radio swaps the form to that provider's saved config — so switching from DeepSeek to OpenAI doesn't overwrite your DeepSeek key. The provider header shows "N of 6 configured" at a glance; configured providers get a green ✓ badge, and the currently active one gets a ★. Saving always activates whichever provider is currently selected.
+**Per-provider memory.** Each provider's API key, model, baseUrl, and last-tested model list are stored **separately**. Clicking another provider radio swaps the **form view** to that provider's saved config — so switching from DeepSeek to OpenAI doesn't overwrite your DeepSeek key. The provider header shows "N of 6 configured" at a glance; configured providers get a green ✓ badge, and the currently active one gets a blue ★.
+
+**Two ways to make a provider active for grading:**
+1. **💾 Save & set as active** — writes the form into the currently-selected provider's slot AND makes that provider active. The status line confirms which provider just became active.
+2. **Use** — a small pill that appears on any configured-but-not-active provider card. One click activates that provider without going through Save. Use this when you've already got two providers configured and just want to swap which one grades.
 
 What gets sent on Check: `{ exercise question, reference solution, your answer }`. Sent to your chosen provider's endpoint over HTTPS. **Ollama runs on `localhost`** so nothing leaves your machine.
 

@@ -367,12 +367,12 @@
       <div class="settings-section">
         <label class="settings-label">Provider</label>
         <div class="provider-grid">
-          <label class="provider-card"><input type="radio" name="llm-provider" value="anthropic"> <span>Anthropic</span><small>Claude</small><span class="provider-badge"></span></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="openai"> <span>OpenAI</span><small>GPT-4o</small><span class="provider-badge"></span></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="deepseek"> <span>DeepSeek</span><small>cheapest cloud</small><span class="provider-badge"></span></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="qwen"> <span>Qwen</span><small>Alibaba DashScope</small><span class="provider-badge"></span></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="doubao"> <span>Doubao</span><small>ByteDance Ark</small><span class="provider-badge"></span></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="ollama"> <span>Ollama</span><small>local · free</small><span class="provider-badge"></span></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="anthropic"> <span>Anthropic</span><small>Claude</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="openai"> <span>OpenAI</span><small>GPT-4o</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="deepseek"> <span>DeepSeek</span><small>cheapest cloud</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="qwen"> <span>Qwen</span><small>Alibaba DashScope</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="doubao"> <span>Doubao</span><small>ByteDance Ark</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="ollama"> <span>Ollama</span><small>local · free</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
         </div>
       </div>
 
@@ -410,7 +410,7 @@
       </div>
 
       <div class="settings-actions">
-        <button id="settings-save" type="button" class="primary">Save</button>
+        <button id="settings-save" type="button" class="primary" title="Save the current form into this provider's slot AND make this provider active for grading">💾 Save &amp; set as active</button>
         <button id="settings-clear-one" type="button" title="Wipe just the currently-selected provider's API key, model and baseUrl">🧽 Clear this provider</button>
         <button id="settings-clear" type="button" class="danger" title="Wipe every provider's saved config (API keys, models, baseUrls)">🗑 Clear all</button>
         <span id="settings-status" class="muted"></span>
