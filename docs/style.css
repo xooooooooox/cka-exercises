@@ -1329,6 +1329,7 @@ kbd {
      because emoji glyphs aren't reliably picked up by ::first-letter
      across Safari/Chrome. */
   .mode-tab {
+    position: relative;            /* anchor for the absolutely-positioned tab-dot */
     padding: 4px 8px;
     color: transparent;
     text-shadow: 0 0 0 var(--fg);  /* keeps the emoji visible */
@@ -1337,10 +1338,17 @@ kbd {
     max-width: 2.2em;
   }
   .mode-tab.active { color: transparent; }
+  /* Pull the in-progress badge out of the text flow so it can't widen the
+     tab past max-width or be hidden behind overflow:hidden. */
   .mode-tab .tab-dot {
+    position: absolute;
+    top: 1px;
+    right: 3px;
+    margin: 0;
+    font-size: 8px;
+    line-height: 1;
     color: var(--accent);
     text-shadow: none;
-    margin-left: 2px;
   }
   .header-right { gap: 4px; }
   #app-header { gap: 8px; padding-left: 12px; padding-right: 12px; }
@@ -1370,11 +1378,16 @@ kbd {
   /* Quiz setup screen — less horizontal padding */
   .quiz-screen { padding: 0 12px; margin: 16px auto; }
 
-  /* ☁ Sync popover: keep inside viewport */
+  /* ☁ Sync popover: anchor to the viewport, not to the (right-aligned) wrap,
+     so the popover never spills past the left edge on narrow screens. */
   .sync-menu {
+    position: fixed;
+    top: calc(56px + env(safe-area-inset-top, 0px));
+    left: 12px;
+    right: 12px;
+    width: auto;
     min-width: 0;
-    width: calc(100vw - 24px);
-    right: -8px;
+    max-width: none;
   }
 
   /* Resume panel: stack the headline + actions vertically */
