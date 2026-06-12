@@ -53,6 +53,7 @@ const KEY = {
   llmSettings: 'cka:llm:settings',
   privacyAck: 'cka:llm:privacyAck',
   answerPrefix: 'cka:answer:',   // appended with <exerciseId>
+  fixDraftPrefix: 'cka:fix-draft:', // appended with <exerciseId>
   gistToken: 'cka:gist:token',
   gistId: 'cka:gist:id',
 };
@@ -154,6 +155,25 @@ function setLLMSettings(s) {
 
 function getAnswer(exerciseId) { return storageGet(KEY.answerPrefix + exerciseId, null); }
 function setAnswer(exerciseId, payload) { storageSet(KEY.answerPrefix + exerciseId, payload); }
+function getFixDraft(id) { return storageGet(KEY.fixDraftPrefix + id, null); }
+function setFixDraft(id, payload) {
+  // Drop empty drafts entirely so they don't show in Backup.
+  if (!payload || (!payload.whatsWrong && !payload.suggested)) {
+    try { localStorage.removeItem(KEY.fixDraftPrefix + id); } catch {}
+  } else {
+    storageSet(KEY.fixDraftPrefix + id, payload);
+  }
+}
+function allFixDrafts() {
+  const out = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(KEY.fixDraftPrefix)) {
+      try { out[k.slice(KEY.fixDraftPrefix.length)] = JSON.parse(localStorage.getItem(k)); } catch {}
+    }
+  }
+  return out;
+}
 function storageGet(k, fallback) {
   try { const v = localStorage.getItem(k); return v == null ? fallback : JSON.parse(v); }
   catch { return fallback; }
@@ -1344,7 +1364,215 @@ function renderVerdict(container, v, ex) {
     v.missed.forEach(s => ul.appendChild(el('li', {}, s)));
     body.appendChild(ul);
   }
+  // If the LLM thinks the answer is anything less than perfect, give the user
+  // a one-click path to report a possibly over-specified reference solution.
+  if (typeof v.score === 'number' && v.score < 100) {
+    const reportLink = el('button', { type: 'button', class: 'verdict-report-link' },
+      '🐛 Reference solution looks wrong? Report this mismatch');
+    reportLink.addEventListener('click', () => {
+      openFixReportModal(ex, { verdict: v, answer: getAnswer(ex.id)?.text || '' });
+    });
+    body.appendChild(reportLink);
+  }
   container.appendChild(body);
+}
+
+// ---------- Report a reference-solution problem ----------
+
+const GH_REPO = 'xooooooooox/cka-exercises';
+
+function truncate(s, n) { return s && s.length > n ? s.slice(0, n - 1) + '…' : (s || ''); }
+
+// Strips the surrounding ```bash …``` fence (and any leading bold summary
+// inserted by build-exercises.mjs when multiple <details> blocks were joined)
+// so the report shows clean code the maintainer can diff against the source.
+function extractReferenceCode(solutionMd) {
+  if (!solutionMd) return '';
+  const m = solutionMd.match(/```(?:bash|sh|yaml|yml)?\s*\n([\s\S]*?)```/);
+  return m ? m[1].trimEnd() : solutionMd.trim();
+}
+
+function renderReportMarkdown(ex, draft, ctx) {
+  const exerciseHash = `https://xooooooooox.github.io/cka-exercises/#/exercise/${ex.id}`;
+  const sourceFile = ex.sourceFile || 'exercises/(unknown).md';
+  const refCode = extractReferenceCode(ex.solution);
+  const lines = [];
+  lines.push('## Exercise');
+  lines.push(`- **ID:** \`${ex.id}\``);
+  lines.push(`- **Title:** ${ex.title || ex.displayTitle || ex.fullTitle || ''}`);
+  lines.push(`- **Source file:** \`${sourceFile}\``);
+  lines.push(`- **App link:** ${exerciseHash}`);
+  lines.push('');
+  lines.push('## What looks wrong');
+  lines.push(draft.whatsWrong || '_(not provided)_');
+  lines.push('');
+  if (draft.suggested) {
+    lines.push('## Suggested fix');
+    lines.push(draft.suggested);
+    lines.push('');
+  }
+  lines.push('## Current reference solution');
+  lines.push('```bash');
+  lines.push(refCode);
+  lines.push('```');
+  lines.push('');
+  if (ctx?.includeContext && ctx?.answer) {
+    lines.push('## My answer');
+    lines.push('```bash');
+    lines.push(String(ctx.answer).trim());
+    lines.push('```');
+    lines.push('');
+  }
+  if (ctx?.includeContext && ctx?.verdict) {
+    const v = ctx.verdict;
+    lines.push('## LLM verdict');
+    lines.push(`- Score: **${v.score} / 100**`);
+    lines.push(`- Verdict: ${v.verdict || 'n/a'}`);
+    if (v.summary) lines.push(`- Summary: ${v.summary}`);
+    if (Array.isArray(v.passed) && v.passed.length) {
+      lines.push('- Got right:');
+      for (const s of v.passed) lines.push(`  - ${s}`);
+    }
+    if (Array.isArray(v.missed) && v.missed.length) {
+      lines.push('- Missed (per grader):');
+      for (const s of v.missed) lines.push(`  - ${s}`);
+    }
+    lines.push('');
+  }
+  lines.push('---');
+  lines.push('*Reported via the cka-exercises web app.*');
+  return lines.join('\n');
+}
+
+function buildIssueUrl(ex, draft, ctx) {
+  const title = `[${ex.id}] Reference solution mismatch: ${truncate(ex.title || ex.displayTitle || ex.fullTitle || '', 60)}`;
+  const body = renderReportMarkdown(ex, draft, ctx);
+  const u = new URL(`https://github.com/${GH_REPO}/issues/new`);
+  u.searchParams.set('title', title);
+  u.searchParams.set('body', body);
+  u.searchParams.set('labels', 'answer-fix');
+  return u.toString();
+}
+
+function openFixReportModal(ex, ctx = {}) {
+  const overlay = document.getElementById('report-overlay');
+  if (!overlay) return;
+  const $ = (id) => overlay.querySelector('#' + id);
+  const exIdSpan = $('report-ex-id');
+  const exTitle = $('report-ex-title');
+  const exSource = $('report-ex-source');
+  const currentSol = $('report-current-solution');
+  const verdictBlock = $('report-verdict-block');
+  const verdictBody = $('report-verdict-body');
+  const whatsWrong = $('report-whats-wrong');
+  const suggested = $('report-suggested');
+  const includeCtxBox = $('report-include-context');
+  const statusEl = $('report-status');
+  const saveBtn = $('report-save-draft');
+  const copyBtn = $('report-copy-md');
+  const openBtn = $('report-open-issue');
+  const cancelBtn = $('report-cancel');
+  const closeBtn = $('report-close');
+
+  exIdSpan.textContent = ex.id;
+  exTitle.textContent = ex.title || ex.displayTitle || ex.fullTitle || '';
+  exSource.textContent = ex.sourceFile || '(unknown)';
+  currentSol.textContent = extractReferenceCode(ex.solution);
+
+  if (ctx.verdict) {
+    verdictBlock.hidden = false;
+    const v = ctx.verdict;
+    verdictBody.innerHTML = '';
+    const fmt = (label, val) => {
+      const row = el('div', {}, el('strong', {}, label + ': '), document.createTextNode(String(val)));
+      verdictBody.appendChild(row);
+    };
+    fmt('Score', `${v.score} / 100`);
+    fmt('Verdict', v.verdict || 'n/a');
+    if (v.summary) fmt('Summary', v.summary);
+    if (Array.isArray(v.missed) && v.missed.length) {
+      verdictBody.appendChild(el('div', {}, el('strong', {}, 'Missed (per grader):')));
+      const ul = el('ul', {});
+      v.missed.forEach(s => ul.appendChild(el('li', {}, s)));
+      verdictBody.appendChild(ul);
+    }
+  } else {
+    verdictBlock.hidden = true;
+    verdictBody.innerHTML = '';
+  }
+
+  const draft = getFixDraft(ex.id) || {};
+  whatsWrong.value = draft.whatsWrong || '';
+  suggested.value = draft.suggested || '';
+  includeCtxBox.checked = (draft.includeContext !== undefined) ? !!draft.includeContext : true;
+  statusEl.textContent = '';
+  overlay.hidden = false;
+  setTimeout(() => whatsWrong.focus(), 30);
+
+  const collect = () => ({
+    whatsWrong: whatsWrong.value.trim(),
+    suggested: suggested.value.trim(),
+    includeContext: includeCtxBox.checked,
+  });
+
+  const buildCtx = () => ({
+    verdict: ctx.verdict || null,
+    answer: ctx.answer || '',
+    includeContext: includeCtxBox.checked,
+  });
+
+  const cleanup = () => {
+    overlay.hidden = true;
+    saveBtn.onclick = null;
+    copyBtn.onclick = null;
+    openBtn.onclick = null;
+    cancelBtn.onclick = null;
+    closeBtn.onclick = null;
+    document.removeEventListener('keydown', onEsc);
+    overlay.onclick = null;
+  };
+
+  const onEsc = (e) => { if (e.key === 'Escape') cleanup(); };
+  document.addEventListener('keydown', onEsc);
+  overlay.onclick = (e) => { if (e.target === overlay) cleanup(); };
+  closeBtn.onclick = cleanup;
+  cancelBtn.onclick = cleanup;
+
+  saveBtn.onclick = () => {
+    const d = collect();
+    setFixDraft(ex.id, d);
+    statusEl.textContent = d.whatsWrong || d.suggested
+      ? '✓ Draft saved locally.'
+      : '✓ Draft cleared.';
+  };
+
+  copyBtn.onclick = async () => {
+    const d = collect();
+    if (!d.whatsWrong) {
+      statusEl.textContent = '✗ Add a short note in "What looks wrong?" first.';
+      return;
+    }
+    const md = renderReportMarkdown(ex, d, buildCtx());
+    try {
+      await navigator.clipboard.writeText(md);
+      statusEl.textContent = '✓ Markdown copied to clipboard.';
+    } catch {
+      statusEl.textContent = '✗ Clipboard blocked. Use "Open GitHub issue" instead.';
+    }
+  };
+
+  openBtn.onclick = () => {
+    const d = collect();
+    if (!d.whatsWrong) {
+      statusEl.textContent = '✗ Add a short note in "What looks wrong?" first.';
+      whatsWrong.focus();
+      return;
+    }
+    setFixDraft(ex.id, d);  // persist before opening
+    const url = buildIssueUrl(ex, d, buildCtx());
+    window.open(url, '_blank', 'noopener');
+    statusEl.textContent = '✓ Opened a new tab — fill in any extra context on GitHub.';
+  };
 }
 
 function openPrivacyDialog(provider) {
@@ -1476,6 +1704,14 @@ function renderExerciseCard(ex, opts = {}) {
     const solDiv = el('div', { class: 'exercise-solution', html: solHtml });
     card.appendChild(solDiv);
     attachCopyButtons(solDiv);
+    // Quiet manual entry point for users who notice a problem with the
+    // reference solution without going through the LLM grader.
+    const reportLink = el('button',
+      { type: 'button', class: 'solution-report-link',
+        title: 'Open a pre-filled GitHub issue if this reference solution looks wrong' },
+      '🐛 Suggest a fix for this reference solution');
+    reportLink.addEventListener('click', () => openFixReportModal(ex, {}));
+    solDiv.appendChild(reportLink);
     if (toggle && card.classList.contains('solution-open')) {
       toggle.textContent = 'Hide solution';
       toggle.setAttribute('aria-expanded', 'true');

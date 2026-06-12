@@ -145,6 +145,8 @@ Lets the **✓ Check** button on each Browse card send your answer to an LLM and
 
 What gets sent on Check: `{ exercise question, reference solution, your answer }`. Sent to your chosen provider's endpoint over HTTPS. **Ollama runs on `localhost`** so nothing leaves your machine.
 
+**🐛 Suspect the reference solution is wrong?** A few reference solutions bundle verification commands (`kubectl auth can-i …`) into the same code-block as the actual answer, which makes the LLM grader dock a correct answer for "missing verification." When the grader returns < 100, a **🐛 Reference solution looks wrong? Report this mismatch** link appears below the verdict — clicking it opens a pre-filled modal with the exercise context, current reference, your answer, and the LLM verdict, ending in **🚀 Open GitHub issue** (and a **📋 Copy as markdown** fallback). You can also click **🐛 Suggest a fix** in the revealed solution area without grading first. Drafts persist in localStorage (`cka:fix-draft:<id>`) so you can refine before submitting; Export / Gist Push includes them.
+
 ### Backup & restore
 
 - **⬇ Export progress** — downloads `cka-progress-<timestamp>.json`. Contains: done state, bookmarks, saved answers, theme, last-quiz settings, docs-last-url. **Your LLM API key is scrubbed.**

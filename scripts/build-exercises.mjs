@@ -181,6 +181,7 @@ function parseFile(file, domainInfo) {
         solveOn: parsed.solveOn,
         task: parsed.task,
         solution: parsed.solution,
+        sourceFile: `exercises/${domainInfo.file}`,
       });
     }
 

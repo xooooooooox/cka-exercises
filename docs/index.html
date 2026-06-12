@@ -456,6 +456,50 @@
     </div>
   </div>
 
+  <!-- Report-a-reference-solution dialog -->
+  <div id="report-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="report-title">
+    <div class="overlay-card report-card">
+      <header>
+        <h2 id="report-title">🐛 Report a reference-solution problem</h2>
+        <button id="report-close" type="button" class="overlay-close" aria-label="Close">✕</button>
+      </header>
+      <div class="report-context">
+        <div class="report-context-row">
+          <span class="report-context-label">Exercise</span>
+          <span id="report-ex-id" class="report-context-id"></span>
+          <span id="report-ex-title" class="report-context-title"></span>
+        </div>
+        <div class="report-context-row">
+          <span class="report-context-label">Source</span>
+          <code id="report-ex-source"></code>
+        </div>
+      </div>
+      <details class="report-collapsible" open>
+        <summary>Current reference solution</summary>
+        <pre><code id="report-current-solution" class="report-readonly"></code></pre>
+      </details>
+      <details id="report-verdict-block" class="report-collapsible" hidden>
+        <summary>LLM verdict context (auto-included)</summary>
+        <div id="report-verdict-body" class="report-readonly"></div>
+      </details>
+      <label class="report-field-label" for="report-whats-wrong">What looks wrong? <span class="report-required">*</span></label>
+      <textarea id="report-whats-wrong" rows="3" placeholder="E.g. the `kubectl auth can-i` line is a verification step, not part of the answer to this task — so the grader penalises a correct create-rolebinding answer."></textarea>
+      <label class="report-field-label" for="report-suggested">Suggested fix <span class="muted">(optional)</span></label>
+      <textarea id="report-suggested" rows="2" placeholder="E.g. move the verification line out of the solution block, or split with a `---` so the grader ignores it."></textarea>
+      <label class="report-include-toggle">
+        <input id="report-include-context" type="checkbox" checked>
+        Include my answer + LLM verdict in the issue body (recommended)
+      </label>
+      <div id="report-status" class="report-status muted"></div>
+      <div class="report-actions">
+        <button id="report-save-draft" type="button">💾 Save draft</button>
+        <button id="report-copy-md" type="button">📋 Copy as markdown</button>
+        <button id="report-open-issue" type="button" class="primary">🚀 Open GitHub issue</button>
+        <button id="report-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Privacy first-use dialog -->
   <div id="privacy-overlay" class="overlay" hidden role="dialog" aria-modal="true">
     <div class="overlay-card">
