@@ -1020,8 +1020,9 @@ kbd {
   gap: 8px;
 }
 .provider-card {
+  position: relative;
   display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px;
+  padding: 10px 12px 10px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
@@ -1029,11 +1030,32 @@ kbd {
 }
 .provider-card:hover { background: var(--bg-elev); }
 .provider-card input { margin: 0; }
-.provider-card span { font-weight: 600; }
+.provider-card > span:not(.provider-badge) { font-weight: 600; }
 .provider-card small { color: var(--fg-muted); font-size: 11px; }
 .provider-card:has(input:checked) {
   border-color: var(--accent);
   background: rgba(9, 105, 218, 0.08);
+}
+/* "✓" appears when a provider's slot has been saved. */
+.provider-card.configured { border-color: var(--success); }
+.provider-card .provider-badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--success);
+  white-space: nowrap;
+}
+.provider-card .provider-badge.is-active {
+  color: var(--accent);
+  font-weight: 600;
+}
+#settings-providers-count {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--fg-muted);
+  margin-left: 8px;
 }
 
 .settings-row {

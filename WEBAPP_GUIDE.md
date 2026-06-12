@@ -133,7 +133,9 @@ Lets the **✓ Check** button on each Browse card send your answer to an LLM and
 3. **Test** — verifies the key, repopulates the **Model** dropdown with that provider's real model list.
 4. **Model** — pick from the live list, or paste a custom model id.
 5. **Auto-mark Done at score ≥ N** — when the grader returns a score ≥ this threshold, the exercise is auto-marked Done.
-6. **Save** persists. **Clear all** resets LLM settings only (your progress is untouched).
+6. **Save** persists. **🧽 Clear this provider** wipes just the current radio's slot; **🗑 Clear all** drops every provider's saved config. Your progress is never affected.
+
+**Per-provider memory.** Each provider's API key, model, baseUrl, and last-tested model list are stored **separately**. Clicking another provider radio swaps the form to that provider's saved config — so switching from DeepSeek to OpenAI doesn't overwrite your DeepSeek key. The provider header shows "N of 6 configured" at a glance; configured providers get a green ✓ badge, and the currently active one gets a ★. Saving always activates whichever provider is currently selected.
 
 What gets sent on Check: `{ exercise question, reference solution, your answer }`. Sent to your chosen provider's endpoint over HTTPS. **Ollama runs on `localhost`** so nothing leaves your machine.
 

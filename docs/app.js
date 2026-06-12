@@ -56,7 +56,11 @@ const KEY = {
   gistId: 'cka:gist:id',
 };
 
+// All providers we offer. Their slots get pre-created on first save so the
+// Settings UI can show per-provider configured-state hints.
+const ALL_PROVIDERS = ['anthropic', 'openai', 'deepseek', 'qwen', 'doubao', 'ollama'];
 const LLM_DEFAULT_SETTINGS = {
+  // Flat shape kept for downstream call sites (renderAnswerBox, LLM.check, …).
   provider: 'anthropic',
   apiKey: '',
   model: '',          // empty → use provider default
@@ -64,10 +68,88 @@ const LLM_DEFAULT_SETTINGS = {
   autoDoneThreshold: -1,
 };
 
-function getLLMSettings() {
-  return Object.assign({}, LLM_DEFAULT_SETTINGS, storageGet(KEY.llmSettings, {}));
+function emptyProviderSlot() {
+  return { apiKey: '', model: '', baseUrl: '', models: [] };
 }
-function setLLMSettings(s) { storageSet(KEY.llmSettings, s); }
+function makeEmptyV2() {
+  const providers = {};
+  for (const p of ALL_PROVIDERS) providers[p] = emptyProviderSlot();
+  return {
+    schemaVersion: 2,
+    active: 'anthropic',
+    autoDoneThreshold: -1,
+    providers,
+  };
+}
+
+// Migrate v1 ({provider, apiKey, model, baseUrl, autoDoneThreshold}) into the
+// v2 per-provider shape. Idempotent — returns v2 as-is.
+function migrateLLM(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (raw.schemaVersion === 2 && raw.providers) {
+    // Ensure every known provider has a slot (so the UI doesn't have to guard).
+    const out = { ...raw, providers: { ...raw.providers } };
+    for (const p of ALL_PROVIDERS) {
+      if (!out.providers[p]) out.providers[p] = emptyProviderSlot();
+    }
+    return out;
+  }
+  const p = raw.provider || 'anthropic';
+  const v2 = makeEmptyV2();
+  v2.active = p;
+  v2.autoDoneThreshold = raw.autoDoneThreshold ?? -1;
+  v2.providers[p] = {
+    apiKey:  raw.apiKey  || '',
+    model:   raw.model   || '',
+    baseUrl: raw.baseUrl || '',
+    models:  [],
+  };
+  return v2;
+}
+
+function readLLMConfig() {
+  const raw = storageGet(KEY.llmSettings, null);
+  return migrateLLM(raw) || makeEmptyV2();
+}
+function writeLLMConfig(v2) { storageSet(KEY.llmSettings, v2); }
+
+function setProviderSlot(provider, slot) {
+  const v2 = readLLMConfig();
+  v2.providers[provider] = { ...v2.providers[provider], ...slot };
+  writeLLMConfig(v2);
+}
+function setActiveProvider(provider) {
+  const v2 = readLLMConfig();
+  v2.active = provider;
+  writeLLMConfig(v2);
+}
+
+// Flat snapshot of the *active* provider. Callers downstream of Settings
+// (renderAnswerBox, LLM.check) keep using this exactly as before.
+function getLLMSettings() {
+  const v2 = readLLMConfig();
+  const slot = v2.providers[v2.active] || emptyProviderSlot();
+  return Object.assign({}, LLM_DEFAULT_SETTINGS, {
+    provider: v2.active,
+    apiKey:   slot.apiKey  || '',
+    model:    slot.model   || '',
+    baseUrl:  slot.baseUrl || '',
+    autoDoneThreshold: v2.autoDoneThreshold ?? -1,
+  });
+}
+function setLLMSettings(s) {
+  // Legacy entry point (still called by Save in older paths). Map flat → v2.
+  const v2 = readLLMConfig();
+  v2.active = s.provider || v2.active;
+  v2.autoDoneThreshold = s.autoDoneThreshold ?? -1;
+  v2.providers[v2.active] = {
+    ...(v2.providers[v2.active] || emptyProviderSlot()),
+    apiKey:  s.apiKey  || '',
+    model:   s.model   || '',
+    baseUrl: s.baseUrl || '',
+  };
+  writeLLMConfig(v2);
+}
 
 function getAnswer(exerciseId) { return storageGet(KEY.answerPrefix + exerciseId, null); }
 function setAnswer(exerciseId, payload) { storageSet(KEY.answerPrefix + exerciseId, payload); }
@@ -379,6 +461,13 @@ function installSettingsOverlay() {
   const testBtn = document.getElementById('settings-test');
   const testStatus = document.getElementById('settings-test-status');
 
+  const clearOne = document.getElementById('settings-clear-one');
+  const providersCount = document.getElementById('settings-providers-count');
+
+  function currentProvider() {
+    return [...providerInputs].find(r => r.checked)?.value || 'anthropic';
+  }
+
   function reflectProvider(p) {
     const def = window.LLM?.DEFAULTS[p] || {};
     if (!modelInput.value) modelInput.placeholder = def.model || '';
@@ -386,20 +475,63 @@ function installSettingsOverlay() {
     if (modelHint) modelHint.textContent = def.model ? `Default: ${def.model}` : '';
     // Ollama doesn't need a key
     if (keyRow) keyRow.style.display = (p === 'ollama') ? 'none' : '';
-    // Reset model dropdown to the hardcoded fallback when switching providers
-    populateModelChips(MODEL_FALLBACK[p]);
     // Clear any stale test status (different provider)
     if (testStatus) { testStatus.hidden = true; testStatus.textContent = ''; }
   }
 
+  // Visual: paint each provider-card with .configured + .active states and
+  // update the "n of 6 configured" header counter.
+  function refreshProviderBadges() {
+    const v2 = readLLMConfig();
+    let configured = 0;
+    for (const r of providerInputs) {
+      const card = r.closest('.provider-card');
+      if (!card) continue;
+      const p = r.value;
+      const slot = v2.providers[p] || {};
+      // Ollama is "configured" if a model/baseUrl is set (no API key required).
+      const hasConfig = p === 'ollama'
+        ? !!(slot.model || slot.baseUrl)
+        : !!slot.apiKey;
+      card.classList.toggle('configured', hasConfig);
+      card.classList.toggle('active', p === v2.active);
+      const badge = card.querySelector('.provider-badge');
+      if (badge) {
+        badge.textContent = (p === v2.active && hasConfig) ? '★ active'
+                          : (p === v2.active)             ? '★'
+                          : hasConfig                     ? '✓'
+                          : '';
+        badge.classList.toggle('is-active', p === v2.active);
+      }
+      if (hasConfig) configured++;
+    }
+    if (providersCount) {
+      providersCount.textContent = `${configured} of ${ALL_PROVIDERS.length} configured`;
+    }
+  }
+
+  // Load a single provider's slot into the form fields.
+  function loadSlotIntoForm(provider) {
+    const v2 = readLLMConfig();
+    const slot = v2.providers[provider] || emptyProviderSlot();
+    keyInput.value = slot.apiKey || '';
+    modelInput.value = slot.model || '';
+    baseUrlInput.value = slot.baseUrl || '';
+    // Always reset the placeholder + hint for the new provider, even if values
+    // are present (so the user can see the default model id).
+    modelInput.placeholder = (window.LLM?.DEFAULTS[provider]?.model) || 'Pick a suggestion below, or type a custom id';
+    baseUrlInput.placeholder = (window.LLM?.DEFAULTS[provider]?.baseUrl) || '';
+    // Chip row: persisted slot.models (last successful Test) → fallback to hardcoded.
+    populateModelChips((slot.models && slot.models.length) ? slot.models : MODEL_FALLBACK[provider]);
+    reflectProvider(provider);
+  }
+
   function loadIntoForm() {
-    const s = getLLMSettings();
-    providerInputs.forEach(r => { r.checked = (r.value === s.provider); });
-    keyInput.value = s.apiKey || '';
-    modelInput.value = s.model || '';
-    baseUrlInput.value = s.baseUrl || '';
-    autoDoneSelect.value = String(s.autoDoneThreshold);
-    reflectProvider(s.provider);
+    const v2 = readLLMConfig();
+    providerInputs.forEach(r => { r.checked = (r.value === v2.active); });
+    autoDoneSelect.value = String(v2.autoDoneThreshold ?? -1);
+    loadSlotIntoForm(v2.active);
+    refreshProviderBadges();
   }
 
   function open() { loadIntoForm(); overlay.hidden = false; }
@@ -409,39 +541,70 @@ function installSettingsOverlay() {
   close?.addEventListener('click', shut);
   overlay?.addEventListener('click', (e) => { if (e.target.id === 'settings-overlay') shut(); });
 
-  providerInputs.forEach(r => r.addEventListener('change', () => reflectProvider(r.value)));
+  // Radio change: switch the form view to the clicked provider's saved slot.
+  // No save happens until the user hits Save explicitly.
+  providerInputs.forEach(r => r.addEventListener('change', () => {
+    if (r.checked) loadSlotIntoForm(r.value);
+  }));
 
   save?.addEventListener('click', () => {
-    const provider = [...providerInputs].find(r => r.checked)?.value || 'anthropic';
-    const s = {
-      provider,
+    const provider = currentProvider();
+    const v2 = readLLMConfig();
+    v2.providers[provider] = {
+      ...(v2.providers[provider] || emptyProviderSlot()),
       apiKey: keyInput.value.trim(),
       model: modelInput.value.trim(),
       baseUrl: baseUrlInput.value.trim(),
-      autoDoneThreshold: parseInt(autoDoneSelect.value, 10),
+      // Don't drop persisted .models on save — Test refreshes them.
     };
-    setLLMSettings(s);
+    v2.active = provider;
+    v2.autoDoneThreshold = parseInt(autoDoneSelect.value, 10);
+    writeLLMConfig(v2);
+    refreshProviderBadges();
     status.textContent = '✓ Saved';
     setTimeout(() => { status.textContent = ''; }, 1200);
     // Refresh the visible cards so the answer-box hint reflects the new provider/key state.
-    // Preserves typed answers and verdicts since both come from localStorage.
+    if (State.mode === 'browse') renderBrowse();
+  });
+
+  // Clear *only* the currently-selected provider's slot. If that was the
+  // active one, the active selector falls back to the first remaining
+  // configured provider (or anthropic if none are configured).
+  clearOne?.addEventListener('click', () => {
+    const provider = currentProvider();
+    if (!confirm(`Clear saved config for ${provider}? (Other providers' configs are kept.)`)) return;
+    const v2 = readLLMConfig();
+    v2.providers[provider] = emptyProviderSlot();
+    if (v2.active === provider) {
+      const fallback = ALL_PROVIDERS.find(p => p !== provider && (v2.providers[p]?.apiKey || (p === 'ollama' && (v2.providers[p]?.model || v2.providers[p]?.baseUrl))));
+      v2.active = fallback || 'anthropic';
+    }
+    writeLLMConfig(v2);
+    // Re-select the active provider's radio so the form reflects reality.
+    providerInputs.forEach(r => { r.checked = (r.value === v2.active); });
+    loadSlotIntoForm(v2.active);
+    refreshProviderBadges();
+    status.textContent = `✓ Cleared ${provider}`;
+    setTimeout(() => { status.textContent = ''; }, 1500);
     if (State.mode === 'browse') renderBrowse();
   });
 
   clearBtn?.addEventListener('click', () => {
-    if (!confirm('Clear all grading settings (provider, API key, model)? Answers and progress are not affected.')) return;
+    if (!confirm('Clear ALL providers (API keys, models, baseUrls)? Answers and progress are not affected.')) return;
     storageSet(KEY.llmSettings, null);
     storageSet(KEY.privacyAck, false);
     loadIntoForm();
-    status.textContent = '✓ Cleared';
+    status.textContent = '✓ Cleared all';
     setTimeout(() => { status.textContent = ''; }, 1200);
+    if (State.mode === 'browse') renderBrowse();
   });
 
   // Test connection: probe the provider's list-models endpoint, repopulate the
-  // model dropdown with the live response on success.
+  // model dropdown with the live response on success. Persist that model list
+  // into the provider's slot so the chips appear next time without re-Testing.
   testBtn?.addEventListener('click', async () => {
     if (!testStatus) return;
-    const provider = [...providerInputs].find(r => r.checked)?.value || 'anthropic';
+    const provider = currentProvider();
     testStatus.hidden = false;
     testStatus.className = 'test-status testing';
     testStatus.textContent = '⏳ Testing…';
@@ -458,11 +621,14 @@ function installSettingsOverlay() {
         testStatus.className = cls;
         const suffix = r.models?.length ? ` — ${r.models.length} models available` : '';
         testStatus.textContent = `${r.warn ? '⚠' : '✓'} ${r.message}${suffix} (${latency})`;
-        if (r.models?.length) populateModelChips(r.models);
+        if (r.models?.length) {
+          populateModelChips(r.models);
+          // Persist into the provider's slot.
+          setProviderSlot(provider, { models: r.models });
+        }
       } else {
         testStatus.className = 'test-status err';
         let msg = `✗ ${r.message} (${latency})`;
-        // Friendly hint for providers known to often block browser-direct calls
         if (provider === 'doubao' && /CORS|unreachable|timed out|Failed to fetch/i.test(r.message)) {
           msg += ' — Doubao usually blocks direct browser calls; consider Anthropic / OpenAI / DeepSeek / Ollama.';
         }
@@ -489,7 +655,17 @@ function collectExportable() {
     if (k === KEY.gistToken) continue;
     let val = storageGet(k, null);
     if (k === KEY.llmSettings && val && typeof val === 'object') {
-      val = Object.assign({}, val, { apiKey: '' });
+      // v2 shape: scrub every provider's apiKey. v1 legacy: scrub the top-level
+      // apiKey field. In both cases the resulting payload contains no key bytes.
+      if (val.providers) {
+        const scrubbed = { ...val, providers: {} };
+        for (const [pk, slot] of Object.entries(val.providers)) {
+          scrubbed.providers[pk] = { ...(slot || {}), apiKey: '' };
+        }
+        val = scrubbed;
+      } else {
+        val = Object.assign({}, val, { apiKey: '' });
+      }
     }
     data[k] = val;
   }
@@ -502,9 +678,20 @@ function importPayload(payload) {
   }
   for (const [k, v] of Object.entries(payload.data)) {
     if (!k.startsWith('cka:')) continue;
-    if (k === KEY.llmSettings && v && typeof v === 'object' && !v.apiKey) {
+    if (k === KEY.llmSettings && v && typeof v === 'object') {
       const existing = storageGet(k, {}) || {};
-      v.apiKey = existing.apiKey || '';
+      // Preserve any apiKeys already present locally for providers whose slot
+      // is being imported empty (e.g. a Backup file that was exported with
+      // keys scrubbed). Works for both v1 and v2 shapes.
+      if (v.providers && existing.providers) {
+        for (const [pk, slot] of Object.entries(v.providers)) {
+          if (slot && !slot.apiKey && existing.providers[pk]?.apiKey) {
+            v.providers[pk] = { ...slot, apiKey: existing.providers[pk].apiKey };
+          }
+        }
+      } else if (!v.apiKey && existing.apiKey) {
+        v.apiKey = existing.apiKey;
+      }
     }
     storageSet(k, v);
   }
