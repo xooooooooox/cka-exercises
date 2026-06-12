@@ -501,6 +501,38 @@ footer { padding: 12px 20px; border-top: 1px solid var(--border); background: va
   /* Main: less horizontal padding on mobile */
   #main { padding: 14px 12px; }
   .exercise-card { padding: 12px 14px; }
+
+  /* Browse cards: keep all content within the card on narrow viewports.
+     Without these, long inline <code>, URLs, or markdown tables push the
+     card past the viewport and cause a body-level horizontal scroll. */
+  .exercise-title { min-width: 0; }
+  .exercise-card { overflow: hidden; }
+  .exercise-task,
+  .exercise-solution,
+  .exercise-docs {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  /* <pre> blocks keep their own overflow-x:auto for terminal-faithful long
+     commands; just don't let them push the card wider than the viewport. */
+  .exercise-card pre,
+  .exercise-card table {
+    max-width: 100%;
+  }
+  /* Wide markdown tables get their own horizontal scroller. */
+  .exercise-task table,
+  .exercise-solution table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Belt-and-suspenders: clip any residual horizontal overflow at the main
+     scroller and at the document root. overflow-x: clip (vs hidden) doesn't
+     create a scroll context, so position:fixed elements like the bottom tab
+     bar and update banner still anchor to the viewport. */
+  #main { max-width: 100vw; overflow-x: clip; }
+  html, body { overflow-x: clip; }
 }
 
 /* ============================================================ */
