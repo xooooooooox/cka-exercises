@@ -19,16 +19,33 @@ const FILES = path.join(SRC, 'files');
 const VERSIONS = JSON.parse(fs.readFileSync(path.join(SRC, 'versions.json'), 'utf8'));
 
 function parseArgs() {
-  const out = { minor: '' };
+  const out = { minor: '', kube: '' };
   for (const a of process.argv.slice(2)) {
     const m = a.match(/^--(\w+)=(.*)$/);
     if (m && m[1] === 'minor') out.minor = m[2];
+    if (m && m[1] === 'kube') out.kube = m[2];
   }
   if (!out.minor) {
-    console.error('Usage: build-nodes-snapshot.mjs --minor=X.Y');
+    console.error('Usage: build-nodes-snapshot.mjs --minor=X.Y [--kube=vX.Y.Z]');
     process.exit(2);
   }
   return out;
+}
+
+// Pick the closest pinned minor when an unknown one is requested. Prefer
+// nearest-but-not-greater (so a snapshot of "1.37" would borrow from "1.36"
+// if "1.37" hasn't been pinned yet); otherwise fall back to the most recent
+// pinned minor regardless of direction.
+function pickFallbackPin(requestedMinor, versionsTable) {
+  const keys = Object.keys(versionsTable).sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true }));
+  if (!keys.length) return null;
+  // Highest pinned ≤ requested
+  let best = null;
+  for (const k of keys) {
+    if (k.localeCompare(requestedMinor, undefined, { numeric: true }) <= 0) best = k;
+  }
+  return best || keys[keys.length - 1];
 }
 
 function walkDir(dir, rel = '') {
@@ -83,11 +100,21 @@ function countFiles(tree) {
 }
 
 function main() {
-  const { minor } = parseArgs();
-  const pin = VERSIONS[minor];
+  const { minor, kube: kubeOverride } = parseArgs();
+  let pin = VERSIONS[minor];
   if (!pin) {
-    console.error(`No version pin for minor ${minor} in versions.json`);
-    process.exit(1);
+    const fallbackKey = pickFallbackPin(minor, VERSIONS);
+    if (!fallbackKey) {
+      console.error(`versions.json is empty — can't snapshot ${minor}`);
+      process.exit(1);
+    }
+    console.warn(`⚠ No pin for ${minor} in versions.json — borrowing pause/etcd/coredns tags from ${fallbackKey}. Update versions.json to silence this warning.`);
+    pin = { ...VERSIONS[fallbackKey] };
+    // Don't borrow the kube tag — it must reflect the requested minor.
+    pin.kube = kubeOverride || `v${minor}.0`;
+  } else if (kubeOverride && kubeOverride !== pin.kube) {
+    // Orchestrator provided a fresher patch than versions.json — prefer it.
+    pin = { ...pin, kube: kubeOverride };
   }
   const vars = {
     KUBE_VERSION_FULL: pin.kube,

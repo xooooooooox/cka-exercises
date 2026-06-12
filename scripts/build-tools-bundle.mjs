@@ -145,6 +145,7 @@ async function buildOne(minor) {
   runChild([
     'scripts/build-nodes-snapshot.mjs',
     `--minor=${minor}`,
+    `--kube=${patch}`,
   ]);
   // Verify output + size
   const outFile = path.join(DOCS, `tools-${minor}.json`);
