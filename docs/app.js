@@ -1080,9 +1080,78 @@ async function checkForUpdate() {
 
 // ---------- Auto-grading UI (textarea + Check + verdict) ----------
 
+// CodeMirror 6 — lazy-loaded from esm.sh on first answer-box focus. ~120 KB
+// over the wire, cached by the browser; we cache the module promise so a
+// second editor instance reuses the same download.
+let _cmPromise = null;
+function loadCodeMirror() {
+  if (_cmPromise) return _cmPromise;
+  _cmPromise = (async () => {
+    const [view, state, basic, langYaml, commands] = await Promise.all([
+      import('https://esm.sh/@codemirror/view@6.26.3?bundle'),
+      import('https://esm.sh/@codemirror/state@6.4.1?bundle'),
+      import('https://esm.sh/codemirror@6.0.1?bundle'),
+      import('https://esm.sh/@codemirror/lang-yaml@6.1.2?bundle'),
+      import('https://esm.sh/@codemirror/commands@6.5.0?bundle'),
+    ]);
+    return {
+      EditorView: view.EditorView,
+      EditorState: state.EditorState,
+      basicSetup: basic.basicSetup,
+      yaml: langYaml.yaml,
+      keymap: view.keymap,
+      indentWithTab: commands.indentWithTab,
+    };
+  })().catch(e => { _cmPromise = null; throw e; });
+  return _cmPromise;
+}
+
+// CodeMirror theme mapped to our existing CSS vars so dark/light mode and
+// the accent colour follow whatever the user already set.
+const CM_THEME = {
+  '&': {
+    background: 'var(--bg-code)',
+    color: 'var(--fg)',
+    borderRadius: 'var(--radius)',
+    border: '1px solid var(--border)',
+  },
+  '.cm-content': {
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+    fontSize: '13px',
+    padding: '8px 10px',
+    caretColor: 'var(--accent)',
+  },
+  '.cm-gutters': {
+    backgroundColor: 'var(--bg-elev)',
+    color: 'var(--fg-muted)',
+    border: '0',
+  },
+  '.cm-activeLine': { backgroundColor: 'transparent' },
+  '.cm-activeLineGutter': { backgroundColor: 'transparent' },
+  '&.cm-focused': { outline: 'none' },
+  '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--accent)' },
+  '&.cm-focused .cm-selectionBackground, ::selection': {
+    backgroundColor: 'color-mix(in srgb, var(--accent) 25%, transparent)',
+  },
+};
+
+function isDark() {
+  return document.documentElement.getAttribute('data-theme') === 'dark';
+}
+
 function renderAnswerBox(ex, opts = {}) {
   const box = el('div', { class: 'answer-box' });
-  box.appendChild(el('div', { class: 'answer-label' }, '✏️ Your answer'));
+  // Label row also hosts the ⛶ fullscreen expand button.
+  const labelRow = el('div', { class: 'answer-label' });
+  labelRow.appendChild(el('span', { class: 'answer-label-text' }, '✏️ Your answer'));
+  const expandBtn = el('button', {
+    type: 'button',
+    class: 'answer-expand',
+    title: 'Expand to fullscreen — useful for long YAML manifests',
+    'aria-label': 'Expand answer editor',
+  }, '⛶');
+  labelRow.appendChild(expandBtn);
+  box.appendChild(labelRow);
 
   const ta = el('textarea', {
     class: 'answer-textarea',
@@ -1093,16 +1162,75 @@ function renderAnswerBox(ex, opts = {}) {
   });
   const saved = getAnswer(ex.id);
   if (saved && typeof saved.text === 'string') ta.value = saved.text;
-  // Debounced persist on input
+  box.appendChild(ta);
+
+  // Editor abstraction: starts as a plain textarea; upgrades to CodeMirror
+  // lazily on first focus. getText / setText route to whichever is active.
+  let cmView = null;
+  const getText = () => cmView ? cmView.state.doc.toString() : ta.value;
+  const setText = (v) => {
+    if (cmView) {
+      cmView.dispatch({ changes: { from: 0, to: cmView.state.doc.length, insert: v } });
+    } else {
+      ta.value = v;
+    }
+  };
+
+  // Debounced persist on every change — same contract as before.
   let saveTimer;
-  ta.addEventListener('input', () => {
+  const persistDebounced = () => {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       const existing = getAnswer(ex.id) || {};
-      setAnswer(ex.id, Object.assign(existing, { text: ta.value }));
+      setAnswer(ex.id, Object.assign(existing, { text: getText() }));
     }, 400);
+  };
+  ta.addEventListener('input', persistDebounced);
+
+  // Lazy CodeMirror upgrade on first focus. The pre-CM textarea is fully
+  // functional, so a failed CDN load (offline / blocked) leaves it editable.
+  ta.addEventListener('focusin', async function once() {
+    ta.removeEventListener('focusin', once);
+    let cm;
+    try { cm = await loadCodeMirror(); }
+    catch (e) {
+      console.warn('CodeMirror failed to load — keeping plain textarea', e);
+      return;
+    }
+    const { EditorView, EditorState, basicSetup, yaml, indentWithTab, keymap } = cm;
+    const update = EditorView.updateListener.of(u => {
+      if (u.docChanged) persistDebounced();
+    });
+    const state = EditorState.create({
+      doc: ta.value,
+      extensions: [
+        basicSetup,
+        keymap.of([indentWithTab]),
+        yaml(),
+        EditorView.lineWrapping,
+        EditorView.theme(CM_THEME, { dark: isDark() }),
+        update,
+      ],
+    });
+    cmView = new EditorView({ state, parent: ta.parentNode });
+    cmView.dom.classList.add('answer-cm');
+    ta.replaceWith(cmView.dom);
+    cmView.focus();
   });
-  box.appendChild(ta);
+
+  // ⛶ fullscreen toggle. Same CM instance / textarea stays mounted — we
+  // just relocate its containing .answer-box via a CSS class.
+  expandBtn.addEventListener('click', () => {
+    const onNow = box.classList.toggle('answer-fullscreen');
+    expandBtn.textContent = onNow ? '✕' : '⛶';
+    expandBtn.title = onNow ? 'Exit fullscreen (Esc)' : 'Expand to fullscreen — useful for long YAML manifests';
+    if (onNow) {
+      document.body.classList.add('answer-fullscreen-active');
+      cmView?.focus();
+    } else {
+      document.body.classList.remove('answer-fullscreen-active');
+    }
+  });
 
   const actions = el('div', { class: 'answer-actions' });
   const checkBtn = el('button', { type: 'button', class: 'check-btn primary' }, '✓ Check');
@@ -3173,6 +3301,20 @@ async function init() {
 
   // Mode tabs
   document.querySelectorAll('.mode-tab').forEach(t => t.addEventListener('click', () => setMode(t.dataset.mode)));
+
+  // Esc exits any fullscreen answer editor.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const fs = document.querySelector('.answer-box.answer-fullscreen');
+    if (!fs) return;
+    fs.classList.remove('answer-fullscreen');
+    document.body.classList.remove('answer-fullscreen-active');
+    const btn = fs.querySelector('.answer-expand');
+    if (btn) {
+      btn.textContent = '⛶';
+      btn.title = 'Expand to fullscreen — useful for long YAML manifests';
+    }
+  });
 
   // Browse
   renderFilterBar();

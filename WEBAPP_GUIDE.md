@@ -38,7 +38,7 @@ The default mode. All ~205 exercises in a scrollable list.
 - **Search / filter** by free text, domain, tags (`CKA Past Exam` / `Killer.sh A / B` / `General`), bookmarks, or "not yet done".
 - Each card has its own **show / hide solution** toggle — expand individual cards without spoiling the rest.
 - Mark **✓ Done** and **⭐ Bookmark** per card. The sidebar shows a per-domain progress bar.
-- Type into the **✏️ Your answer** box and click **✓ Check** to ask the LLM grader for feedback (requires Settings → LLM grading).
+- Type into the **✏️ Your answer** box and click **✓ Check** to ask the LLM grader for feedback (requires Settings → LLM grading). The editor is a real CodeMirror instance (lazy-loaded on first focus) with YAML syntax highlighting, Tab indent, and a **⛶** button that expands it to fullscreen — handy when the expected answer is a multi-resource manifest. On mobile the editor uses a 16 px font so iOS Safari doesn't auto-zoom when you tap it.
 
 ### 🎯 Quiz
 

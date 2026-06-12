@@ -929,9 +929,27 @@ kbd {
   border-radius: var(--radius);
 }
 .answer-label {
+  display: flex; align-items: center; gap: 6px;
   font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.6px; color: var(--fg-muted);
   margin-bottom: 6px;
+}
+.answer-label-text { flex: 1; }
+.answer-expand {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 2px 8px;
+  font-size: 14px; line-height: 1;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.answer-expand:hover,
+.answer-expand:focus-visible {
+  background: var(--bg-elev);
+  color: var(--fg);
+  border-color: var(--border);
+  outline: none;
 }
 .answer-textarea {
   width: 100%;
@@ -948,6 +966,32 @@ kbd {
   outline: 2px solid var(--accent); outline-offset: -1px;
   border-color: var(--accent);
 }
+.answer-cm {
+  min-height: 96px;
+  max-height: 360px;
+  overflow: auto;
+}
+.answer-box.answer-fullscreen .answer-cm {
+  max-height: none;
+  flex: 1;
+  min-height: 60vh;
+}
+.answer-box.answer-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  margin: 0;
+  border-radius: 0;
+  background: var(--bg);
+  padding: 20px 24px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+.answer-box.answer-fullscreen .answer-textarea {
+  flex: 1; min-height: 60vh;
+}
+body.answer-fullscreen-active { overflow: hidden; }
 .answer-actions {
   display: flex; align-items: center; gap: 8px;
   margin-top: 8px; flex-wrap: wrap;
@@ -1172,6 +1216,9 @@ kbd {
   .provider-grid { grid-template-columns: 1fr; }
   .answer-actions { flex-direction: column; align-items: stretch; gap: 6px; }
   .answer-actions .answer-hint { margin-left: 0; }
+  /* 16px prevents iOS Safari from auto-zooming on focus. */
+  .answer-textarea,
+  .answer-cm .cm-content { font-size: 16px; }
 }
 
 /* ============================================================ */

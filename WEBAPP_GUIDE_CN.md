@@ -38,7 +38,7 @@
 - **搜索 / 过滤**：自由文本 + domain + 标签（`CKA Past Exam` / `Killer.sh A / B` / `General`）+ 收藏 + "未完成"
 - 每张卡片可独立 **展开 / 折叠解答** — 不会剧透其它题
 - 每题可标 **✓ Done** 和 **⭐ Bookmark**；侧边栏按 domain 显示进度条
-- 在 **✏️ Your answer** 文本框输入答案，点 **✓ Check** 由 LLM 批改（需先在 Settings 中配置）
+- 在 **✏️ Your answer** 编辑器输入答案，点 **✓ Check** 由 LLM 批改（需先在 Settings 中配置）。编辑器是 CodeMirror（首次聚焦时按需懒加载），支持 YAML 语法高亮、Tab 缩进，右上角 **⛶** 按钮可一键全屏 — 写多资源 manifest 时尤其方便。移动端字号为 16px，避免 iOS Safari 聚焦时自动放大
 
 ### 🎯 Quiz
 
