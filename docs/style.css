@@ -61,6 +61,21 @@ button {
 button:hover { background: var(--border); }
 button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 button.primary:hover { filter: brightness(1.1); }
+/* Anchors styled as buttons (e.g. the report modal's Open-GitHub-issue link
+   — kept as a real anchor so mobile Safari / Android PWA navigate natively
+   instead of relying on the popup-blocked window.open path). */
+a.primary {
+  display: inline-block;
+  text-decoration: none;
+  font: inherit;
+  background: var(--accent);
+  color: var(--accent-fg);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+a.primary:hover { filter: brightness(1.1); text-decoration: none; }
 button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
 button.grade-got { color: var(--success); border-color: var(--success); }
 button.grade-miss { color: var(--danger); border-color: var(--danger); }

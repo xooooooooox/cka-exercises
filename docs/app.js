@@ -1649,6 +1649,12 @@ function openFixReportModal(ex, ctx = {}) {
     return true;
   };
 
+  // Keep the anchor's href in sync with the form so mobile browsers
+  // navigate via the anchor's native default behaviour (no popup blocker).
+  const syncHref = () => {
+    openBtn.href = buildIssueUrl(ex, collect(), buildCtx());
+  };
+
   const cleanup = () => {
     overlay.hidden = true;
     saveBtn.onclick = null;
@@ -1658,6 +1664,9 @@ function openFixReportModal(ex, ctx = {}) {
     closeBtn.onclick = null;
     document.removeEventListener('keydown', onEsc);
     overlay.onclick = null;
+    radios.forEach(r => r.removeEventListener('change', syncHref));
+    addl.removeEventListener('input', syncHref);
+    includeCtxBox.removeEventListener('change', syncHref);
   };
 
   const onEsc = (e) => { if (e.key === 'Escape') cleanup(); };
@@ -1665,6 +1674,12 @@ function openFixReportModal(ex, ctx = {}) {
   overlay.onclick = (e) => { if (e.target === overlay) cleanup(); };
   closeBtn.onclick = cleanup;
   cancelBtn.onclick = cleanup;
+
+  // Initial href + live-sync on every relevant input change.
+  radios.forEach(r => r.addEventListener('change', syncHref));
+  addl.addEventListener('input', syncHref);
+  includeCtxBox.addEventListener('change', syncHref);
+  syncHref();
 
   saveBtn.onclick = () => {
     const d = collect();
@@ -1686,13 +1701,15 @@ function openFixReportModal(ex, ctx = {}) {
     }
   };
 
-  openBtn.onclick = () => {
+  // The anchor handles navigation natively. We only validate, persist the
+  // draft, and (belt + suspenders) refresh href in case anything changed
+  // between the last input event and this click.
+  openBtn.onclick = (e) => {
     const d = collect();
-    if (!requireOtherText(d)) return;
+    if (!requireOtherText(d)) { e.preventDefault(); return; }
+    openBtn.href = buildIssueUrl(ex, d, buildCtx());
     setFixDraft(ex.id, d);
-    const url = buildIssueUrl(ex, d, buildCtx());
-    window.open(url, '_blank', 'noopener');
-    statusEl.textContent = '✓ Opened a new tab — review and submit on GitHub.';
+    statusEl.textContent = '✓ Opening a new tab — review and submit on GitHub. If GitHub asks you to sign in first, the issue form appears after you log in.';
   };
 }
 
