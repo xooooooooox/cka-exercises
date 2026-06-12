@@ -1442,6 +1442,9 @@ kbd {
   gap: 24px;
   align-items: start;
 }
+/* Restore [hidden] semantics on the panels — the display:grid above otherwise
+   defeats the user-agent default and makes both panels render at once. */
+.tools-panel[hidden] { display: none; }
 
 .tools-tree {
   position: sticky;
@@ -1479,6 +1482,33 @@ kbd {
   color: var(--accent);
   font-weight: 600;
 }
+
+/* kubectl sidebar — visual hierarchy: parents as group headings, children
+   nested under a vertical guide line. --cmd-depth is set inline by JS. */
+#tools-cmd-list .cmd-row {
+  padding-left: calc(8px + var(--cmd-depth, 0) * 14px);
+}
+#tools-cmd-list .cmd-top {
+  color: var(--fg);
+  font-weight: 600;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+}
+#tools-cmd-list .cmd-top:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 4px;
+}
+#tools-cmd-list .cmd-child {
+  font-size: 12.5px;
+  color: var(--fg-muted);
+  border-left: 2px solid var(--border);
+  border-radius: 0;
+  margin-left: 14px;
+  padding-left: 12px;
+}
+#tools-cmd-list .cmd-child.active { border-left-color: var(--accent); }
 
 .tools-detail {
   max-width: 920px;

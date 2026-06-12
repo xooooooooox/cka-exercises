@@ -1844,7 +1844,7 @@ function parseHash() {
   if (!h) return { mode: null };
   const [mode, ...rest] = h.split('/');
   const arg = rest.length ? decodeURIComponent(rest.join('/')) : null;
-  if (['browse', 'quiz', 'docs'].includes(mode)) return { mode, arg };
+  if (['browse', 'quiz', 'docs', 'help', 'tools'].includes(mode)) return { mode, arg };
   return { mode: null };
 }
 
@@ -2038,6 +2038,12 @@ async function renderToolsView() {
     showToolsSubtab(State.toolsSubtab);
     return;
   }
+
+  // Reset the "Loading…" placeholders to their original empty-state copy. The
+  // detail panes only get re-rendered to real content if a lastKind / lastCmd
+  // is in localStorage; otherwise we'd leave "Loading…" stuck on screen.
+  explainBody.innerHTML = '<p class="muted">Pick a kind on the left, then click any field to drill into its sub-schema (just like <code>kubectl explain pod.spec.containers</code>).</p>';
+  kubectlBody.innerHTML = '<p class="muted">Pick a kubectl command on the left to see the same <code>kubectl &lt;cmd&gt; -h</code> output you\'d get in the exam terminal.</p>';
 
   // Meta line in the subtabs strip
   const meta = document.getElementById('tools-meta');
@@ -2238,8 +2244,14 @@ function renderKubectlCommandList(query = '') {
       if (!hay.includes(query)) continue;
     }
     const depth = c.path.split(' ').length - 1;
-    const btn = el('button', { type: 'button', 'data-cmd-path': c.path, title: c.summary || '' });
-    btn.style.paddingLeft = `${8 + depth * 12}px`;
+    const isTop = depth === 0;
+    const btn = el('button', {
+      type: 'button',
+      class: `cmd-row ${isTop ? 'cmd-top' : 'cmd-child'}`,
+      'data-cmd-path': c.path,
+      title: c.summary || '',
+    });
+    btn.style.setProperty('--cmd-depth', String(depth));
     btn.textContent = c.path.split(' ').pop();
     if (c.path === State.toolsKubectl.cmdPath) btn.classList.add('active');
     btn.addEventListener('click', () => {
