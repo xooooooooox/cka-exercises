@@ -20,7 +20,10 @@ const State = {
   quiz: null,                    // { ids, idx, status: Map<id, 'got'|'missed'|'skipped'>, flagged: Set, revealed: Set, deadline, solutionsHidden }
   quizTimerHandle: null,
   docs: null,                    // { tree, leaves: Map<url, leaf>, selectedUrl }
-  tools: null,                   // { rootKinds, definitions, kubectl: { version, commands } }
+  tools: null,                   // currently-active version payload (alias of toolsByMinor.get(currentMinor))
+  toolsManifest: null,           // { default, versions: [{minor,kubectl,...}] }
+  toolsByMinor: new Map(),       // minor → fetched payload (per-version cache)
+  toolsCurrentMinor: null,
   toolsExplain: { kindRef: null, path: [] },
   toolsKubectl: { cmdPath: null },
   toolsSubtab: 'explain',
@@ -37,6 +40,7 @@ const KEY = {
   toolsKind: 'cka:tools:lastKind',
   toolsPath: 'cka:tools:lastPath',
   toolsCmd: 'cka:tools:lastCmd',
+  toolsVersion: 'cka:tools:version',
   docsLastUrl: 'cka:docs:lastUrl',
   llmSettings: 'cka:llm:settings',
   privacyAck: 'cka:llm:privacyAck',
@@ -2004,18 +2008,67 @@ function renderHelpView() {
 // ---------- Tools view (kubectl explain + kubectl -h) ----------
 
 let _toolsRendered = false;
-let _toolsLoadingPromise = null;
+let _toolsHandlersInstalled = false;
+let _toolsManifestPromise = null;
+const _toolsFetchPromises = new Map();   // minor → in-flight fetch promise
 
-async function loadTools() {
-  if (State.tools) return State.tools;
-  if (_toolsLoadingPromise) return _toolsLoadingPromise;
-  _toolsLoadingPromise = (async () => {
-    const resp = await fetch('tools.json');
-    if (!resp.ok) throw new Error(`tools.json HTTP ${resp.status}`);
-    State.tools = await resp.json();
-    return State.tools;
+async function loadToolsManifest() {
+  if (State.toolsManifest) return State.toolsManifest;
+  if (_toolsManifestPromise) return _toolsManifestPromise;
+  _toolsManifestPromise = (async () => {
+    const resp = await fetch('tools-versions.json');
+    if (!resp.ok) throw new Error(`tools-versions.json HTTP ${resp.status}`);
+    State.toolsManifest = await resp.json();
+    return State.toolsManifest;
   })();
-  return _toolsLoadingPromise;
+  return _toolsManifestPromise;
+}
+
+async function loadToolsVersion(minor) {
+  if (State.toolsByMinor.has(minor)) {
+    State.tools = State.toolsByMinor.get(minor);
+    State.toolsCurrentMinor = minor;
+    return State.tools;
+  }
+  if (_toolsFetchPromises.has(minor)) return _toolsFetchPromises.get(minor);
+
+  const manifest = await loadToolsManifest();
+  const v = manifest.versions.find(x => x.minor === minor)
+        || manifest.versions.find(x => x.minor === manifest.default)
+        || manifest.versions[0];
+  const p = (async () => {
+    const resp = await fetch(v.file);
+    if (!resp.ok) throw new Error(`${v.file} HTTP ${resp.status}`);
+    const payload = await resp.json();
+    State.toolsByMinor.set(v.minor, payload);
+    State.tools = payload;
+    State.toolsCurrentMinor = v.minor;
+    return payload;
+  })();
+  _toolsFetchPromises.set(minor, p);
+  try { return await p; }
+  finally { _toolsFetchPromises.delete(minor); }
+}
+
+function updateToolsMetaLine() {
+  const meta = document.getElementById('tools-meta');
+  if (!meta) return;
+  const minor = State.toolsCurrentMinor;
+  const v = State.toolsManifest?.versions?.find(x => x.minor === minor);
+  meta.textContent = v ? `kubectl ${v.kubectl}` : '';
+}
+
+function populateVersionSelect() {
+  const sel = document.getElementById('tools-version-select');
+  if (!sel) return;
+  if (sel.options.length) return; // already populated
+  for (const v of State.toolsManifest.versions) {
+    const opt = document.createElement('option');
+    opt.value = v.minor;
+    opt.textContent = `v${v.minor}`;
+    sel.appendChild(opt);
+  }
+  sel.value = State.toolsCurrentMinor;
 }
 
 async function renderToolsView() {
@@ -2023,39 +2076,44 @@ async function renderToolsView() {
   const kubectlBody = document.getElementById('tools-kubectl-detail');
   if (!explainBody || !kubectlBody) return;
 
+  // First-time arrival: load manifest, pick which version to display, fetch it.
   if (!State.tools) {
     explainBody.innerHTML = '<p class="muted">Loading…</p>';
     kubectlBody.innerHTML = '<p class="muted">Loading…</p>';
     try {
-      await loadTools();
+      await loadToolsManifest();
     } catch (e) {
-      explainBody.innerHTML = `<p class="muted">Couldn't load <code>tools.json</code>: ${e.message}. Run <code>npm run build:tools-bundle</code>.</p>`;
+      explainBody.innerHTML = `<p class="muted">Couldn't load <code>tools-versions.json</code>: ${e.message}. Run <code>npm run build:tools-bundle</code>.</p>`;
+      return;
+    }
+    const saved = storageGet(KEY.toolsVersion, null);
+    const valid = State.toolsManifest.versions.some(v => v.minor === saved);
+    const targetMinor = valid ? saved : State.toolsManifest.default;
+    try {
+      await loadToolsVersion(targetMinor);
+    } catch (e) {
+      explainBody.innerHTML = `<p class="muted">Couldn't load tools bundle: ${e.message}.</p>`;
       return;
     }
   }
 
+  // Re-renders inside the same Tools session: just re-show whichever sub-tab.
   if (_toolsRendered) {
     showToolsSubtab(State.toolsSubtab);
+    populateVersionSelect();
     return;
   }
 
-  // Reset the "Loading…" placeholders to their original empty-state copy. The
-  // detail panes only get re-rendered to real content if a lastKind / lastCmd
-  // is in localStorage; otherwise we'd leave "Loading…" stuck on screen.
+  // Reset the "Loading…" placeholders to their original empty-state copy.
   explainBody.innerHTML = '<p class="muted">Pick a kind on the left, then click any field to drill into its sub-schema (just like <code>kubectl explain pod.spec.containers</code>).</p>';
   kubectlBody.innerHTML = '<p class="muted">Pick a kubectl command on the left to see the same <code>kubectl &lt;cmd&gt; -h</code> output you\'d get in the exam terminal.</p>';
 
-  // Meta line in the subtabs strip
-  const meta = document.getElementById('tools-meta');
-  if (meta) {
-    const t = State.tools;
-    meta.textContent = `${t.k8sVersion || ''}${t.kubectl?.version ? ' · kubectl ' + t.kubectl.version : ''}`;
-  }
+  populateVersionSelect();
+  updateToolsMetaLine();
 
   renderExplainKindList();
   renderKubectlCommandList();
 
-  // Restore last sub-tab + selection
   const lastTab = storageGet(KEY.toolsSubtab, 'explain');
   State.toolsSubtab = (lastTab === 'kubectl') ? 'kubectl' : 'explain';
   showToolsSubtab(State.toolsSubtab);
@@ -2077,6 +2135,37 @@ async function renderToolsView() {
   _toolsRendered = true;
 }
 
+async function switchToolsVersion(minor) {
+  storageSet(KEY.toolsVersion, minor);
+  // Invalidate per-version caches
+  _explainIndex = null;
+  try {
+    await loadToolsVersion(minor);
+  } catch (e) {
+    alert(`Couldn't load v${minor}: ${e.message}`);
+    return;
+  }
+  // Re-render lists against the new payload. Detail panes get re-rendered
+  // automatically if the saved kindRef / cmdPath still exists in this version.
+  renderExplainKindList(document.getElementById('tools-explain-search')?.value || '');
+  renderKubectlCommandList(document.getElementById('tools-kubectl-search')?.value || '');
+
+  // Re-resolve the saved Explain selection against the new version's definitions
+  if (State.toolsExplain.kindRef && State.tools.definitions[State.toolsExplain.kindRef]) {
+    renderExplainDetail();
+  } else {
+    State.toolsExplain = { kindRef: null, path: [] };
+    document.getElementById('tools-explain-detail').innerHTML = '<p class="muted">Pick a kind on the left, then click any field to drill into its sub-schema (just like <code>kubectl explain pod.spec.containers</code>).</p>';
+  }
+  if (State.toolsKubectl.cmdPath && State.tools.kubectl?.commands?.some(c => c.path === State.toolsKubectl.cmdPath)) {
+    renderKubectlDetail();
+  } else {
+    State.toolsKubectl.cmdPath = null;
+    document.getElementById('tools-kubectl-detail').innerHTML = '<p class="muted">Pick a kubectl command on the left to see the same <code>kubectl &lt;cmd&gt; -h</code> output you\'d get in the exam terminal.</p>';
+  }
+  updateToolsMetaLine();
+}
+
 function showToolsSubtab(name) {
   const sub = (name === 'kubectl') ? 'kubectl' : 'explain';
   State.toolsSubtab = sub;
@@ -2088,8 +2177,13 @@ function showToolsSubtab(name) {
 }
 
 function installToolsHandlers() {
+  if (_toolsHandlersInstalled) return;
+  _toolsHandlersInstalled = true;
   document.querySelectorAll('.tools-subtabs button[data-tools-tab]').forEach(b => {
     b.addEventListener('click', () => showToolsSubtab(b.dataset.toolsTab));
+  });
+  document.getElementById('tools-version-select')?.addEventListener('change', (e) => {
+    switchToolsVersion(e.target.value);
   });
   const explainSearch = document.getElementById('tools-explain-search');
   explainSearch?.addEventListener('input', (e) => {

@@ -236,6 +236,10 @@
     <nav class="tools-subtabs" role="tablist">
       <button data-tools-tab="explain" class="active" type="button" title="Browse the kubernetes API schema (kubectl explain)">📘 Explain</button>
       <button data-tools-tab="kubectl" type="button" title="Look up the verbatim kubectl &lt;cmd&gt; -h output">📋 kubectl -h</button>
+      <label class="tools-version-picker" title="Pick the k8s minor — default v1.35 (CKA target)">
+        Version
+        <select id="tools-version-select" aria-label="Select kubernetes version"></select>
+      </label>
       <span id="tools-meta" class="muted"></span>
     </nav>
 

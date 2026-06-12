@@ -17,8 +17,24 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = path.join(ROOT, 'tools', 'kubectl-help.json');
 const MAX_DEPTH = 3;
+
+// Args: --kubectl=<path>   (default: "kubectl" on PATH)
+//       --minor=X.Y        (default: empty → writes tools/kubectl-help.json
+//                           — single-version legacy path; with --minor writes
+//                           tools/kubectl-help-X.Y.json)
+function parseArgs() {
+  const out = { kubectl: 'kubectl', minor: '' };
+  for (const a of process.argv.slice(2)) {
+    const m = a.match(/^--(\w+)=(.*)$/);
+    if (!m) continue;
+    if (m[1] === 'kubectl') out.kubectl = m[2];
+    if (m[1] === 'minor') out.minor = m[2];
+  }
+  return out;
+}
+const ARGS = parseArgs();
+const OUT = path.join(ROOT, 'tools', ARGS.minor ? `kubectl-help-${ARGS.minor}.json` : 'kubectl-help.json');
 
 // Skip commands that are noisy / out of scope for CKA practice.
 const SKIP = new Set([
@@ -33,7 +49,7 @@ const SKIP = new Set([
 
 function runKubectl(args) {
   try {
-    return execFileSync('kubectl', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    return execFileSync(ARGS.kubectl, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
   } catch (e) {
     // Some commands exit non-zero when shown without args (e.g. `kubectl get`)
     // but still print useful help to stderr. Combine if available.
@@ -95,7 +111,7 @@ function walk(parts, depth, collector) {
 
 function main() {
   const version = captureVersion();
-  console.log(`Capturing kubectl ${version} help texts…`);
+  console.log(`Capturing kubectl ${version} help texts via ${ARGS.kubectl}…`);
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
 
   const commands = [];

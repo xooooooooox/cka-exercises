@@ -17,11 +17,23 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUT  = path.join(ROOT, 'docs', 'tools.json');
-const KUBECTL_HELP_FILE = path.join(ROOT, 'tools', 'kubectl-help.json');
+
+// Args: --minor=X.Y    (default: empty → single-version legacy paths)
+function parseArgs() {
+  const out = { minor: '' };
+  for (const a of process.argv.slice(2)) {
+    const m = a.match(/^--(\w+)=(.*)$/);
+    if (m && m[1] === 'minor') out.minor = m[2];
+  }
+  return out;
+}
+const ARGS = parseArgs();
+
+const OUT = path.join(ROOT, 'docs', ARGS.minor ? `tools-${ARGS.minor}.json` : 'tools.json');
+const KUBECTL_HELP_FILE = path.join(ROOT, 'tools', ARGS.minor ? `kubectl-help-${ARGS.minor}.json` : 'kubectl-help.json');
 
 // Pin to a known-good kubernetes release. Bump alongside the CKA curriculum.
-const K8S_RELEASE = 'release-1.34';
+const K8S_RELEASE = ARGS.minor ? `release-${ARGS.minor}` : 'release-1.34';
 const SPEC_URL = `https://raw.githubusercontent.com/kubernetes/kubernetes/${K8S_RELEASE}/api/openapi-spec/swagger.json`;
 
 // Curated CKA-relevant root kinds. Each row: { name, group, version, defRef }.

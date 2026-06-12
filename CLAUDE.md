@@ -117,14 +117,20 @@ Pure Node (no deps; built-ins only). For each markdown file:
 
 Output: `docs/exercises.json`. Gitignored. Regenerated on every `npm run build`, `npm run serve` (via `preserve` hook), and CI deploy.
 
-### `scripts/build-kubectl-help.mjs` + `scripts/build-kubectl-tools.mjs`
+### `scripts/build-tools-bundle.mjs` (orchestrator) + per-version scripts
 
-These two scripts produce the Tools-tab payload (in-app `kubectl explain` schema browser + verbatim `kubectl <cmd> -h` output).
+The Tools-tab payload is per-kubernetes-minor — one `docs/tools-<minor>.json` per version, plus a tiny `docs/tools-versions.json` manifest. `scripts/build-tools-bundle.mjs` orchestrates the whole pipeline:
 
-- `build-kubectl-help.mjs` — invokes the local `kubectl` binary, walks the command tree by parsing "Available Commands" / "Basic Commands" headings in each `-h` output, captures `path / summary / rawHelp` per command. Writes `tools/kubectl-help.json` (gitignored, ~220KB). **Requires kubectl on PATH** — locally it uses whatever you have installed; CI pins `v1.34.0` via `azure/setup-kubectl@v4`.
-- `build-kubectl-tools.mjs` — fetches the OpenAPI spec from `kubernetes/kubernetes@release-1.34`, walks a curated `INCLUDED_KINDS` list (32 CKA-relevant resources) plus transitively reachable sub-schemas, compacts each definition to `{ description, fields }`, merges in the kubectl help bundle, and writes `docs/tools.json` (gitignored, ~580KB combined). `STOP_AT_REF` blocks `JSONSchemaProps` recursion to keep size in check; the budget cap is 800KB.
+1. **Picks minors to build.** Probes `https://dl.k8s.io/release/stable.txt` to learn the latest k8s patch, derives `latest + previous + CKA target (1.35)`, dedupes. Skip the probe with `--minors=1.35,1.34` for local dev / single-version builds.
+2. **Downloads each pinned kubectl** to `tools/.bin/kubectl-<minor>` from `dl.k8s.io/release/<patch>/bin/<os>/<arch>/kubectl` (cached across CI runs via `actions/cache@v4`).
+3. **Per minor**, invokes the two low-level scripts:
+   - `build-kubectl-help.mjs --kubectl=<path> --minor=<X.Y>` — walks `<verb> -h` output via the captured binary, emits `tools/kubectl-help-<minor>.json` (~220KB, ~78 commands).
+   - `build-kubectl-tools.mjs --minor=<X.Y>` — fetches OpenAPI from `kubernetes/kubernetes@release-<minor>`, walks the curated `INCLUDED_KINDS` list (32 CKA-relevant resources) plus transitively reachable sub-schemas, merges in the kubectl-help, writes `docs/tools-<minor>.json` (~580KB, budget 800KB). `STOP_AT_REF` blocks `JSONSchemaProps` recursion to keep size in check.
+4. **Writes** `docs/tools-versions.json` with `{ default: "1.35", versions: [...] }` — the SPA reads this on first Tools-tab visit to populate the version dropdown and pick the active bundle.
 
-Run both together: `npm run build:tools-bundle`. `npm run serve` and CI both call them via the `preserve` hook / workflow steps.
+Run locally: `npm run build:tools-bundle` (auto-detects minors) or `npm run build:tools-bundle -- --minors=1.35` (single version). CI runs the orchestrator directly — no `azure/setup-kubectl` step, because the orchestrator handles its own binaries.
+
+Low-level scripts both accept `--minor=X.Y` to emit version-suffixed paths; without `--minor` they use legacy single-version paths (`tools/kubectl-help.json`, `docs/tools.json`) for backwards compatibility, though nothing in the current pipeline uses that mode.
 
 ### Tag identifier rename
 

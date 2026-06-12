@@ -88,7 +88,9 @@
 - **📘 Explain** — 一个 `kubectl explain` 的 schema 浏览器。左侧挑一个 kind（Pod / Deployment / Service / …），右侧像 CLI 一样显示 `KIND / VERSION / DESCRIPTION / FIELDS`。点任何带 sub-schema 的字段可以下钻（`Pod → spec → containers → resources → limits`），breadcrumb 可以回上一层。搜索框支持按 kind 名或字段名搜索（输入 "affinity" 会同时命中 Pod、Deployment 等）。
 - **📋 kubectl -h** — **逐字**收录了 ~80 个 kubectl 子命令的 `kubectl <verb> -h` 输出（包括 `kubectl create deployment`、`kubectl set image`、`kubectl rollout undo` 等等），跟考试 shell 里看到的完全一致，monospace 渲染。顶部的 **📋 Copy** 按钮一键把 `kubectl <cmd>` 复制到剪贴板。
 
-内容在部署时从固定的 Kubernetes 发布版本（当前 v1.34）和 kubectl 二进制中提取。Bundle 大小 ~580KB 原始 / ~110KB gzipped，**只在你第一次点开 Tools 标签时**才会懒加载，对初始页面打开速度没影响。
+**版本下拉。** Tools 子标签栏里有个 `Version` 下拉，可以切换 kubernetes minor 版本 — 默认 **v1.35**（当前 CKA 考试目标）。Bundle 同时打包**最新两个稳定 minor + 始终包含 v1.35**：当前是 v1.35 + v1.34；k8s v1.36 发布后自动滚动到 v1.36 + v1.35。选择通过 `cka:tools:version` 持久化。每个版本的 bundle 在首次选中时才懒加载。
+
+每个版本的内容在部署时从对应的 Kubernetes 发布版本和 kubectl 二进制中提取。每个 bundle 约 ~580KB 原始 / ~110KB gzipped，**只在你第一次打开 Tools 标签或切换版本时**才会懒加载，对初始页面打开速度没影响。
 
 ---
 
@@ -161,6 +163,7 @@ DevTools 里你能看到的 key：
 | `cka:tools:lastKind` | Tools › Explain 上次打开的 kind |
 | `cka:tools:lastPath` | Explain 当前的钻取路径（如 `["spec","containers","resources"]`） |
 | `cka:tools:lastCmd` | Tools › kubectl -h 上次打开的命令（如 `"create deployment"`） |
+| `cka:tools:version` | Tools 标签当前选中的 k8s minor 版本（如 `"1.35"`）；未设置时默认 `1.35` |
 | `cka:docs:lastUrl` | 上次打开的 docs 页 |
 | `cka:llm:settings` | Provider、API key、model、Auto-Done 阈值 |
 | `cka:llm:privacyAck` | 是否已经关闭首次使用时的隐私提示 |

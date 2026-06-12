@@ -9,6 +9,7 @@ on:
       - 'scripts/build-exercises.mjs'
       - 'scripts/build-kubectl-tools.mjs'
       - 'scripts/build-kubectl-help.mjs'
+      - 'scripts/build-tools-bundle.mjs'
       - 'scripts/lint-exercises.mjs'
       - 'WEBAPP_GUIDE.md'
       - 'WEBAPP_GUIDE_CN.md'
@@ -32,21 +33,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      # kubectl is needed by scripts/build-kubectl-help.mjs to capture the
-      # verbatim `kubectl <cmd> -h` output bundled into the Tools tab.
-      # Pin to the CKA-curriculum version so deploys are reproducible.
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
+      # Cache kubectl binaries downloaded by build-tools-bundle.mjs (one per
+      # supported minor — currently 1.34 + 1.35). Cache invalidates whenever
+      # the orchestrator script changes, in case the version selection logic
+      # shifts.
+      - name: Cache kubectl binaries
+        uses: actions/cache@v4
         with:
-          version: 'v1.34.0'
+          path: tools/.bin
+          key: kubectl-bins-${{ hashFiles('scripts/build-tools-bundle.mjs') }}
       - name: Lint exercises markdown
         run: node scripts/lint-exercises.mjs
       - name: Build exercises.json
         run: node scripts/build-exercises.mjs
-      - name: Build kubectl help bundle
-        run: node scripts/build-kubectl-help.mjs
-      - name: Build tools.json (explain + kubectl)
-        run: node scripts/build-kubectl-tools.mjs
+      # Builds docs/tools-versions.json + docs/tools-<minor>.json for each
+      # supported kubernetes minor. Orchestrator downloads pinned kubectl
+      # binaries via dl.k8s.io, walks help text, fetches OpenAPI per minor.
+      - name: Build per-version Tools bundles
+        run: node scripts/build-tools-bundle.mjs
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact

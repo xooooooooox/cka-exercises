@@ -88,7 +88,9 @@ Two reference tools that mirror what you reach for in the real exam terminal —
 - **📘 Explain** — a `kubectl explain` schema browser. Pick a kind on the left (Pod, Deployment, Service, …) and the right pane shows `KIND / VERSION / DESCRIPTION / FIELDS` exactly like the CLI. Click any field that references a sub-schema to drill in (`Pod → spec → containers → resources → limits`). Use the breadcrumb to walk back up. Search box on the left filters by kind name or by any field name reachable from a kind ("affinity" finds Pod, Deployment, …).
 - **📋 kubectl -h** — the **verbatim** `kubectl <verb> -h` output for every kubectl subcommand (~80 of them, including `kubectl create deployment`, `kubectl set image`, `kubectl rollout undo`, …). Identical to what you'd see in the exam shell, rendered monospace. A **📋 Copy** button on top copies `kubectl <cmd>` to your clipboard.
 
-The content is pre-built at deploy time from the pinned Kubernetes release (currently v1.34) and kubectl binary. Bundle size is ~580KB raw / ~110KB gzipped, lazy-loaded only when you first open the Tools tab — no impact on initial page load.
+**Version dropdown.** The Tools subtab strip has a `Version` `<select>` for choosing the Kubernetes minor — defaults to **v1.35** (the current CKA exam target). The bundle ships **the two latest stable minors + always v1.35**, so today that's v1.35 + v1.34; once k8s v1.36 ships, the list rolls forward to v1.36 + v1.35. Your selection is sticky across reloads via `cka:tools:version`. Each version's bundle is fetched lazily on first selection.
+
+The content for each version is pre-built at deploy time from the pinned Kubernetes release and kubectl binary. Each bundle is ~580KB raw / ~110KB gzipped, lazy-loaded only when you first open the Tools tab and again when you switch versions — no impact on initial page load.
 
 ---
 
@@ -161,6 +163,7 @@ Keys you'll see in DevTools:
 | `cka:tools:lastKind` | Last kind opened in Tools › Explain (e.g. `io.k8s.api.core.v1.Pod`) |
 | `cka:tools:lastPath` | Current drill path in Explain (e.g. `["spec","containers","resources"]`) |
 | `cka:tools:lastCmd` | Last command opened in Tools › kubectl -h (e.g. `"create deployment"`) |
+| `cka:tools:version` | Selected kubernetes minor in the Tools tab (e.g. `"1.35"`); default `1.35` when unset |
 | `cka:docs:lastUrl` | Last opened docs page |
 | `cka:llm:settings` | Provider, API key, model, auto-done threshold |
 | `cka:llm:privacyAck` | Whether you dismissed the first-use privacy notice |
