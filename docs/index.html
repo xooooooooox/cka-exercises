@@ -497,10 +497,20 @@
         <input id="report-include-context" type="checkbox" checked>
         Include my answer + LLM verdict in the issue body (recommended)
       </label>
+      <div class="report-submit-block">
+        <label class="report-field-label" for="report-title-preview">Issue title</label>
+        <div class="report-title-row">
+          <input id="report-title-preview" type="text" readonly>
+          <button id="report-copy-title" type="button" title="Copy title to clipboard">📋 Copy title</button>
+        </div>
+        <div class="report-mobile-hint muted">
+          📱 <strong>How submission works:</strong> the <em>Open GitHub issue</em> button pre-fills only the <em>title</em> and <em>labels</em> (keeps the URL short and reliable across iOS Safari + the sign-in redirect). The <em>body</em> is auto-copied to your clipboard on tap — paste it into the issue description. Use <strong>📋 Copy title</strong> and <strong>📋 Copy body</strong> explicitly if the GitHub iOS app captures the link and lands you somewhere other than the new-issue form.
+        </div>
+      </div>
       <div id="report-status" class="report-status muted"></div>
       <div class="report-actions">
         <button id="report-save-draft" type="button">💾 Save draft</button>
-        <button id="report-copy-md" type="button">📋 Copy as markdown</button>
+        <button id="report-copy-md" type="button">📋 Copy body</button>
         <a id="report-open-issue" class="primary report-open-anchor" target="_blank" rel="noopener noreferrer" href="#">🚀 Open GitHub issue</a>
         <button id="report-cancel" type="button">Cancel</button>
       </div>

@@ -1549,13 +1549,19 @@ function renderReportMarkdown(ex, draft, ctx) {
   return lines.join('\n');
 }
 
-function buildIssueUrl(ex, draft, ctx) {
+function buildIssueTitle(ex) {
+  return `[${ex.id}] Reference solution mismatch: ${truncate(ex.title || ex.displayTitle || ex.fullTitle || '', 60)}`;
+}
+
+// Title + labels only — deliberately NO body. Long URL-encoded bodies fail two
+// ways in the wild: GitHub's iOS app strips every query param after Universal
+// Links interception, and GitHub's unauthenticated `?return_to=…` auth round
+// trip 500s on heavily-encoded long return paths. The markdown body is sent
+// to the clipboard separately so the user pastes it after landing on the form.
+function buildIssueUrl(ex, draft) {
   const t = getReportType(draft.type);
-  const title = `[${ex.id}] Reference solution mismatch: ${truncate(ex.title || ex.displayTitle || ex.fullTitle || '', 60)}`;
-  const body = renderReportMarkdown(ex, draft, ctx);
   const u = new URL(`https://github.com/${GH_REPO}/issues/new`);
-  u.searchParams.set('title', title);
-  u.searchParams.set('body', body);
+  u.searchParams.set('title', buildIssueTitle(ex));
   u.searchParams.set('labels', `answer-fix,${t.ghLabel}`);
   return u.toString();
 }
@@ -1576,9 +1582,11 @@ function openFixReportModal(ex, ctx = {}) {
   const statusEl = $('report-status');
   const saveBtn = $('report-save-draft');
   const copyBtn = $('report-copy-md');
+  const copyTitleBtn = $('report-copy-title');
   const openBtn = $('report-open-issue');
   const cancelBtn = $('report-cancel');
   const closeBtn = $('report-close');
+  const titlePreview = $('report-title-preview');
 
   exIdSpan.textContent = ex.id;
   exTitle.textContent = ex.title || ex.displayTitle || ex.fullTitle || '';
@@ -1652,13 +1660,15 @@ function openFixReportModal(ex, ctx = {}) {
   // Keep the anchor's href in sync with the form so mobile browsers
   // navigate via the anchor's native default behaviour (no popup blocker).
   const syncHref = () => {
-    openBtn.href = buildIssueUrl(ex, collect(), buildCtx());
+    openBtn.href = buildIssueUrl(ex, collect());
+    titlePreview.value = buildIssueTitle(ex);
   };
 
   const cleanup = () => {
     overlay.hidden = true;
     saveBtn.onclick = null;
     copyBtn.onclick = null;
+    copyTitleBtn.onclick = null;
     openBtn.onclick = null;
     cancelBtn.onclick = null;
     closeBtn.onclick = null;
@@ -1695,21 +1705,35 @@ function openFixReportModal(ex, ctx = {}) {
     const md = renderReportMarkdown(ex, d, buildCtx());
     try {
       await navigator.clipboard.writeText(md);
-      statusEl.textContent = '✓ Markdown copied to clipboard.';
+      statusEl.textContent = '✓ Body copied — paste it into the issue description on GitHub.';
     } catch {
-      statusEl.textContent = '✗ Clipboard blocked. Use "Open GitHub issue" instead.';
+      statusEl.textContent = '✗ Clipboard blocked. Long-press the reference solution to copy manually.';
     }
   };
 
-  // The anchor handles navigation natively. We only validate, persist the
-  // draft, and (belt + suspenders) refresh href in case anything changed
-  // between the last input event and this click.
+  copyTitleBtn.onclick = async () => {
+    const d = collect();
+    if (!requireOtherText(d)) return;
+    try {
+      await navigator.clipboard.writeText(buildIssueTitle(ex));
+      statusEl.textContent = '✓ Title copied — paste it into the issue title on GitHub.';
+    } catch {
+      statusEl.textContent = '✗ Clipboard blocked. Long-press the title field to copy manually.';
+    }
+  };
+
+  // The anchor handles navigation natively. We validate, refresh href (belt +
+  // suspenders), persist the draft, and fire-and-forget the markdown body to
+  // the clipboard so the user can paste it on the GitHub side even if iOS
+  // Universal Links sends them to the GH app's home screen.
   openBtn.onclick = (e) => {
     const d = collect();
     if (!requireOtherText(d)) { e.preventDefault(); return; }
-    openBtn.href = buildIssueUrl(ex, d, buildCtx());
+    openBtn.href = buildIssueUrl(ex, d);
     setFixDraft(ex.id, d);
-    statusEl.textContent = '✓ Opening a new tab — review and submit on GitHub. If GitHub asks you to sign in first, the issue form appears after you log in.';
+    navigator.clipboard?.writeText(renderReportMarkdown(ex, d, buildCtx()))
+      .catch(() => {});
+    statusEl.textContent = '✓ Body auto-copied to clipboard. Opening GitHub — paste it into the description. (Use 📋 Copy title for the title.)';
   };
 }
 

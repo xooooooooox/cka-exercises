@@ -1228,6 +1228,37 @@ body.answer-fullscreen-active { overflow: hidden; }
   border-top: 1px solid var(--border);
   padding-top: 12px;
 }
+.report-submit-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.report-title-row {
+  display: flex; gap: 6px; align-items: stretch;
+  margin: 4px 0 8px;
+}
+.report-title-row input {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  padding: 6px 8px;
+  background: var(--bg-code);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.report-title-row button { white-space: nowrap; }
+.report-mobile-hint {
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  background: var(--bg-elev);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  margin: 6px 0 4px;
+}
+.report-mobile-hint strong { color: var(--fg); }
+.report-mobile-hint em { color: var(--fg); font-style: normal; font-weight: 600; }
 
 /* Settings overlay */
 #settings-overlay .overlay-card,
