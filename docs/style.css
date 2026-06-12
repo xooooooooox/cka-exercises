@@ -1470,6 +1470,11 @@ kbd {
   font: inherit;
   font-size: 13px;
   cursor: pointer;
+  /* Dotted paths like Pod.spec.affinity.nodeAffinity can exceed sidebar width;
+     truncate gracefully (title attribute still shows the full path on hover). */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 #tools-kind-list button:hover,
 #tools-cmd-list button:hover {

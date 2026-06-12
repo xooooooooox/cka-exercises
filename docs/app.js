@@ -2091,8 +2091,15 @@ function installToolsHandlers() {
   document.querySelectorAll('.tools-subtabs button[data-tools-tab]').forEach(b => {
     b.addEventListener('click', () => showToolsSubtab(b.dataset.toolsTab));
   });
-  document.getElementById('tools-explain-search')?.addEventListener('input', (e) => {
+  const explainSearch = document.getElementById('tools-explain-search');
+  explainSearch?.addEventListener('input', (e) => {
     renderExplainKindList(e.target.value.trim().toLowerCase());
+  });
+  // Enter → drill into the first matching path (ergonomic shortcut)
+  explainSearch?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    document.querySelector('#tools-kind-list button')?.click();
   });
   document.getElementById('tools-kubectl-search')?.addEventListener('input', (e) => {
     renderKubectlCommandList(e.target.value.trim().toLowerCase());
@@ -2101,50 +2108,97 @@ function installToolsHandlers() {
 
 // --- Explain panel ---
 
+// Flat index of every reachable schema node so the search box can match
+// dotted paths like "pod.spec.affinity". Built lazily on first search and
+// cached because State.tools is one-shot at runtime.
+let _explainIndex = null;
+
+function buildExplainIndex() {
+  if (_explainIndex) return _explainIndex;
+  const out = [];
+  const MAX_DEPTH = 4;
+  for (const root of State.tools.rootKinds) {
+    walk(root.ref, [], root, new Set([root.ref]));
+  }
+  function walk(ref, path, root, seenRefs) {
+    out.push({
+      kindRef: root.ref,
+      kindName: root.name,
+      path: [...path],
+      displayPath: [root.name, ...path].join('.'),
+    });
+    if (path.length >= MAX_DEPTH) return;
+    const def = State.tools.definitions[ref];
+    if (!def) return;
+    for (const f of def.fields || []) {
+      if (!f.ref || seenRefs.has(f.ref)) continue;
+      walk(f.ref, [...path, f.name], root, new Set([...seenRefs, f.ref]));
+    }
+  }
+  _explainIndex = out;
+  return out;
+}
+
+function makeExplainRow(entry, compact) {
+  const btn = el('button', {
+    type: 'button',
+    'data-kind-ref': entry.kindRef,
+    'data-path': entry.path.join('.'),
+    title: entry.displayPath,
+  }, compact ? entry.kindName : entry.displayPath);
+  const sx = State.toolsExplain;
+  if (sx.kindRef === entry.kindRef && (sx.path || []).join('.') === entry.path.join('.')) {
+    btn.classList.add('active');
+  }
+  btn.addEventListener('click', () => {
+    State.toolsExplain = { kindRef: entry.kindRef, path: entry.path };
+    storageSet(KEY.toolsKind, entry.kindRef);
+    storageSet(KEY.toolsPath, entry.path);
+    const q = document.getElementById('tools-explain-search')?.value || '';
+    renderExplainKindList(q);
+    renderExplainDetail();
+  });
+  return btn;
+}
+
 function renderExplainKindList(query = '') {
   const list = document.getElementById('tools-kind-list');
   if (!list) return;
   list.innerHTML = '';
-  const kinds = State.tools.rootKinds;
 
-  // If there's a query, also search across reachable field paths so users can
-  // type "affinity" and see Pod/PodSpec rows.
-  let matchedRefs = null;
-  if (query) {
-    matchedRefs = new Set();
-    for (const k of kinds) {
-      if (k.name.toLowerCase().includes(query)) matchedRefs.add(k.ref);
+  // No query → show the 34 top-level kinds (unchanged baseline UX).
+  if (!query) {
+    for (const k of State.tools.rootKinds) {
+      list.appendChild(makeExplainRow({
+        kindRef: k.ref, kindName: k.name, path: [], displayPath: k.name,
+      }, /*compact*/ true));
     }
-    // Field-name search: walk reachable defs once
-    for (const k of kinds) {
-      const def = State.tools.definitions[k.ref];
-      if (!def) continue;
-      for (const f of def.fields || []) {
-        if (f.name.toLowerCase().includes(query)) matchedRefs.add(k.ref);
-      }
-    }
+    return;
   }
 
-  for (const k of kinds) {
-    if (matchedRefs && !matchedRefs.has(k.ref)) continue;
-    const btn = el('button', {
-      type: 'button',
-      'data-kind-ref': k.ref,
-      title: `${k.name} (${k.group || 'core'}/${k.version})`,
-    }, k.name);
-    if (k.ref === State.toolsExplain.kindRef) btn.classList.add('active');
-    btn.addEventListener('click', () => {
-      State.toolsExplain = { kindRef: k.ref, path: [] };
-      storageSet(KEY.toolsKind, k.ref);
-      storageSet(KEY.toolsPath, []);
-      renderExplainKindList(query);
-      renderExplainDetail();
-    });
-    list.appendChild(btn);
+  // Normalise: strip leading dots, lowercase, collapse spaces to dot.
+  const q = query.toLowerCase().replace(/^\.+/, '').replace(/\s+/g, '.');
+  if (!q) {
+    return renderExplainKindList('');
   }
-  if (list.childElementCount === 0) {
-    list.appendChild(el('p', { class: 'muted' }, query ? 'No matches.' : 'No kinds loaded.'));
+
+  const index = buildExplainIndex();
+  const hits = [];
+  const CAP = 80;
+  for (const e of index) {
+    if (e.displayPath.toLowerCase().includes(q)) {
+      hits.push(e);
+      if (hits.length >= CAP) break;
+    }
   }
+  if (!hits.length) {
+    list.appendChild(el('p', { class: 'muted' }, 'No matches.'));
+    return;
+  }
+  // Shallower paths first — "affinity" surfaces Pod.spec.affinity ahead of
+  // deeper occurrences like Deployment.spec.template.spec.affinity.
+  hits.sort((a, b) => a.path.length - b.path.length || a.displayPath.localeCompare(b.displayPath));
+  for (const h of hits) list.appendChild(makeExplainRow(h, /*compact*/ false));
 }
 
 function renderExplainDetail() {
