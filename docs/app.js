@@ -1448,34 +1448,40 @@ function shuffleInPlace(arr) {
 }
 
 function pickQuizExercises(eligible, count, order) {
-  if (order === 'sequential') {
-    // Eligible is already in source order (ca-1-001, ca-1-002, …)
-    return eligible.slice(0, count);
-  }
+  // Sequential: strictly source order (ca-1-001, ca-1-002, …), no randomness.
+  if (order === 'sequential') return eligible.slice(0, count);
+
+  // All other modes start from a uniform random sample of N. We pick first,
+  // then sort the sample by the requested key — otherwise a sorted-then-sliced
+  // pipeline would give back all N from the first group (e.g. all 10 from
+  // §1 cluster-architecture), which is not what "By section" means.
+  const sample = shuffleInPlace([...eligible]).slice(0, count);
+  if (order === 'random') return sample;
+
   if (order === 'tag') {
     const TAG_ORDER = ['general', 'cka-past-exam', 'killersh-a', 'killersh-b'];
-    const groups = new Map(TAG_ORDER.map(t => [t, []]));
-    for (const ex of eligible) {
-      if (groups.has(ex.tag)) groups.get(ex.tag).push(ex);
-    }
-    const out = [];
-    for (const t of TAG_ORDER) out.push(...shuffleInPlace(groups.get(t) || []));
-    return out.slice(0, count);
+    const idx = new Map(TAG_ORDER.map((t, i) => [t, i]));
+    // Stable sort by canonical tag order. Items with an unknown tag sink last.
+    return sample
+      .map((ex, i) => ({ ex, i, k: idx.get(ex.tag) ?? 999 }))
+      .sort((a, b) => a.k - b.k || a.i - b.i)
+      .map(r => r.ex);
   }
+
   if (order === 'section') {
-    // Group by (domain, section), keep groups in source order, shuffle within.
-    const groups = new Map();
-    for (const ex of eligible) {
-      const k = `${ex.domain.key}/${ex.section.number}`;
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k).push(ex);
-    }
-    const out = [];
-    for (const arr of groups.values()) out.push(...shuffleInPlace(arr));
-    return out.slice(0, count);
+    // Domain order follows State.data.domains source order; then section.number.
+    const domIdx = new Map(State.data.domains.map((d, i) => [d.key, i]));
+    return sample
+      .map((ex, i) => ({
+        ex, i,
+        d: domIdx.get(ex.domain.key) ?? 999,
+        s: ex.section?.number ?? 999,
+      }))
+      .sort((a, b) => a.d - b.d || a.s - b.s || a.i - b.i)
+      .map(r => r.ex);
   }
-  // 'random' (default) — proper Fisher-Yates
-  return shuffleInPlace([...eligible]).slice(0, count);
+
+  return sample;
 }
 
 function startQuiz() {

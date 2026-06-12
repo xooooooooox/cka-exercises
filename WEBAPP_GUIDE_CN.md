@@ -49,7 +49,7 @@
 - 来源过滤（domain、标签、只看收藏、只看未完成）
 - 题量（5 / 10 / 17 整套模考 / 自定义最多 500）
 - 时限（无 / 30 / 60 / 120 分钟）
-- **顺序：** 🎲 Random（默认，均匀随机）、↑ Sequential（按题号顺序）、🏷 By tag（general → past exam → killer.sh A → B，组内随机）、📑 By section（§1 → §2 → …，组内随机）
+- **顺序：** 🎲 Random（默认，均匀随机）、↑ Sequential（按题号顺序）、🏷 By tag、📑 By section。*By tag* 和 *By section* 都是先**均匀随机抽 N 道**，再把这 N 道按 tag（general → past exam → killer.sh A → B）或 section（§1 → §2 → …）排序，让每个 tag/section 都按比例出现，而不是把所有题都给到第一组。
 - 解答可见性（默认隐藏，点 **Reveal** 才显示 / 一直显示）
 
 点 **▶ Start quiz** 开始。如果设置了时限，header 会显示倒计时。

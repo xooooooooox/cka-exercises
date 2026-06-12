@@ -49,7 +49,7 @@ Random-draw practice under exam-like conditions.
 - Source filters (domain, tags, only bookmarks, only not-yet-done)
 - Question count (5 / 10 / 17 full mock / custom up to 500)
 - Time limit (none / 30 / 60 / 120 min)
-- **Order:** 🎲 Random (default — uniform shuffle), ↑ Sequential (by question number, source order), 🏷 By source tag (general → past exam → killer.sh A → B, shuffled within group), 📑 By section (§1 → §2 → …, shuffled within section)
+- **Order:** 🎲 Random (default — uniform shuffle), ↑ Sequential (by question number, source order), 🏷 By source tag, 📑 By section. *By tag* and *By section* both pick a uniform **random sample of N** first, then **sort the sample** so the questions appear grouped by tag (general → past exam → killer.sh A → B) or by section (§1 → §2 → …). That way each tag/section is represented proportionally — you don't get all N questions from the first group.
 - Solutions visibility (hidden until you click **Reveal**, or always visible)
 
 Click **▶ Start quiz** to begin. The header shows a live timer (if a limit is set).
