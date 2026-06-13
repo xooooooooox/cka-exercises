@@ -22,14 +22,14 @@ ${solution || '(no solution body)'}
 
 ${answer}
 
-Reply with exactly this JSON shape:
+Reply with exactly this JSON shape — keep "summary" to ONE sentence and at most THREE items in "passed" and "missed":
 {
   "correct": true|false,
   "score": 0-100,
   "verdict": "correct" | "partial" | "incorrect",
   "summary": "one sentence verdict",
-  "passed": ["bullet describing one thing the student got right"],
-  "missed": ["bullet describing one requirement the student missed or did wrong"]
+  "passed": ["≤ 3 short bullets describing what the student got right"],
+  "missed": ["≤ 3 short bullets describing what the student missed or did wrong"]
 }`;
   }
 
@@ -89,7 +89,7 @@ Reply with exactly this JSON shape:
       },
       body: JSON.stringify({
         model,
-        max_tokens: 800,
+        max_tokens: 1500,
         system,
         messages: [{ role: 'user', content: user }],
       }),
@@ -104,7 +104,7 @@ Reply with exactly this JSON shape:
   async function callOpenAICompat({ apiKey, baseUrl, model, system, user, chatPath, withJsonMode }) {
     const body = {
       model,
-      max_tokens: 800,
+      max_tokens: 1500,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
@@ -220,6 +220,35 @@ Reply with exactly this JSON shape:
     return parseVerdict(raw);
   }
 
+  // Salvage a partial verdict from a response that was cut off (typically by
+  // hitting max_tokens mid-output). Walk forward tracking brace/bracket depth
+  // and string state, find the last comma at top level, snip there, and
+  // synthesise a closing `}`. Returns the parsed object on success or null.
+  function tryRepairTruncated(txt) {
+    const start = txt.indexOf('{');
+    if (start < 0) return null;
+    const body = txt.slice(start);
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    let lastTopLevelComma = -1;
+    for (let i = 0; i < body.length; i++) {
+      const c = body[i];
+      if (escaped) { escaped = false; continue; }
+      if (c === '\\' && inString) { escaped = true; continue; }
+      if (c === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (c === '{' || c === '[') depth++;
+      else if (c === '}' || c === ']') depth--;
+      else if (c === ',' && depth === 1) lastTopLevelComma = i;
+    }
+
+    if (lastTopLevelComma <= 0) return null;
+    const candidate = body.slice(0, lastTopLevelComma) + '}';
+    try { return JSON.parse(candidate); } catch { return null; }
+  }
+
   function parseVerdict(raw) {
     if (!raw) throw new Error('Empty response from grader.');
     // Strip code fences if any
@@ -227,12 +256,23 @@ Reply with exactly this JSON shape:
     if (txt.startsWith('```')) {
       txt = txt.replace(/^```[a-zA-Z]*\n?/, '').replace(/```\s*$/, '').trim();
     }
-    // Some models wrap the JSON in prose. Grab the first {...} block.
+    // Some models wrap the JSON in prose. Try the strict first-{}-block path,
+    // then fall back to a salvage-the-truncated-prefix walk.
+    let obj = null;
+    let truncated = false;
     const m = txt.match(/\{[\s\S]*\}/);
-    if (!m) throw new Error(`Grader didn't return JSON. Raw: ${raw.slice(0, 200)}`);
-    let obj;
-    try { obj = JSON.parse(m[0]); }
-    catch (e) { throw new Error(`JSON parse failed: ${e.message}. Raw: ${m[0].slice(0, 200)}`); }
+    if (m) {
+      try { obj = JSON.parse(m[0]); } catch {}
+    }
+    if (!obj) {
+      const repaired = tryRepairTruncated(txt);
+      if (repaired) { obj = repaired; truncated = true; }
+    }
+    if (!obj) {
+      throw new Error(
+        `Grader didn't return JSON. The response was likely truncated — try a different model or shorten the answer. Raw (first 800 chars):\n${raw.slice(0, 800)}`
+      );
+    }
 
     // Normalize / fill defaults
     const score = clamp(Number(obj.score) || 0, 0, 100);
@@ -244,9 +284,12 @@ Reply with exactly this JSON shape:
       correct,
       score,
       verdict,
-      summary: typeof obj.summary === 'string' ? obj.summary : '',
+      summary: typeof obj.summary === 'string' && obj.summary
+        ? obj.summary
+        : (truncated ? '(grader response was truncated — only score/verdict recovered)' : ''),
       passed: Array.isArray(obj.passed) ? obj.passed.filter(s => typeof s === 'string') : [],
       missed: Array.isArray(obj.missed) ? obj.missed.filter(s => typeof s === 'string') : [],
+      truncated,
       at: new Date().toISOString(),
     };
   }
@@ -350,5 +393,5 @@ Reply with exactly this JSON shape:
     return { ok: true, message: msg, latencyMs, models };
   }
 
-  window.LLM = { grade, DEFAULTS, SYSTEM_PROMPT, listModels, testConnection };
+  window.LLM = { grade, DEFAULTS, SYSTEM_PROMPT, listModels, testConnection, parseVerdict, tryRepairTruncated };
 })();

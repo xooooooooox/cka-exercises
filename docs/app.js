@@ -1323,7 +1323,7 @@ function renderAnswerBox(ex, opts = {}) {
     } catch (e) {
       verdictSlot.appendChild(el('div', { class: 'verdict verdict-error' },
         el('strong', {}, '✗ Grading failed'),
-        el('div', {}, e.message || String(e)),
+        el('pre', { class: 'verdict-error-detail' }, e.message || String(e)),
       ));
     } finally {
       checkBtn.disabled = false;
@@ -1355,6 +1355,10 @@ function renderVerdict(container, v, ex) {
   );
   const body = el('div', { class: cls });
   body.appendChild(head);
+  if (v.truncated) {
+    body.appendChild(el('div', { class: 'verdict-truncated-note' },
+      '⚠ Grader response was truncated. Score / verdict are reliable; details may be partial. Try a different model or a longer-output provider for a richer breakdown.'));
+  }
   if (v.summary) body.appendChild(el('div', { class: 'verdict-summary' }, v.summary));
   if (v.passed && v.passed.length) {
     body.appendChild(el('div', { class: 'verdict-section-label' }, '✓ Got right'));
