@@ -1185,6 +1185,17 @@ function renderAnswerBox(ex, opts = {}) {
   }, '🔧');
   labelRow.appendChild(toolsBtn);
   toolsBtn.addEventListener('click', () => { openToolsDrawer(); });
+  // Same hidden-until-fullscreen pattern — surfaces the task body + docs
+  // links over the fullscreen editor so the user doesn't have to exit to
+  // re-read the question.
+  const taskBtn = el('button', {
+    type: 'button',
+    class: 'answer-task-btn',
+    title: 'Show the task description without closing fullscreen',
+    'aria-label': 'Open task drawer',
+  }, '📝');
+  labelRow.appendChild(taskBtn);
+  taskBtn.addEventListener('click', () => { openTaskDrawer(ex); });
   box.appendChild(labelRow);
 
   const ta = el('textarea', {
@@ -1407,6 +1418,8 @@ let _toolsOriginalNext = null;
 
 async function openToolsDrawer() {
   if (_toolsDrawerOpen) return;
+  // At most one drawer at a time — opening Tools dismisses the Task drawer first.
+  if (_taskDrawerOpen) closeTaskDrawer();
   const overlay = document.getElementById('tools-drawer-overlay');
   const host    = document.getElementById('tools-drawer-host');
   const view    = document.getElementById('view-tools');
@@ -1454,6 +1467,72 @@ function _onToolsDrawerEsc(e) {
   if (e.key !== 'Escape') return;
   e.stopPropagation();
   closeToolsDrawer();
+}
+
+// ---------- Task drawer (over fullscreen answer editor) ----------
+
+// Mirrors the Tools drawer but the body is per-exercise so we re-render the
+// host on each open instead of relocating a shared DOM block.
+let _taskDrawerOpen = false;
+
+function openTaskDrawer(ex) {
+  if (_taskDrawerOpen) return;
+  // At most one drawer at a time — opening Task dismisses the Tools drawer first.
+  if (_toolsDrawerOpen) closeToolsDrawer();
+  const overlay = document.getElementById('task-drawer-overlay');
+  const host    = document.getElementById('task-drawer-host');
+  const title   = document.getElementById('task-drawer-title');
+  if (!overlay || !host || !title) return;
+
+  const display = ex.title || ex.displayTitle || ex.fullTitle || 'Task';
+  title.textContent = `📝 ${display} — ${ex.id}`;
+
+  host.innerHTML = '';
+
+  // Docs links — same row shape as the exercise card.
+  const links = (ex.docsLinks && ex.docsLinks.length) ? ex.docsLinks
+              : ex.docsLink ? [{ text: ex.docsLinkText || ex.docsLink, url: ex.docsLink }]
+              : [];
+  if (links.length) {
+    const docs = el('div', { class: 'exercise-docs task-drawer-docs' });
+    links.forEach((lnk, i) => {
+      docs.appendChild(el('div', { class: 'exercise-docs-row' },
+        el('span', { class: 'exercise-docs-icon' }, i === 0 ? '📖' : '↳'),
+        el('a', { href: lnk.url, target: '_blank', rel: 'noopener' }, lnk.text),
+      ));
+    });
+    host.appendChild(docs);
+  }
+
+  if (ex.task) {
+    const taskMd = ex.task.replace(/^\s*\*\*Task:\*\*\s*\n+/, '');
+    const task = el('div', { class: 'exercise-task task-drawer-task', html: renderMarkdown(taskMd) });
+    task.querySelectorAll('blockquote').forEach(bq => {
+      const first = bq.textContent.trim();
+      if (first.startsWith('ℹ️') || first.startsWith('ℹ')) bq.classList.add('info-callout');
+    });
+    host.appendChild(task);
+  }
+
+  overlay.hidden = false;
+  _taskDrawerOpen = true;
+  document.addEventListener('keydown', _onTaskDrawerEsc, true);
+  document.getElementById('task-drawer-close').onclick = closeTaskDrawer;
+  overlay.onclick = (e) => { if (e.target === overlay) closeTaskDrawer(); };
+}
+
+function closeTaskDrawer() {
+  if (!_taskDrawerOpen) return;
+  const overlay = document.getElementById('task-drawer-overlay');
+  overlay.hidden = true;
+  _taskDrawerOpen = false;
+  document.removeEventListener('keydown', _onTaskDrawerEsc, true);
+}
+
+function _onTaskDrawerEsc(e) {
+  if (e.key !== 'Escape') return;
+  e.stopPropagation();
+  closeTaskDrawer();
 }
 
 // ---------- Report a reference-solution problem ----------

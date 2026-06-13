@@ -987,6 +987,25 @@ kbd {
   outline: none;
 }
 .answer-box.answer-fullscreen .answer-tools-btn { display: inline-block; }
+/* Mirror of .answer-tools-btn for the per-card 📝 Task drawer trigger. */
+.answer-task-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 2px 8px;
+  font-size: 14px; line-height: 1;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.answer-task-btn:hover,
+.answer-task-btn:focus-visible {
+  background: var(--bg-elev);
+  color: var(--fg);
+  border-color: var(--border);
+  outline: none;
+}
+.answer-box.answer-fullscreen .answer-task-btn { display: inline-block; }
 .answer-textarea {
   width: 100%;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -1064,12 +1083,31 @@ body.answer-fullscreen-active { overflow: hidden; }
     align-items: flex-end;
     padding: 0;
   }
-  #tools-drawer-overlay .tools-drawer-card {
+  #tools-drawer-overlay .tools-drawer-card,
+  #task-drawer-overlay  .tools-drawer-card {
     max-height: 92vh;
     border-radius: var(--radius) var(--radius) 0 0;
     width: 100%;
   }
+  #task-drawer-overlay { align-items: flex-end; padding: 0; }
 }
+/* Task drawer body — reuses .tools-drawer-card sizing; only the host
+   content needs comfortable reading layout. */
+#task-drawer-overlay { z-index: 1010; }
+#task-drawer-overlay #task-drawer-host {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 16px 16px;
+  line-height: 1.55;
+}
+#task-drawer-overlay .task-drawer-docs {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  background: var(--bg-elev);
+  border-radius: var(--radius);
+}
+#task-drawer-overlay .task-drawer-task { font-size: 14px; }
 .answer-actions {
   display: flex; align-items: center; gap: 8px;
   margin-top: 8px; flex-wrap: wrap;
