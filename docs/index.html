@@ -456,6 +456,20 @@
     </div>
   </div>
 
+  <!-- Tools drawer: lets the user pull up kubectl explain / kubectl -h on top
+       of a fullscreen answer editor without exiting fullscreen. #view-tools
+       is physically moved into #tools-drawer-host on open and moved back on
+       close, so all Tools state survives intact. -->
+  <div id="tools-drawer-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="tools-drawer-title">
+    <div class="overlay-card tools-drawer-card">
+      <header>
+        <h2 id="tools-drawer-title">🔧 Tools</h2>
+        <button id="tools-drawer-close" type="button" class="overlay-close" aria-label="Close">✕</button>
+      </header>
+      <div id="tools-drawer-host"></div>
+    </div>
+  </div>
+
   <!-- Report-a-reference-solution dialog -->
   <div id="report-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="report-title">
     <div class="overlay-card report-card">

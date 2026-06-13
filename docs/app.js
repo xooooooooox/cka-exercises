@@ -1175,6 +1175,16 @@ function renderAnswerBox(ex, opts = {}) {
     'aria-label': 'Expand answer editor',
   }, '⛶');
   labelRow.appendChild(expandBtn);
+  // Hidden until fullscreen via CSS — opens the Tools drawer over the editor
+  // so the user can look up kubectl flags without exiting fullscreen.
+  const toolsBtn = el('button', {
+    type: 'button',
+    class: 'answer-tools-btn',
+    title: 'Open Tools (kubectl explain / kubectl -h) without closing fullscreen',
+    'aria-label': 'Open Tools drawer',
+  }, '🔧');
+  labelRow.appendChild(toolsBtn);
+  toolsBtn.addEventListener('click', () => { openToolsDrawer(); });
   box.appendChild(labelRow);
 
   const ta = el('textarea', {
@@ -1383,6 +1393,67 @@ function renderVerdict(container, v, ex) {
     body.appendChild(reportLink);
   }
   container.appendChild(body);
+}
+
+// ---------- Tools drawer (over fullscreen answer editor) ----------
+
+// We physically move the #view-tools DOM block into the drawer host on open
+// and restore it on close. That preserves every event handler + every piece
+// of internal Tools state (selected schema kind, search text, subtab choice)
+// without refactoring renderToolsView() into a reusable component.
+let _toolsDrawerOpen = false;
+let _toolsOriginalParent = null;
+let _toolsOriginalNext = null;
+
+async function openToolsDrawer() {
+  if (_toolsDrawerOpen) return;
+  const overlay = document.getElementById('tools-drawer-overlay');
+  const host    = document.getElementById('tools-drawer-host');
+  const view    = document.getElementById('view-tools');
+  if (!overlay || !host || !view) return;
+
+  _toolsOriginalParent = view.parentNode;
+  _toolsOriginalNext   = view.nextSibling;
+
+  view.hidden = false;
+  view.classList.add('in-drawer');
+  host.appendChild(view);
+
+  // First-open: hydrate. Subsequent opens reuse the same DOM and state.
+  if (!State.toolsLoaded) {
+    try { await renderToolsView(); } catch (e) { console.warn('renderToolsView failed', e); }
+    State.toolsLoaded = true;
+  }
+
+  overlay.hidden = false;
+  _toolsDrawerOpen = true;
+  // Capture-phase so we fire before the document-level Esc handler that
+  // closes the fullscreen answer editor.
+  document.addEventListener('keydown', _onToolsDrawerEsc, true);
+  document.getElementById('tools-drawer-close').onclick = closeToolsDrawer;
+  overlay.onclick = (e) => { if (e.target === overlay) closeToolsDrawer(); };
+}
+
+function closeToolsDrawer() {
+  if (!_toolsDrawerOpen) return;
+  const overlay = document.getElementById('tools-drawer-overlay');
+  const view    = document.getElementById('view-tools');
+  view.classList.remove('in-drawer');
+  if (_toolsOriginalParent) {
+    _toolsOriginalParent.insertBefore(view, _toolsOriginalNext || null);
+  }
+  // Only re-hide if the user is NOT actively in Tools mode (rare path).
+  if (State.mode !== 'tools') view.hidden = true;
+  _toolsOriginalParent = _toolsOriginalNext = null;
+  overlay.hidden = true;
+  _toolsDrawerOpen = false;
+  document.removeEventListener('keydown', _onToolsDrawerEsc, true);
+}
+
+function _onToolsDrawerEsc(e) {
+  if (e.key !== 'Escape') return;
+  e.stopPropagation();
+  closeToolsDrawer();
 }
 
 // ---------- Report a reference-solution problem ----------
