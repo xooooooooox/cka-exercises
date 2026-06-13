@@ -340,7 +340,8 @@ cat: /var/run/secrets/kubernetes.io/serviceaccount/token: No such file or direct
 
 > 🔗 [Reference > Access Authn Authz > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
 
-**题目:**
+**Task:**
+
 Create a new ClusterRole named `deployment-clusterrole` which only allows to create the following resource types: Deployment, StatefulSet, DaemonSet. Create a new ServiceAccount named `cicd-token` in the existing namespace `app-team1`. Bind the new ClusterRole `deployment-clusterrole` to the new ServiceAccount `cicd-token`, limited to the namespace `app-team1`.
 
 <details><summary>show</summary>
@@ -859,7 +860,8 @@ kubectl get nodes
 
 > 🔗 [Tasks > Administer a Cluster > Administration with kubeadm > Upgrading kubeadm clusters](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
-**题目:**
+**Task:**
+
 Given an existing Kubernetes cluster running version 1.x.x, upgrade all of the Kubernetes control plane and node components on the master node only to the version v1.(x+1).x. You are also expected to upgrade kubelet and kubectl on the master node. Be sure to drain the master node before upgrading it and uncordon it after the upgrade. **Do not upgrade the worker nodes, etcd, the container manager, the CNI plugin, the DNS service or any other addons.**
 
 <details><summary>show</summary>
@@ -1573,7 +1575,8 @@ ETCDCTL_API=3 etcdctl endpoint health \
 
 > 🔗 [Tasks > Administer a Cluster > Safely Drain a Node](https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/)
 
-**题目:**
+**Task:**
+
 Set the node named `ek8s-node-1` as unavailable and reschedule all the pods running on it.
 
 <details><summary>show</summary>
@@ -1607,7 +1610,8 @@ kubectl get pods -A -o wide --field-selector spec.nodeName=ek8s-node-1
 
 > 🔗 [Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes](https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/)
 
-**题目:**
+**Task:**
+
 First, create a snapshot of the existing etcd instance running at `https://127.0.0.1:2379`, saving the snapshot to `/srv/data/etcd-snapshot.db`. Next, restore an existing, previous snapshot located at `/var/lib/backup/etcd-snapshot-previous.db`.
 The following TLS certificates/key are supplied for connecting to the server with etcdctl:
 - CA certificate: `/opt/KUIN000601/ca.crt`
@@ -1663,7 +1667,8 @@ kubectl get nodes
 
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
 
-**题目:**
+**Task:**
+
 Check how many nodes are ready (not including nodes tainted with NoSchedule), and write the number to `/opt/KUSC00402/kusc00402.txt`.
 
 <details><summary>show</summary>

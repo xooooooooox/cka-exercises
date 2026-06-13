@@ -249,7 +249,8 @@ kubectl run restricted -n netpol-test --rm -it --image=busybox --labels="app=res
 
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
 
-**题目:**
+**Task:**
+
 Create a new NetworkPolicy named `allow-port-from-namespace` in the existing namespace `internal`. Ensure that the new NetworkPolicy allows Pods in namespace `internal` to connect to port `9000` of Pods in the same namespace. Further ensure that the new NetworkPolicy does not allow access to Pods not listening on port `9000`, and does not allow access to Pods not in namespace `internal`.
 
 <details><summary>show</summary>
@@ -288,7 +289,8 @@ kubectl describe networkpolicy allow-port-from-namespace -n internal
 
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
 
-**题目:**
+**Task:**
+
 Create a NetworkPolicy in namespace `my-app` that enables Pods in `my-app` to connect to port `8080` of Pods running in the existing namespace `big-corp`.
 
 <details><summary>show</summary>
@@ -326,7 +328,8 @@ EOF
 
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
 
-**题目:**
+**Task:**
+
 Create a NetworkPolicy in the `big-corp` namespace allowing Pods from the `internal` namespace to access pods on port `9200`.
 
 <details><summary>show</summary>
@@ -440,7 +443,8 @@ kubectl get endpoints web-np
 
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Service](https://kubernetes.io/docs/concepts/services-networking/service/)
 
-**题目:**
+**Task:**
+
 Reconfigure the existing deployment `front-end` and add a port specification named `http` exposing port `80/tcp` of the existing container nginx. Create a new service named `front-end-svc` exposing the container port `http`. Configure the new service to also expose the individual Pods via a NodePort on the nodes on which they are scheduled.
 
 <details><summary>show</summary>
@@ -693,7 +697,8 @@ curl -H "Host: bar.example.com" http://$INGRESS_IP/
 
 > 🔗 [Concepts > Services, Load Balancing, and Networking > Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
 
-**题目:**
+**Task:**
+
 Create a new Ingress resource as follows:
 - Name: `pong`
 - Namespace: `ing-internal`

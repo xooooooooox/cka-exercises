@@ -46,7 +46,8 @@
 
 > 🔗 [Tasks > Monitoring, Logging, and Debugging > Troubleshoot Clusters](https://kubernetes.io/docs/tasks/debug/debug-cluster/)
 
-**题目:**
+**Task:**
+
 A Kubernetes worker node, named `wk8s-node-0`, is in state NotReady. Investigate why this is the case, and perform any appropriate steps to bring the node to a Ready state, ensuring that any changes are made permanent.
 
 <details><summary>show</summary>
@@ -168,7 +169,8 @@ kubectl top node
 
 > 🔗 [Tasks > Monitoring, Logging, and Debugging > Resource metrics pipeline](https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/)
 
-**题目:**
+**Task:**
+
 From the pod label `name=cpu-user`, find pods running high CPU workloads and write the name of the pod consuming most CPU to the file `/opt/KUTR00401/KUTR00401.txt` (which already exists).
 
 <details><summary>show</summary>
@@ -376,7 +378,8 @@ kubectl logs deploy/log-test
 
 > 🔗 [Reference > Command line tool (kubectl) > kubectl Quick Reference: Interacting with running Pods](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods)
 
-**题目:**
+**Task:**
+
 Monitor the logs of pod `foobar` and:
 - Extract log lines corresponding to error `unable-access-website`
 - Write them to `/opt/KUTR00101/foobar`

@@ -444,7 +444,8 @@ kubectl exec projected-pod -- cat /etc/projected/db-password
 
 > 🔗 [Concepts > Storage > Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 
-**题目:**
+**Task:**
+
 Create a persistent volume with name `app-config`, of capacity `2Gi` and access mode `ReadWriteMany`. The type of volume is `hostPath` and its location is `/srv/app-config`.
 
 <details><summary>show</summary>
@@ -785,7 +786,8 @@ kubectl exec readonly-pod -- sh -c 'echo "new data" > /data/write-test.txt'
 
 > 🔗 [Tutorials > Configuration > Configure a Pod to Use a PersistentVolume for Storage](https://kubernetes.io/docs/tutorials/configuration/configure-persistent-volume-storage/)
 
-**题目:**
+**Task:**
+
 Create a new PersistentVolumeClaim:
 - Name: `pv-volume`
 - Class: `csi-hostpath-sc`

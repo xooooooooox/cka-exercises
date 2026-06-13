@@ -123,7 +123,8 @@ k get deploy nginx -o yaml | grep image:
 
 > 🔗 [Concepts > Workloads > Workload Management > Deployments: Scaling a Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#scaling-a-deployment)
 
-**题目:**
+**Task:**
+
 Scale the deployment `loadbalancer` to 6 pods.
 
 <details><summary>show</summary>
@@ -779,7 +780,8 @@ kubectl get pods -l app=probed-app -w
 
 > 🔗 [Concepts > Workloads > Pods](https://kubernetes.io/docs/concepts/workloads/pods/)
 
-**题目:**
+**Task:**
+
 Create a Pod named `kucc1` running the following 4 images. Use the latest tag for each.
 - nginx
 - redis
@@ -828,7 +830,8 @@ kubectl describe pod kucc1 | grep -A2 "Image:"
 
 > 🔗 [Concepts > Workloads > Pods > Sidecar Containers](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/)
 
-**题目:**
+**Task:**
+
 Without changing its existing containers, an existing Pod needs to be integrated into Kubernetes' built-in logging architecture (e.g. kubectl logs). Adding a streaming sidecar container is a good and common way to accomplish this requirement.
 Add a `busybox` sidecar container to the existing Pod `legacy-app`. The new sidecar container has to run the following command:
 `/bin/sh, -c, tail -n+1 -f /var/log/legacy-app.log`
@@ -1084,7 +1087,8 @@ k get po
 
 > 🔗 [Concepts > Scheduling, Preemption and Eviction > Assigning Pods to Nodes](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/)
 
-**题目:**
+**Task:**
+
 Schedule a Pod as follows:
 - Name: `nginx-kusc00401`
 - Image: `nginx`
