@@ -1087,6 +1087,11 @@ body.answer-fullscreen-active { overflow: hidden; }
   flex-direction: column;
   gap: 0;
 }
+/* Restore [hidden] semantics — the display:flex above is at higher
+   specificity than the global `.tools-panel[hidden] { display: none }`
+   rule, so without this both Explain + kubectl-h panels would render at
+   once inside the drawer and tab switching would look broken. */
+#view-tools.in-drawer .tools-panel[hidden] { display: none; }
 #view-tools.in-drawer .tools-tree {
   /* Sticky positioning is anchored to the main page's scroll container;
      inside the drawer it locks to absolute viewport coordinates and
