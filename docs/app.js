@@ -54,6 +54,7 @@ const KEY = {
   privacyAck: 'cka:llm:privacyAck',
   answerPrefix: 'cka:answer:',   // appended with <exerciseId>
   fixDraftPrefix: 'cka:fix-draft:', // appended with <exerciseId>
+  filters: 'cka:filters',        // Browse-mode filter bar (persists across sessions + sync)
   gistToken: 'cka:gist:token',
   gistId: 'cka:gist:id',
 };
@@ -155,6 +156,44 @@ function setLLMSettings(s) {
 
 function getAnswer(exerciseId) { return storageGet(KEY.answerPrefix + exerciseId, null); }
 function setAnswer(exerciseId, payload) { storageSet(KEY.answerPrefix + exerciseId, payload); }
+
+// Browse-mode filter persistence. Set<string> fields serialise to arrays so the
+// payload survives JSON round-trips (JSON.stringify(new Set([...])) returns {}).
+function loadFilters() {
+  const raw = storageGet(KEY.filters, null);
+  const defaults = {
+    domains: new Set(State.data ? State.data.domains.map(d => d.key) : []),
+    tags: new Set(['general', 'cka-past-exam', 'killersh-a', 'killersh-b']),
+    search: '',
+    onlyBookmarks: false,
+    onlyUndone: false,
+    revealSolutions: false,
+  };
+  if (!raw || typeof raw !== 'object') return defaults;
+  return {
+    domains: Array.isArray(raw.domains) && raw.domains.length
+      ? new Set(raw.domains)
+      : defaults.domains,
+    tags:    Array.isArray(raw.tags)
+      ? new Set(raw.tags)
+      : defaults.tags,
+    search: typeof raw.search === 'string' ? raw.search : '',
+    onlyBookmarks:   raw.onlyBookmarks === true,
+    onlyUndone:      raw.onlyUndone === true,
+    revealSolutions: raw.revealSolutions === true,
+  };
+}
+function saveFilters() {
+  const f = State.filters;
+  storageSet(KEY.filters, {
+    domains: Array.from(f.domains),
+    tags:    Array.from(f.tags),
+    search:  f.search,
+    onlyBookmarks:   f.onlyBookmarks,
+    onlyUndone:      f.onlyUndone,
+    revealSolutions: f.revealSolutions,
+  });
+}
 function getFixDraft(id) { return storageGet(KEY.fixDraftPrefix + id, null); }
 function setFixDraft(id, payload) {
   // Drop empty drafts entirely so they don't show in Backup. A draft is empty
@@ -266,8 +305,9 @@ async function loadData() {
     }
   }
 
-  // All domains selected by default
-  for (const dom of State.data.domains) State.filters.domains.add(dom.key);
+  // Hydrate the filter bar from localStorage; loadFilters() falls back to
+  // "all domains + all tags selected" when no saved payload exists.
+  State.filters = loadFilters();
 
   const meta = document.getElementById('build-meta');
   if (meta && State.data.generatedAt) {
@@ -301,6 +341,7 @@ function renderFilterBar() {
     cb.addEventListener('change', () => {
       if (cb.checked) State.filters.domains.add(dom.key);
       else State.filters.domains.delete(dom.key);
+      saveFilters();
       renderBrowse();
     });
     domList.appendChild(el('label', {}, cb, ` ${dom.title} (${dom.weight})`));
@@ -310,19 +351,27 @@ function renderFilterBar() {
     cb.addEventListener('change', () => {
       if (cb.checked) State.filters.tags.add(cb.value);
       else State.filters.tags.delete(cb.value);
+      saveFilters();
       renderBrowse();
     });
   });
   const search = document.getElementById('filter-search');
   search.value = State.filters.search;
-  search.addEventListener('input', () => { State.filters.search = search.value; renderBrowse(); });
+  search.addEventListener('input', () => { State.filters.search = search.value; saveFilters(); renderBrowse(); });
 
+  // Restore the visual state of the toggle checkboxes from State.filters —
+  // these were previously only restored for the search input, so reloading
+  // the page with onlyUndone/onlyBookmarks/revealSolutions set would render
+  // them unchecked even though the filter was in effect.
   const bm = document.getElementById('filter-bookmark');
-  bm.addEventListener('change', () => { State.filters.onlyBookmarks = bm.checked; renderBrowse(); });
+  bm.checked = State.filters.onlyBookmarks;
+  bm.addEventListener('change', () => { State.filters.onlyBookmarks = bm.checked; saveFilters(); renderBrowse(); });
   const un = document.getElementById('filter-undone');
-  un.addEventListener('change', () => { State.filters.onlyUndone = un.checked; renderBrowse(); });
+  un.checked = State.filters.onlyUndone;
+  un.addEventListener('change', () => { State.filters.onlyUndone = un.checked; saveFilters(); renderBrowse(); });
   const rs = document.getElementById('filter-reveal-solutions');
-  rs.addEventListener('change', () => { State.filters.revealSolutions = rs.checked; renderBrowse(); });
+  rs.checked = State.filters.revealSolutions;
+  rs.addEventListener('change', () => { State.filters.revealSolutions = rs.checked; saveFilters(); renderBrowse(); });
 
   document.getElementById('filter-reset').addEventListener('click', () => {
     State.filters = {
@@ -330,6 +379,7 @@ function renderFilterBar() {
       tags: new Set(['general', 'cka-past-exam', 'killersh-a', 'killersh-b']),
       search: '', onlyBookmarks: false, onlyUndone: false, revealSolutions: false,
     };
+    saveFilters();
     renderFilterBar();
     renderBrowse();
   });
