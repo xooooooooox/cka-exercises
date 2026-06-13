@@ -82,7 +82,10 @@ jobs:
                   --limit "$MAX_ISSUES" --json number -q '.[].number')
           PICKED=()
           for N in $ALL; do
-            if git ls-remote --exit-code origin "refs/heads/answer-fix/${N}-*" >/dev/null 2>&1; then
+            # Skip if a draft PR already references this issue. Looser than the
+            # old "branch exists" check — re-runs after a stranded-branch
+            # incident still pick the issue up.
+            if [ -n "$(gh pr list --state open --search "Fixes #${N} in:body" --json number -q '.[0].number')" ]; then
               continue
             fi
             PICKED+=("$N")
@@ -127,14 +130,16 @@ jobs:
           jq -e '.labels | map(.name) | index("answer-fix")' /tmp/issue.json >/dev/null \
             || { gh issue comment "$ISSUE" --body "🚫 The \`answer-fix\` label is required to run this workflow."; exit 1; }
 
-      - name: Skip if a PR branch already exists
+      - name: Skip if a PR already exists for this issue
         run: |
           set -euo pipefail
-          if git ls-remote --exit-code origin "refs/heads/answer-fix/${ISSUE}-*" >/dev/null 2>&1; then
-            EXISTING=$(git ls-remote origin "refs/heads/answer-fix/${ISSUE}-*" | head -1 | awk '{print $2}' | sed 's|refs/heads/||')
-            gh issue comment "$ISSUE" --body "ℹ️ A draft PR branch already exists for this issue: \`${EXISTING}\`. Skipping."
+          # Looser than "branch exists" — re-runs after a stranded-branch
+          # incident (push succeeded but `gh pr create` was blocked) still
+          # pick the issue up.
+          PR_URL=$(gh pr list --state open --search "Fixes #${ISSUE} in:body" --json url -q '.[0].url')
+          if [ -n "$PR_URL" ]; then
+            gh issue comment "$ISSUE" --body "ℹ️ A draft PR already exists for this issue: ${PR_URL}. Skipping."
             echo "skip=1" >> "$GITHUB_ENV"
-            exit 0
           fi
 
       - name: Extract context (env)
@@ -322,9 +327,21 @@ jobs:
           git checkout -b "$BRANCH"
           git add exercises/
           git commit -m "fix(corpus): #${ISSUE} ${ISSUE_TYPE} — ${EXERCISE_ID}"
-          git push origin "$BRANCH"
+          # If the branch already exists upstream (stranded from a previous
+          # run where `gh pr create` was blocked), `--force-with-lease`
+          # overwrites only if no one else has pushed to it.
+          git push origin "$BRANCH" || git push --force-with-lease origin "$BRANCH"
           BODY="Fixes #${ISSUE}."$'\n\n'"Auto-drafted via aider (provider=${{ inputs.provider }}, model=${{ steps.route.outputs.model }})."$'\n'"Maintainer review required — verify the edit matches the reporter's intent and the kubernetes.io docs link."$'\n\n'"<details><summary>Editor log</summary>"$'\n\n'"\`\`\`"$'\n'"$(tail -80 /tmp/aider.log)"$'\n'"\`\`\`"$'\n\n'"</details>"
-          PR_URL=$(gh pr create --draft --base main --head "$BRANCH" \
-            --title "fix(corpus): #${ISSUE} ${ISSUE_TYPE} — ${EXERCISE_ID}" \
-            --body "$BODY")
+          if ! PR_URL=$(gh pr create --draft --base main --head "$BRANCH" \
+              --title "fix(corpus): #${ISSUE} ${ISSUE_TYPE} — ${EXERCISE_ID}" \
+              --body "$BODY" 2>/tmp/pr-create.err); then
+            REPO="${{ github.repository }}"
+            if grep -q "not permitted to create or approve pull requests" /tmp/pr-create.err; then
+              MSG="🚨 PR creation blocked by a repo policy. Enable **Settings → Actions → General → Workflow permissions → \"Allow GitHub Actions to create and approve pull requests\"**, then either re-trigger this workflow or open the PR manually from this link (branch is already pushed):"$'\n\n'"https://github.com/${REPO}/pull/new/${BRANCH}"
+              gh issue comment "$ISSUE" --body "$MSG"
+            else
+              gh issue comment "$ISSUE" --body "🚨 \`gh pr create\` failed:"$'\n\n'"\`\`\`"$'\n'"$(cat /tmp/pr-create.err)"$'\n'"\`\`\`"$'\n\n'"Branch \`${BRANCH}\` is pushed; open the PR manually from https://github.com/${REPO}/pull/new/${BRANCH}"
+            fi
+            exit 1
+          fi
           gh issue comment "$ISSUE" --body "🤖 Draft PR opened: ${PR_URL}"
