@@ -38,47 +38,57 @@ const SPEC_URL = `https://raw.githubusercontent.com/kubernetes/kubernetes/${K8S_
 
 // Curated CKA-relevant root kinds. Each row: { name, group, version, defRef }.
 // defRef is the OpenAPI definition key — matches `definitions[<key>]`.
+// shortNames mirrors the kubectl RESTMapper aliases (e.g. `po` for Pod). Used
+// by the SPA both to display the alias next to the kind name and to match
+// queries like `csr` or `pdb` against the right root kind.
 const INCLUDED_KINDS = [
   // Workloads
-  { name: 'Pod',                     defRef: 'io.k8s.api.core.v1.Pod' },
-  { name: 'Deployment',              defRef: 'io.k8s.api.apps.v1.Deployment' },
-  { name: 'ReplicaSet',              defRef: 'io.k8s.api.apps.v1.ReplicaSet' },
-  { name: 'StatefulSet',             defRef: 'io.k8s.api.apps.v1.StatefulSet' },
-  { name: 'DaemonSet',               defRef: 'io.k8s.api.apps.v1.DaemonSet' },
-  { name: 'Job',                     defRef: 'io.k8s.api.batch.v1.Job' },
-  { name: 'CronJob',                 defRef: 'io.k8s.api.batch.v1.CronJob' },
-  { name: 'ReplicationController',   defRef: 'io.k8s.api.core.v1.ReplicationController' },
+  { name: 'Pod',                     shortNames: ['po'],     defRef: 'io.k8s.api.core.v1.Pod' },
+  { name: 'Deployment',              shortNames: ['deploy'], defRef: 'io.k8s.api.apps.v1.Deployment' },
+  { name: 'ReplicaSet',              shortNames: ['rs'],     defRef: 'io.k8s.api.apps.v1.ReplicaSet' },
+  { name: 'StatefulSet',             shortNames: ['sts'],    defRef: 'io.k8s.api.apps.v1.StatefulSet' },
+  { name: 'DaemonSet',               shortNames: ['ds'],     defRef: 'io.k8s.api.apps.v1.DaemonSet' },
+  { name: 'Job',                     shortNames: [],         defRef: 'io.k8s.api.batch.v1.Job' },
+  { name: 'CronJob',                 shortNames: ['cj'],     defRef: 'io.k8s.api.batch.v1.CronJob' },
+  { name: 'ReplicationController',   shortNames: ['rc'],     defRef: 'io.k8s.api.core.v1.ReplicationController' },
   // Networking
-  { name: 'Service',                 defRef: 'io.k8s.api.core.v1.Service' },
-  { name: 'Endpoints',               defRef: 'io.k8s.api.core.v1.Endpoints' },
-  { name: 'EndpointSlice',           defRef: 'io.k8s.api.discovery.v1.EndpointSlice' },
-  { name: 'Ingress',                 defRef: 'io.k8s.api.networking.v1.Ingress' },
-  { name: 'IngressClass',            defRef: 'io.k8s.api.networking.v1.IngressClass' },
-  { name: 'NetworkPolicy',           defRef: 'io.k8s.api.networking.v1.NetworkPolicy' },
+  { name: 'Service',                 shortNames: ['svc'],    defRef: 'io.k8s.api.core.v1.Service' },
+  { name: 'Endpoints',               shortNames: ['ep'],     defRef: 'io.k8s.api.core.v1.Endpoints' },
+  { name: 'EndpointSlice',           shortNames: [],         defRef: 'io.k8s.api.discovery.v1.EndpointSlice' },
+  { name: 'Ingress',                 shortNames: ['ing'],    defRef: 'io.k8s.api.networking.v1.Ingress' },
+  { name: 'IngressClass',            shortNames: [],         defRef: 'io.k8s.api.networking.v1.IngressClass' },
+  { name: 'NetworkPolicy',           shortNames: ['netpol'], defRef: 'io.k8s.api.networking.v1.NetworkPolicy' },
   // Storage
-  { name: 'PersistentVolume',        defRef: 'io.k8s.api.core.v1.PersistentVolume' },
-  { name: 'PersistentVolumeClaim',   defRef: 'io.k8s.api.core.v1.PersistentVolumeClaim' },
-  { name: 'StorageClass',            defRef: 'io.k8s.api.storage.v1.StorageClass' },
-  { name: 'CSIDriver',               defRef: 'io.k8s.api.storage.v1.CSIDriver' },
-  { name: 'VolumeAttachment',        defRef: 'io.k8s.api.storage.v1.VolumeAttachment' },
+  { name: 'PersistentVolume',        shortNames: ['pv'],     defRef: 'io.k8s.api.core.v1.PersistentVolume' },
+  { name: 'PersistentVolumeClaim',   shortNames: ['pvc'],    defRef: 'io.k8s.api.core.v1.PersistentVolumeClaim' },
+  { name: 'StorageClass',            shortNames: ['sc'],     defRef: 'io.k8s.api.storage.v1.StorageClass' },
+  { name: 'CSIDriver',               shortNames: [],         defRef: 'io.k8s.api.storage.v1.CSIDriver' },
+  { name: 'VolumeAttachment',        shortNames: [],         defRef: 'io.k8s.api.storage.v1.VolumeAttachment' },
   // Config
-  { name: 'ConfigMap',               defRef: 'io.k8s.api.core.v1.ConfigMap' },
-  { name: 'Secret',                  defRef: 'io.k8s.api.core.v1.Secret' },
-  { name: 'ResourceQuota',           defRef: 'io.k8s.api.core.v1.ResourceQuota' },
-  { name: 'LimitRange',              defRef: 'io.k8s.api.core.v1.LimitRange' },
+  { name: 'ConfigMap',               shortNames: ['cm'],     defRef: 'io.k8s.api.core.v1.ConfigMap' },
+  { name: 'Secret',                  shortNames: [],         defRef: 'io.k8s.api.core.v1.Secret' },
+  { name: 'ResourceQuota',           shortNames: ['quota'],  defRef: 'io.k8s.api.core.v1.ResourceQuota' },
+  { name: 'LimitRange',              shortNames: ['limits'], defRef: 'io.k8s.api.core.v1.LimitRange' },
   // RBAC
-  { name: 'ServiceAccount',          defRef: 'io.k8s.api.core.v1.ServiceAccount' },
-  { name: 'Role',                    defRef: 'io.k8s.api.rbac.v1.Role' },
-  { name: 'RoleBinding',             defRef: 'io.k8s.api.rbac.v1.RoleBinding' },
-  { name: 'ClusterRole',             defRef: 'io.k8s.api.rbac.v1.ClusterRole' },
-  { name: 'ClusterRoleBinding',      defRef: 'io.k8s.api.rbac.v1.ClusterRoleBinding' },
+  { name: 'ServiceAccount',          shortNames: ['sa'],     defRef: 'io.k8s.api.core.v1.ServiceAccount' },
+  { name: 'Role',                    shortNames: [],         defRef: 'io.k8s.api.rbac.v1.Role' },
+  { name: 'RoleBinding',             shortNames: [],         defRef: 'io.k8s.api.rbac.v1.RoleBinding' },
+  { name: 'ClusterRole',             shortNames: [],         defRef: 'io.k8s.api.rbac.v1.ClusterRole' },
+  { name: 'ClusterRoleBinding',      shortNames: [],         defRef: 'io.k8s.api.rbac.v1.ClusterRoleBinding' },
   // Cluster
-  { name: 'Node',                    defRef: 'io.k8s.api.core.v1.Node' },
-  { name: 'Namespace',               defRef: 'io.k8s.api.core.v1.Namespace' },
-  { name: 'Event',                   defRef: 'io.k8s.api.core.v1.Event' },
-  { name: 'PriorityClass',           defRef: 'io.k8s.api.scheduling.v1.PriorityClass' },
-  { name: 'HorizontalPodAutoscaler', defRef: 'io.k8s.api.autoscaling.v2.HorizontalPodAutoscaler' },
-  { name: 'CustomResourceDefinition',defRef: 'io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1.CustomResourceDefinition' },
+  { name: 'Node',                    shortNames: ['no'],     defRef: 'io.k8s.api.core.v1.Node' },
+  { name: 'Namespace',               shortNames: ['ns'],     defRef: 'io.k8s.api.core.v1.Namespace' },
+  { name: 'Event',                   shortNames: ['ev'],     defRef: 'io.k8s.api.core.v1.Event' },
+  { name: 'PriorityClass',           shortNames: ['pc'],     defRef: 'io.k8s.api.scheduling.v1.PriorityClass' },
+  { name: 'HorizontalPodAutoscaler', shortNames: ['hpa'],    defRef: 'io.k8s.api.autoscaling.v2.HorizontalPodAutoscaler' },
+  { name: 'CustomResourceDefinition',shortNames: ['crd'],    defRef: 'io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1.CustomResourceDefinition' },
+  // Security / Cert / Admission / Coordination — newly added for CKA coverage
+  { name: 'CertificateSigningRequest',      shortNames: ['csr'], defRef: 'io.k8s.api.certificates.v1.CertificateSigningRequest' },
+  { name: 'PodDisruptionBudget',            shortNames: ['pdb'], defRef: 'io.k8s.api.policy.v1.PodDisruptionBudget' },
+  { name: 'Lease',                          shortNames: [],      defRef: 'io.k8s.api.coordination.v1.Lease' },
+  { name: 'MutatingWebhookConfiguration',   shortNames: [],      defRef: 'io.k8s.api.admissionregistration.v1.MutatingWebhookConfiguration' },
+  { name: 'ValidatingWebhookConfiguration', shortNames: [],      defRef: 'io.k8s.api.admissionregistration.v1.ValidatingWebhookConfiguration' },
+  { name: 'RuntimeClass',                   shortNames: [],      defRef: 'io.k8s.api.node.v1.RuntimeClass' },
 ];
 
 function fetchJson(url) {
@@ -190,10 +200,17 @@ async function main() {
   }
 
   // Build rootKinds with group/version from x-kubernetes-group-version-kind
-  const rootKinds = INCLUDED_KINDS.map(({ name, defRef }) => {
+  // and the kubectl-style short-name aliases from INCLUDED_KINDS.
+  const rootKinds = INCLUDED_KINDS.map(({ name, defRef, shortNames }) => {
     const def = defs[defRef];
     const gvk = def?.['x-kubernetes-group-version-kind']?.[0] || {};
-    return { name, group: gvk.group || '', version: gvk.version || '', ref: defRef };
+    return {
+      name,
+      group: gvk.group || '',
+      version: gvk.version || '',
+      ref: defRef,
+      shortNames: shortNames || [],
+    };
   });
 
   // Merge in kubectl help

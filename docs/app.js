@@ -3285,6 +3285,10 @@ function buildExplainIndex() {
       kindName: root.name,
       path: [...path],
       displayPath: [root.name, ...path].join('.'),
+      // Only root entries (path.length === 0) carry shortNames so the search
+      // loop can match queries like `csr` to the right kind without nested
+      // fields false-matching.
+      shortNames: path.length === 0 ? (root.shortNames || []) : [],
     });
     if (path.length >= MAX_DEPTH) return;
     const def = State.tools.definitions[ref];
@@ -3299,12 +3303,19 @@ function buildExplainIndex() {
 }
 
 function makeExplainRow(entry, compact) {
+  const label = compact ? entry.kindName : entry.displayPath;
   const btn = el('button', {
     type: 'button',
     'data-kind-ref': entry.kindRef,
     'data-path': entry.path.join('.'),
     title: entry.displayPath,
-  }, compact ? entry.kindName : entry.displayPath);
+  }, label);
+  // Show kubectl-style short-name aliases (e.g. "po", "deploy", "csr") right
+  // next to the kind label — only on top-level rows.
+  if (compact && entry.shortNames && entry.shortNames.length) {
+    btn.appendChild(el('small', { class: 'kind-shortnames' },
+      ` (${entry.shortNames.join(', ')})`));
+  }
   const sx = State.toolsExplain;
   if (sx.kindRef === entry.kindRef && (sx.path || []).join('.') === entry.path.join('.')) {
     btn.classList.add('active');
@@ -3325,11 +3336,13 @@ function renderExplainKindList(query = '') {
   if (!list) return;
   list.innerHTML = '';
 
-  // No query → show the 34 top-level kinds (unchanged baseline UX).
+  // No query → show the top-level kinds (unchanged baseline UX) with their
+  // kubectl short-name aliases rendered alongside.
   if (!query) {
     for (const k of State.tools.rootKinds) {
       list.appendChild(makeExplainRow({
         kindRef: k.ref, kindName: k.name, path: [], displayPath: k.name,
+        shortNames: k.shortNames || [],
       }, /*compact*/ true));
     }
     return;
@@ -3345,7 +3358,12 @@ function renderExplainKindList(query = '') {
   const hits = [];
   const CAP = 80;
   for (const e of index) {
-    if (e.displayPath.toLowerCase().includes(q)) {
+    const pathHit = e.displayPath.toLowerCase().includes(q);
+    // Match against kubectl short-name aliases too — `csr` → CSR,
+    // `cs` → CSR via prefix. Exact + prefix only (not substring), so `ep`
+    // does not accidentally match `EndpointSlice` etc.
+    const shortHit = (e.shortNames || []).some(s => s === q || s.startsWith(q));
+    if (pathHit || shortHit) {
       hits.push(e);
       if (hits.length >= CAP) break;
     }

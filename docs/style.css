@@ -2011,6 +2011,15 @@ body.answer-fullscreen-active { overflow: hidden; }
   color: var(--accent);
   font-weight: 600;
 }
+/* kubectl short-name aliases shown next to each top-level kind in Explain
+   (e.g. "Pod (po)", "CertificateSigningRequest (csr)"). */
+.kind-shortnames {
+  color: var(--fg-muted);
+  font-size: 0.85em;
+  font-weight: normal;
+  margin-left: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 
 /* kubectl sidebar — visual hierarchy: parents as group headings, children
    nested under a vertical guide line. --cmd-depth is set inline by JS. */
