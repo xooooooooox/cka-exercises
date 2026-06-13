@@ -1556,6 +1556,20 @@ body.answer-fullscreen-active { overflow: hidden; }
   /* 16px prevents iOS Safari from auto-zooming on focus. */
   .answer-textarea,
   .answer-cm .cm-content { font-size: 16px; }
+  /* Catch-all so every focusable form element clears the 16px threshold —
+     stops iOS Safari from auto-zooming when the user taps the Tools /
+     Browse / Settings / Report inputs while the answer editor is in
+     fullscreen (or any other time). */
+  input[type="text"],
+  input[type="search"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
 /* ============================================================ */
