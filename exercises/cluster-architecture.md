@@ -226,14 +226,16 @@ kubectl create role sa-creator --verb=create --resource=sa
 ```bash
 # use kubectl to create the role binding, with the help of `kubectl create rolebinding -h`
 kubectl create rolebinding sa-creator-binding --role=sa-creator --user=sandra
+```
 
+> 💡 **Verify (optional)**:
+```bash
 # use `kubectl auth can-i` to verify sandra can create service accounts
 kubectl auth can-i create sa --as sandra
 ```
 
 </p>
 </details>
-
 ### Create a role named `deployment-reader` in the `cka-20834` namespace, and allow it to get and list deployments.
 
 > 🔗 [Reference > API Access Control > Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
