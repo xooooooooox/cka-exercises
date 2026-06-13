@@ -1077,7 +1077,41 @@ body.answer-fullscreen-active { overflow: hidden; }
   margin: 0;
   padding: 0;
 }
-#view-tools.in-drawer .tools-panel { flex: 1; min-height: 0; }
+#view-tools.in-drawer .tools-panel {
+  flex: 1;
+  min-height: 0;
+  /* Override the main-view 260+1fr grid — drawer is too narrow for it.
+     Stack vertically regardless of viewport width: kind list on top,
+     detail beneath. */
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+#view-tools.in-drawer .tools-tree {
+  /* Sticky positioning is anchored to the main page's scroll container;
+     inside the drawer it locks to absolute viewport coordinates and
+     scrolls out of the card. Reset to normal flow. */
+  position: static;
+  top: auto;
+  max-height: 38vh;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0 10px;
+  padding-right: 0;
+  margin-bottom: 8px;
+}
+#view-tools.in-drawer .tools-detail {
+  max-width: none;
+  overflow-y: auto;
+  padding: 8px 0 4px;
+}
+#view-tools.in-drawer .tools-subtabs {
+  /* Tab strip + version picker + meta is too wide for a phone — let it
+     wrap so nothing overflows the drawer card. */
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0 8px;
+}
 @media (max-width: 768px) {
   #tools-drawer-overlay {
     align-items: flex-end;
