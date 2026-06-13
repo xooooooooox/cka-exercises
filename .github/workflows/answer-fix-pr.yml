@@ -232,6 +232,7 @@ jobs:
             --no-stream \
             --no-gitignore \
             --map-tokens 0 \
+            --no-detect-urls \
             /tmp/snippet.md \
             > /tmp/aider.log 2>&1
           RC=$?
