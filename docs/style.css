@@ -1560,6 +1560,25 @@ body.answer-fullscreen-active { overflow: hidden; }
 
 /* Header ☁ sync popover */
 .sync-menu-wrap { position: relative; display: inline-block; }
+#sync-toggle { position: relative; }
+.sync-dot {
+  position: absolute;
+  top: 4px; right: 4px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--bg);
+  pointer-events: none;
+}
+.sync-dot--in-flight {
+  background: var(--accent);
+  animation: sync-dot-pulse 1.4s ease-in-out infinite;
+}
+.sync-dot--ok    { background: var(--success); }
+.sync-dot--error { background: var(--danger); }
+@keyframes sync-dot-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50%      { opacity: 1;   transform: scale(1.1); }
+}
 .sync-menu {
   position: absolute; right: 0; top: calc(100% + 6px);
   min-width: 280px; padding: 12px;

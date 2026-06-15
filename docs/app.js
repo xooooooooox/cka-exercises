@@ -57,6 +57,7 @@ const KEY = {
   filters: 'cka:filters',        // Browse-mode filter bar (persists across sessions + sync)
   gistToken: 'cka:gist:token',
   gistId: 'cka:gist:id',
+  syncMeta: 'cka:sync:meta',    // { lastPushAt, lastPullAt, lastTestAt, lastError? }
 };
 
 // All providers we offer. Their slots get pre-created on first save so the
@@ -923,6 +924,81 @@ async function doGistTest() {
   return await window.GistSync.testAuth(token);
 }
 
+// Centralised sync controller. Owns the in-flight op (module-scope, not
+// persisted) and persistent meta (cka:sync:meta — rides along in Backup /
+// Gist Push via collectExportable's cka:* prefix walk).
+const Sync = (() => {
+  const subs = new Set();
+  let inFlight = null; // { op: 'push'|'pull'|'test', startedAt: ISO } | null
+
+  function loadMeta() { return storageGet(KEY.syncMeta, {}) || {}; }
+  function saveMeta(m) { storageSet(KEY.syncMeta, m); }
+
+  function getState() { return { inFlight, meta: loadMeta() }; }
+  function notify() { for (const fn of subs) { try { fn(getState()); } catch {} } }
+
+  function subscribe(fn) {
+    subs.add(fn);
+    try { fn(getState()); } catch {}
+    return () => subs.delete(fn);
+  }
+
+  async function _run(op, doFn) {
+    if (inFlight) throw new Error(`A ${inFlight.op} is already in progress`);
+    inFlight = { op, startedAt: new Date().toISOString() };
+    notify();
+    try {
+      const r = await doFn();
+      const meta = loadMeta();
+      const key = `last${op[0].toUpperCase()}${op.slice(1)}At`;
+      meta[key] = new Date().toISOString();
+      meta.lastError = null;
+      saveMeta(meta);
+      inFlight = null;
+      notify();
+      return r;
+    } catch (e) {
+      const meta = loadMeta();
+      meta.lastError = {
+        op,
+        message: e.message || String(e),
+        at: new Date().toISOString(),
+        seen: false,
+      };
+      saveMeta(meta);
+      inFlight = null;
+      notify();
+      throw e;
+    }
+  }
+
+  function acknowledgeError() {
+    const meta = loadMeta();
+    if (!meta.lastError || meta.lastError.seen) return;
+    meta.lastError = { ...meta.lastError, seen: true };
+    saveMeta(meta);
+    notify();
+  }
+
+  return {
+    getState, subscribe, notify, acknowledgeError,
+    runPush: () => _run('push', doGistPush),
+    runPull: () => _run('pull', doGistPull),
+    runTest: () => _run('test', doGistTest),
+  };
+})();
+
+// Compact "2 min ago" / "just now" formatter used by the sync surfaces.
+function humanTimeAgo(iso) {
+  if (!iso) return 'never';
+  const s = (Date.now() - Date.parse(iso)) / 1000;
+  if (s < 10)    return 'just now';
+  if (s < 60)    return `${Math.round(s)}s ago`;
+  if (s < 3600)  return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  return `${Math.round(s / 86400)} d ago`;
+}
+
 function confirmPullOverwrite(payload) {
   const c = summariseImport(payload);
   return confirm(
@@ -952,49 +1028,51 @@ function installGistHandlers() {
   tokenInput.addEventListener('change', persistInputs);
   idInput.addEventListener('change', persistInputs);
 
-  function setStatus(msg) {
-    if (status) status.textContent = msg;
+  function renderStatus({ inFlight, meta }) {
+    if (!status) return;
+    if (!window.GistSync) { status.textContent = '✗ sync.js failed to load'; return; }
+    if (inFlight) {
+      status.textContent = `⏳ ${inFlight.op[0].toUpperCase()}${inFlight.op.slice(1)}ing…`;
+      return;
+    }
+    const lines = [];
+    if (meta.lastError) {
+      lines.push(`✗ Last ${meta.lastError.op} failed (${humanTimeAgo(meta.lastError.at)}): ${meta.lastError.message}`);
+    }
+    if (meta.lastPushAt) lines.push(`⬆ Last push: ${humanTimeAgo(meta.lastPushAt)}`);
+    if (meta.lastPullAt) lines.push(`⬇ Last pull: ${humanTimeAgo(meta.lastPullAt)}`);
+    if (meta.lastTestAt) lines.push(`✓ Last test: ${humanTimeAgo(meta.lastTestAt)}`);
+    status.replaceChildren();
+    for (const l of lines) {
+      const d = document.createElement('div');
+      d.textContent = l;
+      status.appendChild(d);
+    }
   }
+  Sync.subscribe(renderStatus);
 
-  if (!window.GistSync) {
-    setStatus('✗ sync.js failed to load');
-    return;
-  }
+  if (!window.GistSync) return;
 
   pushBtn?.addEventListener('click', async () => {
     persistInputs();
-    setStatus('⏳ Pushing…');
     try {
-      const id = await doGistPush();
+      const id = await Sync.runPush();
       idInput.value = id;
-      setStatus(`✓ Pushed to gist ${id.slice(0, 8)}…`);
-    } catch (e) {
-      setStatus(`✗ ${e.message}`);
-    }
+    } catch {}   // surfaced via the subscription
   });
 
   pullBtn?.addEventListener('click', async () => {
     persistInputs();
-    setStatus('⏳ Pulling…');
     try {
-      const payload = await doGistPull();
-      if (!confirmPullOverwrite(payload)) { setStatus(''); return; }
+      const payload = await Sync.runPull();
+      if (!confirmPullOverwrite(payload)) return;
       importPayload(payload);
-      setStatus('✓ Pulled — reloading…');
       setTimeout(() => location.reload(), 500);
-    } catch (e) {
-      setStatus(`✗ ${e.message}`);
-    }
+    } catch {}
   });
 
   testBtn?.addEventListener('click', async () => {
-    setStatus('⏳ Testing…');
-    try {
-      const info = await doGistTest();
-      setStatus(`✓ Authenticated as @${info.login}`);
-    } catch (e) {
-      setStatus(`✗ ${e.message}`);
-    }
+    try { await Sync.runTest(); } catch {}
   });
 }
 
@@ -1011,42 +1089,64 @@ function installSyncMenu() {
   const settingsLink = document.getElementById('sync-menu-settings');
   if (!toggle || !menu) return;
 
-  let statusTimer = null;
-  function setStatus(msg, autoClearMs = 0) {
-    if (statusTimer) { clearTimeout(statusTimer); statusTimer = null; }
-    status.textContent = msg;
-    if (autoClearMs) {
-      statusTimer = setTimeout(() => { if (status.textContent === msg) status.textContent = ''; }, autoClearMs);
-    }
+  function renderHeader() {
+    const id = getGistId();
+    const token = getGistToken();
+    if (id) idLabel.textContent = `gist ${id.slice(0, 8)}…`;
+    else if (token) idLabel.textContent = 'no gist yet';
+    else idLabel.textContent = 'not configured';
   }
 
-  function refreshState() {
+  function renderStatus({ inFlight, meta }) {
     const token = getGistToken();
     const id = getGistId();
-    if (id) {
-      idLabel.textContent = `gist ${id.slice(0, 8)}…`;
-    } else if (token) {
-      idLabel.textContent = 'no gist yet';
-    } else {
-      idLabel.textContent = 'not configured';
-    }
     const hasToken = !!token;
-    pushBtn.disabled = !hasToken;
-    pullBtn.disabled = !hasToken || !id;
-    testBtn.disabled = !hasToken;
+
+    // Disabled state — same logic as before, plus in-flight lock-out.
+    pushBtn.disabled = !hasToken || !!inFlight;
+    pullBtn.disabled = !hasToken || !id || !!inFlight;
+    testBtn.disabled = !hasToken || !!inFlight;
+
+    // Status block — in-flight wins; then errors; then "last X" history.
+    status.replaceChildren();
     if (!hasToken) {
-      setStatus('Configure a GitHub PAT in Settings first');
-    } else if (!status.textContent || status.textContent === 'Configure a GitHub PAT in Settings first') {
-      setStatus('');
+      status.textContent = 'Configure a GitHub PAT in Settings first';
+      return;
+    }
+    if (inFlight) {
+      status.textContent = `⏳ ${inFlight.op[0].toUpperCase()}${inFlight.op.slice(1)}ing…`;
+      return;
+    }
+    const lines = [];
+    if (meta.lastError) {
+      lines.push(`✗ Last ${meta.lastError.op} failed (${humanTimeAgo(meta.lastError.at)}): ${meta.lastError.message}`);
+    }
+    if (meta.lastPushAt) lines.push(`⬆ Last push: ${humanTimeAgo(meta.lastPushAt)}`);
+    if (meta.lastPullAt) lines.push(`⬇ Last pull: ${humanTimeAgo(meta.lastPullAt)}`);
+    if (meta.lastTestAt) lines.push(`✓ Last test: ${humanTimeAgo(meta.lastTestAt)}`);
+    if (!lines.length) {
+      status.textContent = 'Ready';
+      return;
+    }
+    for (const l of lines) {
+      const d = document.createElement('div');
+      d.textContent = l;
+      status.appendChild(d);
     }
   }
 
+  let unsubscribe = null;
   function openMenu() {
-    refreshState();
+    renderHeader();
+    unsubscribe = Sync.subscribe(renderStatus);
     menu.hidden = false;
     toggle.setAttribute('aria-expanded', 'true');
+    // The user is now looking at the error — clear the "unread" flag so the
+    // ☁ icon's red dot turns off.
+    Sync.acknowledgeError();
   }
   function closeMenu() {
+    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
     menu.hidden = true;
     toggle.setAttribute('aria-expanded', 'false');
   }
@@ -1068,37 +1168,21 @@ function installSyncMenu() {
   });
 
   pushBtn?.addEventListener('click', async () => {
-    setStatus('⏳ Pushing…');
-    try {
-      const id = await doGistPush();
-      setStatus(`✓ Pushed to gist ${id.slice(0, 8)}…`, 3000);
-      refreshState();
-    } catch (e) {
-      setStatus(`✗ ${e.message}`, 5000);
-    }
+    try { await Sync.runPush(); renderHeader(); }
+    catch {}      // already surfaced via the subscription
   });
 
   pullBtn?.addEventListener('click', async () => {
-    setStatus('⏳ Pulling…');
     try {
-      const payload = await doGistPull();
-      if (!confirmPullOverwrite(payload)) { setStatus(''); return; }
+      const payload = await Sync.runPull();
+      if (!confirmPullOverwrite(payload)) return;
       importPayload(payload);
-      setStatus('✓ Pulled — reloading…');
       setTimeout(() => location.reload(), 500);
-    } catch (e) {
-      setStatus(`✗ ${e.message}`, 5000);
-    }
+    } catch {}
   });
 
   testBtn?.addEventListener('click', async () => {
-    setStatus('⏳ Testing…');
-    try {
-      const info = await doGistTest();
-      setStatus(`✓ Authenticated as @${info.login}`, 4000);
-    } catch (e) {
-      setStatus(`✗ ${e.message}`, 5000);
-    }
+    try { await Sync.runTest(); } catch {}
   });
 
   settingsLink?.addEventListener('click', (e) => {
@@ -1110,6 +1194,49 @@ function installSyncMenu() {
       document.querySelector('.settings-gist')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
   });
+}
+
+// Always-on dot on the ☁ toggle. Reflects in-flight / unread-error / recent-
+// success state so the user gets passive feedback without keeping the
+// popover open.
+function installSyncDotIndicator() {
+  const dot = document.querySelector('#sync-toggle .sync-dot');
+  if (!dot) return;
+  let fadeTimer = null;
+
+  function render({ inFlight, meta }) {
+    if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null; }
+    dot.className = 'sync-dot';
+    if (inFlight) {
+      dot.classList.add('sync-dot--in-flight');
+      dot.hidden = false;
+      return;
+    }
+    if (meta.lastError && !meta.lastError.seen) {
+      dot.classList.add('sync-dot--error');
+      dot.hidden = false;
+      return;
+    }
+    // Green dot for ~30s after a successful op so a closed-popover sync still
+    // surfaces a signal.
+    const last = Math.max(
+      meta.lastPushAt ? Date.parse(meta.lastPushAt) : 0,
+      meta.lastPullAt ? Date.parse(meta.lastPullAt) : 0,
+      meta.lastTestAt ? Date.parse(meta.lastTestAt) : 0,
+    );
+    const SHOW_MS = 30_000;
+    const age = last ? Date.now() - last : Infinity;
+    if (last && age < SHOW_MS) {
+      dot.classList.add('sync-dot--ok');
+      dot.hidden = false;
+      // Re-render once when the green window closes so the dot disappears
+      // without a leak.
+      fadeTimer = setTimeout(() => Sync.notify(), SHOW_MS - age + 50);
+      return;
+    }
+    dot.hidden = true;
+  }
+  Sync.subscribe(render);
 }
 
 // ---------- Header 🔄 refresh + update-available banner ----------
@@ -3955,6 +4082,7 @@ async function init() {
 
   // Header ☁ sync popover
   installSyncMenu();
+  installSyncDotIndicator();
 
   // Header 🔄 refresh + auto-detect "new content" banner
   installRefreshAffordances();
