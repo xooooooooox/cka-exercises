@@ -54,6 +54,7 @@ const KEY = {
   privacyAck: 'cka:llm:privacyAck',
   answerPrefix: 'cka:answer:',   // appended with <exerciseId>
   fixDraftPrefix: 'cka:fix-draft:', // appended with <exerciseId>
+  taskFixDraftPrefix: 'cka:task-fix-draft:', // task / docs reports — appended with <exerciseId>
   filters: 'cka:filters',        // Browse-mode filter bar (persists across sessions + sync)
   gistToken: 'cka:gist:token',
   gistId: 'cka:gist:id',
@@ -206,6 +207,18 @@ function setFixDraft(id, payload) {
     try { localStorage.removeItem(KEY.fixDraftPrefix + id); } catch {}
   } else {
     storageSet(KEY.fixDraftPrefix + id, payload);
+  }
+}
+function getTaskFixDraft(id) { return storageGet(KEY.taskFixDraftPrefix + id, null); }
+function setTaskFixDraft(id, payload) {
+  const empty = !payload
+    || (!payload.additional && !payload.suggestedUrl
+        && (payload.existingLinkIdx == null || payload.existingLinkIdx === '')
+        && (!payload.type || payload.type === 'other'));
+  if (empty) {
+    try { localStorage.removeItem(KEY.taskFixDraftPrefix + id); } catch {}
+  } else {
+    storageSet(KEY.taskFixDraftPrefix + id, payload);
   }
 }
 function allFixDrafts() {
@@ -1876,8 +1889,80 @@ const REPORT_TYPES = [
   },
 ];
 
-function getReportType(id) {
-  return REPORT_TYPES.find(t => t.id === id) || REPORT_TYPES[REPORT_TYPES.length - 1];
+// Task-mode issue catalog. Same shape as REPORT_TYPES; routed via mode='task'
+// to a separate label namespace (`task-fix,kind/...`) so the maintainer can
+// triage task/docs issues separately from reference-solution mismatches.
+const TASK_REPORT_TYPES = [
+  {
+    id: 'missing-docs-link',
+    label: 'Task is missing a relevant kubernetes.io docs link',
+    ghLabel: 'kind/missing-docs-link',
+    whatsWrong:
+      'The task references concepts or commands whose canonical kubernetes.io ' +
+      'page is not linked from the `> 🔗` block.',
+    suggested:
+      "Add the kubernetes.io URL listed below under \"Suggested docs link\" " +
+      "to the exercise's `> 🔗` lines.",
+  },
+  {
+    id: 'incorrect-docs-link',
+    label: 'An existing docs link points to the wrong kubernetes.io page',
+    ghLabel: 'kind/incorrect-docs-link',
+    whatsWrong:
+      "A current breadcrumb on the task doesn't match the kubernetes.io page " +
+      'it links to, or the link no longer matches the task.',
+    suggested: 'Replace the offending link below with the correct breadcrumb + URL.',
+  },
+  {
+    id: 'outdated-breadcrumb',
+    label: "Docs link's breadcrumb text drifted from kubernetes.io",
+    ghLabel: 'kind/outdated-breadcrumb',
+    whatsWrong:
+      "The breadcrumb label on the link is stale relative to kubernetes.io's " +
+      'current navigation.',
+    suggested: "Update the breadcrumb text to match the page's current title path.",
+  },
+  {
+    id: 'unclear-task',
+    label: 'Task wording is ambiguous or unclear',
+    ghLabel: 'kind/unclear-task',
+    whatsWrong:
+      'The task statement is open to multiple correct interpretations, so the ' +
+      'reference solution is hard to align with.',
+    suggested:
+      'Tighten the task wording (specify resource names, namespaces, expected ' +
+      'output, etc.).',
+  },
+  {
+    id: 'factual-error',
+    label: 'Task contains a factual error about Kubernetes behaviour',
+    ghLabel: 'kind/factual-error',
+    whatsWrong:
+      'The task asserts something that is wrong or out-of-date about Kubernetes ' +
+      '(flag, default, behaviour, etc.).',
+    suggested:
+      'Correct the factual claim against the current k8s docs / `kubectl <verb> -h`.',
+  },
+  {
+    id: 'typo',
+    label: 'Typo / formatting issue in the task body',
+    ghLabel: 'kind/typo-task',
+    whatsWrong:
+      'There is a typo or formatting issue in the task body or its docs-link block.',
+    suggested: 'Apply a small text correction.',
+  },
+  {
+    id: 'other',
+    label: 'Other (describe below)',
+    ghLabel: 'kind/other',
+    whatsWrong: null,
+    suggested: null,
+  },
+];
+
+function getReportType(id, mode = 'solution') {
+  const list = mode === 'task' ? TASK_REPORT_TYPES : REPORT_TYPES;
+  return list.find(t => t.id === id) || list[list.length - 1];
 }
 
 function autoDetectType(ctx) {
@@ -1891,11 +1976,10 @@ function autoDetectType(ctx) {
   return null;
 }
 
-function renderReportMarkdown(ex, draft, ctx) {
+function renderReportMarkdown(ex, draft, ctx, mode = 'solution') {
   const exerciseHash = `https://xooooooooox.github.io/cka-exercises/#/exercise/${ex.id}`;
   const sourceFile = ex.sourceFile || 'exercises/(unknown).md';
-  const refCode = extractReferenceCode(ex.solution);
-  const t = getReportType(draft.type);
+  const t = getReportType(draft.type, mode);
   const lines = [];
   lines.push('## Exercise');
   lines.push(`- **ID:** \`${ex.id}\``);
@@ -1917,41 +2001,71 @@ function renderReportMarkdown(ex, draft, ctx) {
     lines.push(draft.additional);
     lines.push('');
   }
-  lines.push('## Current reference solution');
-  lines.push('```bash');
-  lines.push(refCode);
-  lines.push('```');
-  lines.push('');
-  if (ctx && ctx.includeContext && ctx.answer) {
-    lines.push('## My answer');
+  if (mode === 'task') {
+    // For doc-link-targeted issue types, surface the structured suggestion
+    // up top so the maintainer doesn't have to scroll.
+    if (draft.suggestedUrl) {
+      lines.push('## Suggested docs link');
+      lines.push(`- ${draft.suggestedUrl}`);
+      lines.push('');
+    }
+    const links = Array.isArray(ex.docsLinks) ? ex.docsLinks : [];
+    if (draft.existingLinkIdx != null && draft.existingLinkIdx !== ''
+        && links[Number(draft.existingLinkIdx)]) {
+      const pick = links[Number(draft.existingLinkIdx)];
+      lines.push('## Link to change');
+      lines.push(`- [${pick.text}](${pick.url})`);
+      lines.push('');
+    }
+    if (ex.task) {
+      lines.push('## Current task');
+      lines.push(String(ex.task).replace(/^\s*\*\*Task:\*\*\s*\n+/, '').trim());
+      lines.push('');
+    }
+    if (links.length) {
+      lines.push('## Current docs links');
+      for (const l of links) lines.push(`- [${l.text}](${l.url})`);
+      lines.push('');
+    }
+  } else {
+    const refCode = extractReferenceCode(ex.solution);
+    lines.push('## Current reference solution');
     lines.push('```bash');
-    lines.push(String(ctx.answer).trim());
+    lines.push(refCode);
     lines.push('```');
     lines.push('');
-  }
-  if (ctx && ctx.includeContext && ctx.verdict) {
-    const v = ctx.verdict;
-    lines.push('## LLM verdict');
-    lines.push(`- Score: **${v.score} / 100**`);
-    lines.push(`- Verdict: ${v.verdict || 'n/a'}`);
-    if (v.summary) lines.push(`- Summary: ${v.summary}`);
-    if (Array.isArray(v.passed) && v.passed.length) {
-      lines.push('- Got right:');
-      for (const s of v.passed) lines.push(`  - ${s}`);
+    if (ctx && ctx.includeContext && ctx.answer) {
+      lines.push('## My answer');
+      lines.push('```bash');
+      lines.push(String(ctx.answer).trim());
+      lines.push('```');
+      lines.push('');
     }
-    if (Array.isArray(v.missed) && v.missed.length) {
-      lines.push('- Missed (per grader):');
-      for (const s of v.missed) lines.push(`  - ${s}`);
+    if (ctx && ctx.includeContext && ctx.verdict) {
+      const v = ctx.verdict;
+      lines.push('## LLM verdict');
+      lines.push(`- Score: **${v.score} / 100**`);
+      lines.push(`- Verdict: ${v.verdict || 'n/a'}`);
+      if (v.summary) lines.push(`- Summary: ${v.summary}`);
+      if (Array.isArray(v.passed) && v.passed.length) {
+        lines.push('- Got right:');
+        for (const s of v.passed) lines.push(`  - ${s}`);
+      }
+      if (Array.isArray(v.missed) && v.missed.length) {
+        lines.push('- Missed (per grader):');
+        for (const s of v.missed) lines.push(`  - ${s}`);
+      }
+      lines.push('');
     }
-    lines.push('');
   }
   lines.push('---');
   lines.push('*Reported via the cka-exercises web app.*');
   return lines.join('\n');
 }
 
-function buildIssueTitle(ex) {
-  return `[${ex.id}] Reference solution mismatch: ${truncate(ex.title || ex.displayTitle || ex.fullTitle || '', 60)}`;
+function buildIssueTitle(ex, mode = 'solution') {
+  const tag = mode === 'task' ? 'Task / docs issue' : 'Reference solution mismatch';
+  return `[${ex.id}] ${tag}: ${truncate(ex.title || ex.displayTitle || ex.fullTitle || '', 60)}`;
 }
 
 // Title + labels only — deliberately NO body. Long URL-encoded bodies fail two
@@ -1959,11 +2073,12 @@ function buildIssueTitle(ex) {
 // Links interception, and GitHub's unauthenticated `?return_to=…` auth round
 // trip 500s on heavily-encoded long return paths. The markdown body is sent
 // to the clipboard separately so the user pastes it after landing on the form.
-function buildIssueUrl(ex, draft) {
-  const t = getReportType(draft.type);
+function buildIssueUrl(ex, draft, mode = 'solution') {
+  const t = getReportType(draft.type, mode);
   const u = new URL(`https://github.com/${GH_REPO}/issues/new`);
-  u.searchParams.set('title', buildIssueTitle(ex));
-  u.searchParams.set('labels', `answer-fix,${t.ghLabel}`);
+  u.searchParams.set('title', buildIssueTitle(ex, mode));
+  const topLabel = mode === 'task' ? 'task-fix' : 'answer-fix';
+  u.searchParams.set('labels', `${topLabel},${t.ghLabel}`);
   return u.toString();
 }
 
@@ -1971,13 +2086,25 @@ function openFixReportModal(ex, ctx = {}) {
   const overlay = document.getElementById('report-overlay');
   if (!overlay) return;
   const $ = (id) => overlay.querySelector('#' + id);
+  const mode = ctx.mode === 'task' ? 'task' : 'solution';
+  overlay.dataset.reportMode = mode;
+  const types = mode === 'task' ? TASK_REPORT_TYPES : REPORT_TYPES;
+
   const exIdSpan = $('report-ex-id');
   const exTitle = $('report-ex-title');
   const exSource = $('report-ex-source');
   const currentSol = $('report-current-solution');
   const verdictBlock = $('report-verdict-block');
   const verdictBody = $('report-verdict-body');
-  const radios = overlay.querySelectorAll('input[name="report-type"]');
+  const headerH2 = $('report-title');
+  const solutionRadioGroup = $('report-type-group');
+  const taskRadioGroup = $('report-task-type-group');
+  const taskCurrent = $('report-task-current');
+  const taskBody = $('report-task-body');
+  const docsList = $('report-docs-list');
+  const suggestedUrlBlock = $('report-suggested-url-block');
+  const suggestedUrl = $('report-suggested-url');
+  const existingLinkPick = $('report-existing-link-pick');
   const addl = $('report-additional');
   const includeCtxBox = $('report-include-context');
   const statusEl = $('report-status');
@@ -1989,58 +2116,125 @@ function openFixReportModal(ex, ctx = {}) {
   const closeBtn = $('report-close');
   const titlePreview = $('report-title-preview');
 
+  // Swap radio groups based on mode; pick from the visible group only.
+  solutionRadioGroup.hidden = (mode === 'task');
+  taskRadioGroup.hidden = (mode !== 'task');
+  const radios = (mode === 'task' ? taskRadioGroup : solutionRadioGroup).querySelectorAll('input[type="radio"]');
+
+  // Header rename.
+  headerH2.textContent = mode === 'task'
+    ? '🐛 Report a task / docs problem'
+    : '🐛 Report a reference-solution problem';
+
   exIdSpan.textContent = ex.id;
   exTitle.textContent = ex.title || ex.displayTitle || ex.fullTitle || '';
   exSource.textContent = ex.sourceFile || '(unknown)';
-  currentSol.textContent = extractReferenceCode(ex.solution);
 
-  if (ctx.verdict) {
-    verdictBlock.hidden = false;
-    const v = ctx.verdict;
-    verdictBody.innerHTML = '';
-    const fmt = (label, val) => {
-      const row = el('div', {}, el('strong', {}, label + ': '), document.createTextNode(String(val)));
-      verdictBody.appendChild(row);
-    };
-    fmt('Score', `${v.score} / 100`);
-    fmt('Verdict', v.verdict || 'n/a');
-    if (v.summary) fmt('Summary', v.summary);
-    if (Array.isArray(v.missed) && v.missed.length) {
-      verdictBody.appendChild(el('div', {}, el('strong', {}, 'Missed (per grader):')));
-      const ul = el('ul', {});
-      v.missed.forEach(s => ul.appendChild(el('li', {}, s)));
-      verdictBody.appendChild(ul);
-    }
-  } else {
+  // Mode-specific "what you're reporting against" panel.
+  if (mode === 'task') {
+    currentSol.textContent = '';
     verdictBlock.hidden = true;
     verdictBody.innerHTML = '';
+    if (taskBody) {
+      taskBody.innerHTML = renderMarkdown(
+        String(ex.task || '').replace(/^\s*\*\*Task:\*\*\s*\n+/, '').trim()
+      );
+    }
+    if (docsList) {
+      docsList.innerHTML = '';
+      const links = Array.isArray(ex.docsLinks) ? ex.docsLinks : [];
+      if (!links.length) {
+        docsList.appendChild(el('li', { class: 'muted' }, '(no docs links on this exercise)'));
+      } else {
+        for (const l of links) {
+          const li = el('li', {});
+          li.appendChild(el('a', { href: l.url, target: '_blank', rel: 'noopener' }, l.text));
+          docsList.appendChild(li);
+        }
+      }
+    }
+    // Populate the existing-link picker so the user can point at which link.
+    if (existingLinkPick) {
+      existingLinkPick.innerHTML = '';
+      existingLinkPick.appendChild(el('option', { value: '' }, '— pick the link to change —'));
+      const links = Array.isArray(ex.docsLinks) ? ex.docsLinks : [];
+      links.forEach((l, i) => {
+        existingLinkPick.appendChild(el('option', { value: String(i) }, l.text));
+      });
+    }
+  } else {
+    currentSol.textContent = extractReferenceCode(ex.solution);
+    if (ctx.verdict) {
+      verdictBlock.hidden = false;
+      const v = ctx.verdict;
+      verdictBody.innerHTML = '';
+      const fmt = (label, val) => {
+        const row = el('div', {}, el('strong', {}, label + ': '), document.createTextNode(String(val)));
+        verdictBody.appendChild(row);
+      };
+      fmt('Score', `${v.score} / 100`);
+      fmt('Verdict', v.verdict || 'n/a');
+      if (v.summary) fmt('Summary', v.summary);
+      if (Array.isArray(v.missed) && v.missed.length) {
+        verdictBody.appendChild(el('div', {}, el('strong', {}, 'Missed (per grader):')));
+        const ul = el('ul', {});
+        v.missed.forEach(s => ul.appendChild(el('li', {}, s)));
+        verdictBody.appendChild(ul);
+      }
+    } else {
+      verdictBlock.hidden = true;
+      verdictBody.innerHTML = '';
+    }
   }
 
   // Pre-select priority: saved draft → auto-detect from verdict → 'other'.
-  const draft = getFixDraft(ex.id) || {};
-  const initialType = (draft.type && REPORT_TYPES.some(t => t.id === draft.type))
+  const draft = (mode === 'task' ? getTaskFixDraft(ex.id) : getFixDraft(ex.id)) || {};
+  const initialType = (draft.type && types.some(t => t.id === draft.type))
     ? draft.type
-    : (autoDetectType(ctx) || 'other');
+    : (mode === 'task' ? 'other' : (autoDetectType(ctx) || 'other'));
   radios.forEach(r => { r.checked = (r.value === initialType); });
 
   addl.value = draft.additional || '';
   includeCtxBox.checked = (draft.includeContext !== undefined) ? !!draft.includeContext : true;
+  if (suggestedUrl) suggestedUrl.value = draft.suggestedUrl || '';
+  if (existingLinkPick) existingLinkPick.value = (draft.existingLinkIdx != null) ? String(draft.existingLinkIdx) : '';
   statusEl.textContent = '';
   overlay.hidden = false;
   // Focus the picker so keyboard users can immediately Tab/arrow through it,
   // but don't force the textarea open on mobile.
   setTimeout(() => {
-    const checked = overlay.querySelector('input[name="report-type"]:checked');
+    const checked = (mode === 'task' ? taskRadioGroup : solutionRadioGroup)
+      .querySelector('input[type="radio"]:checked');
     (checked || radios[0])?.focus();
   }, 30);
 
+  // Show/hide the "suggested URL + existing-link picker" block based on type.
+  const URL_TYPES = new Set(['missing-docs-link', 'incorrect-docs-link', 'outdated-breadcrumb']);
+  const PICKER_TYPES = new Set(['incorrect-docs-link', 'outdated-breadcrumb']);
+  const syncTaskSubBlocks = () => {
+    if (mode !== 'task' || !suggestedUrlBlock) return;
+    const checked = taskRadioGroup.querySelector('input[type="radio"]:checked');
+    const tval = checked ? checked.value : 'other';
+    suggestedUrlBlock.hidden = !URL_TYPES.has(tval);
+    if (existingLinkPick) {
+      existingLinkPick.hidden = !PICKER_TYPES.has(tval);
+    }
+  };
+  syncTaskSubBlocks();
+
   const collect = () => {
-    const checked = overlay.querySelector('input[name="report-type"]:checked');
-    return {
+    const checked = (mode === 'task' ? taskRadioGroup : solutionRadioGroup)
+      .querySelector('input[type="radio"]:checked');
+    const out = {
       type: checked ? checked.value : 'other',
       additional: addl.value.trim(),
       includeContext: includeCtxBox.checked,
     };
+    if (mode === 'task') {
+      out.suggestedUrl = suggestedUrl ? suggestedUrl.value.trim() : '';
+      out.existingLinkIdx = (existingLinkPick && existingLinkPick.value !== '') ? existingLinkPick.value : null;
+    }
+    return out;
   };
 
   const buildCtx = () => ({
@@ -2049,10 +2243,15 @@ function openFixReportModal(ex, ctx = {}) {
     includeContext: includeCtxBox.checked,
   });
 
-  const requireOtherText = (d) => {
-    if (getReportType(d.type).whatsWrong === null && !d.additional) {
+  const requireSubmitFields = (d) => {
+    if (getReportType(d.type, mode).whatsWrong === null && !d.additional) {
       statusEl.textContent = '✗ Add a short description for "Other" before submitting.';
       addl.focus();
+      return false;
+    }
+    if (mode === 'task' && URL_TYPES.has(d.type) && !d.suggestedUrl) {
+      statusEl.textContent = '✗ Paste the kubernetes.io URL you\'re suggesting before submitting.';
+      suggestedUrl?.focus();
       return false;
     }
     return true;
@@ -2061,12 +2260,14 @@ function openFixReportModal(ex, ctx = {}) {
   // Keep the anchor's href in sync with the form so mobile browsers
   // navigate via the anchor's native default behaviour (no popup blocker).
   const syncHref = () => {
-    openBtn.href = buildIssueUrl(ex, collect());
-    titlePreview.value = buildIssueTitle(ex);
+    openBtn.href = buildIssueUrl(ex, collect(), mode);
+    titlePreview.value = buildIssueTitle(ex, mode);
   };
+  const onTypeChange = () => { syncTaskSubBlocks(); syncHref(); };
 
   const cleanup = () => {
     overlay.hidden = true;
+    delete overlay.dataset.reportMode;
     saveBtn.onclick = null;
     copyBtn.onclick = null;
     copyTitleBtn.onclick = null;
@@ -2075,9 +2276,11 @@ function openFixReportModal(ex, ctx = {}) {
     closeBtn.onclick = null;
     document.removeEventListener('keydown', onEsc);
     overlay.onclick = null;
-    radios.forEach(r => r.removeEventListener('change', syncHref));
+    radios.forEach(r => r.removeEventListener('change', onTypeChange));
     addl.removeEventListener('input', syncHref);
     includeCtxBox.removeEventListener('change', syncHref);
+    suggestedUrl?.removeEventListener('input', syncHref);
+    existingLinkPick?.removeEventListener('change', syncHref);
   };
 
   const onEsc = (e) => { if (e.key === 'Escape') cleanup(); };
@@ -2087,14 +2290,18 @@ function openFixReportModal(ex, ctx = {}) {
   cancelBtn.onclick = cleanup;
 
   // Initial href + live-sync on every relevant input change.
-  radios.forEach(r => r.addEventListener('change', syncHref));
+  radios.forEach(r => r.addEventListener('change', onTypeChange));
   addl.addEventListener('input', syncHref);
   includeCtxBox.addEventListener('change', syncHref);
+  suggestedUrl?.addEventListener('input', syncHref);
+  existingLinkPick?.addEventListener('change', syncHref);
   syncHref();
+
+  const persistDraft = (d) => (mode === 'task' ? setTaskFixDraft(ex.id, d) : setFixDraft(ex.id, d));
 
   saveBtn.onclick = () => {
     const d = collect();
-    setFixDraft(ex.id, d);
+    persistDraft(d);
     statusEl.textContent = (d.type !== 'other' || d.additional)
       ? '✓ Draft saved locally.'
       : '✓ Draft cleared.';
@@ -2102,21 +2309,21 @@ function openFixReportModal(ex, ctx = {}) {
 
   copyBtn.onclick = async () => {
     const d = collect();
-    if (!requireOtherText(d)) return;
-    const md = renderReportMarkdown(ex, d, buildCtx());
+    if (!requireSubmitFields(d)) return;
+    const md = renderReportMarkdown(ex, d, buildCtx(), mode);
     try {
       await navigator.clipboard.writeText(md);
       statusEl.textContent = '✓ Body copied — paste it into the issue description on GitHub.';
     } catch {
-      statusEl.textContent = '✗ Clipboard blocked. Long-press the reference solution to copy manually.';
+      statusEl.textContent = '✗ Clipboard blocked. Long-press the body block to copy manually.';
     }
   };
 
   copyTitleBtn.onclick = async () => {
     const d = collect();
-    if (!requireOtherText(d)) return;
+    if (!requireSubmitFields(d)) return;
     try {
-      await navigator.clipboard.writeText(buildIssueTitle(ex));
+      await navigator.clipboard.writeText(buildIssueTitle(ex, mode));
       statusEl.textContent = '✓ Title copied — paste it into the issue title on GitHub.';
     } catch {
       statusEl.textContent = '✗ Clipboard blocked. Long-press the title field to copy manually.';
@@ -2129,10 +2336,10 @@ function openFixReportModal(ex, ctx = {}) {
   // Universal Links sends them to the GH app's home screen.
   openBtn.onclick = (e) => {
     const d = collect();
-    if (!requireOtherText(d)) { e.preventDefault(); return; }
-    openBtn.href = buildIssueUrl(ex, d);
-    setFixDraft(ex.id, d);
-    navigator.clipboard?.writeText(renderReportMarkdown(ex, d, buildCtx()))
+    if (!requireSubmitFields(d)) { e.preventDefault(); return; }
+    openBtn.href = buildIssueUrl(ex, d, mode);
+    persistDraft(d);
+    navigator.clipboard?.writeText(renderReportMarkdown(ex, d, buildCtx(), mode))
       .catch(() => {});
     statusEl.textContent = '✓ Body auto-copied to clipboard. Opening GitHub — paste it into the description. (Use 📋 Copy title for the title.)';
   };
@@ -2244,6 +2451,15 @@ function renderExerciseCard(ex, opts = {}) {
     });
     card.appendChild(task);
     attachCopyButtons(task);
+    // Manual entry point for users who spot a problem with the task body or
+    // its docs links (missing kubernetes.io link, wrong breadcrumb, etc.).
+    // Mirrors the existing per-solution "🐛 Suggest a fix" affordance.
+    const taskReportLink = el('button',
+      { type: 'button', class: 'solution-report-link task-report-link',
+        title: 'Suggest an additional docs link, a clearer task wording, or a typo fix' },
+      '🐛 Suggest a fix for this task or docs');
+    taskReportLink.addEventListener('click', () => openFixReportModal(ex, { mode: 'task' }));
+    card.appendChild(taskReportLink);
   }
 
   // Auto-grading answer box (between task/lab-context and solution).

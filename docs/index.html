@@ -523,16 +523,22 @@
           <code id="report-ex-source"></code>
         </div>
       </div>
-      <details class="report-collapsible" open>
+      <details class="report-collapsible solution-mode-only" open>
         <summary>Current reference solution</summary>
         <pre><code id="report-current-solution" class="report-readonly"></code></pre>
       </details>
-      <details id="report-verdict-block" class="report-collapsible" hidden>
+      <details id="report-verdict-block" class="report-collapsible solution-mode-only" hidden>
         <summary>LLM verdict context (auto-included)</summary>
         <div id="report-verdict-body" class="report-readonly"></div>
       </details>
+      <details id="report-task-current" class="report-collapsible task-mode-only" open>
+        <summary>Current task &amp; docs links</summary>
+        <div id="report-task-body" class="report-readonly report-task-body-md"></div>
+        <div class="report-task-docs-label">Docs links currently on this exercise:</div>
+        <ul id="report-docs-list" class="report-task-docs-list"></ul>
+      </details>
       <div class="report-field-label">Issue type <span class="muted">(pick the closest one)</span></div>
-      <div id="report-type-group" class="report-type-group" role="radiogroup" aria-label="Issue type">
+      <div id="report-type-group" class="report-type-group solution-mode-only" role="radiogroup" aria-label="Issue type">
         <label><input type="radio" name="report-type" value="verification-bundled"> Reference bundles verification commands (e.g. <code>auth can-i</code>) with the actual answer</label>
         <label><input type="radio" name="report-type" value="wrong-resource"> Reference uses a wrong resource name / namespace / kind</label>
         <label><input type="radio" name="report-type" value="outdated-flag"> Reference uses an outdated or wrong kubectl flag / syntax</label>
@@ -540,9 +546,24 @@
         <label><input type="radio" name="report-type" value="typo"> Typo / formatting issue</label>
         <label><input type="radio" name="report-type" value="other"> Other (describe below)</label>
       </div>
+      <div id="report-task-type-group" class="report-type-group task-mode-only" role="radiogroup" aria-label="Task issue type" hidden>
+        <label><input type="radio" name="report-task-type" value="missing-docs-link"> Task is missing a relevant kubernetes.io docs link</label>
+        <label><input type="radio" name="report-task-type" value="incorrect-docs-link"> An existing docs link points to the wrong kubernetes.io page</label>
+        <label><input type="radio" name="report-task-type" value="outdated-breadcrumb"> Docs link's breadcrumb text drifted from kubernetes.io</label>
+        <label><input type="radio" name="report-task-type" value="unclear-task"> Task wording is ambiguous or unclear</label>
+        <label><input type="radio" name="report-task-type" value="factual-error"> Task contains a factual error about Kubernetes behaviour</label>
+        <label><input type="radio" name="report-task-type" value="typo"> Typo / formatting issue in the task body</label>
+        <label><input type="radio" name="report-task-type" value="other"> Other (describe below)</label>
+      </div>
+      <div id="report-suggested-url-block" class="report-suggested-url-block task-mode-only" hidden>
+        <label class="report-field-label" for="report-suggested-url">Suggested kubernetes.io URL</label>
+        <input id="report-suggested-url" type="url" placeholder="https://kubernetes.io/docs/…" autocomplete="off">
+        <label class="report-field-label" for="report-existing-link-pick">Which existing link is wrong? <span class="muted">(only for "incorrect" / "outdated breadcrumb")</span></label>
+        <select id="report-existing-link-pick" hidden></select>
+      </div>
       <label class="report-field-label" for="report-additional">Additional context <span class="muted">(optional — required for "Other")</span></label>
       <textarea id="report-additional" rows="2" placeholder="Anything else the maintainer should know — exact line, observed behaviour, your k8s version, etc."></textarea>
-      <label class="report-include-toggle">
+      <label class="report-include-toggle solution-mode-only">
         <input id="report-include-context" type="checkbox" checked>
         Include my answer + LLM verdict in the issue body (recommended)
       </label>
