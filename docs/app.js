@@ -2136,9 +2136,22 @@ function openFixReportModal(ex, ctx = {}) {
     verdictBlock.hidden = true;
     verdictBody.innerHTML = '';
     if (taskBody) {
-      taskBody.innerHTML = renderMarkdown(
-        String(ex.task || '').replace(/^\s*\*\*Task:\*\*\s*\n+/, '').trim()
-      );
+      const taskText = String(ex.task || '')
+        .replace(/^\s*\*\*Task:\*\*\s*\n+/, '')
+        .trim();
+      if (taskText) {
+        taskBody.innerHTML = renderMarkdown(taskText);
+      } else {
+        // No `**Task:**` block — the H3 title IS the task (every chadmcrowell-
+        // sourced "general" exercise). Show it inline as a blockquote so the
+        // user has the same context they would for a Task-body exercise.
+        // Build via el(...) to avoid HTML-injection on the title text.
+        const titleText = ex.title || ex.displayTitle || ex.fullTitle || '';
+        taskBody.innerHTML = '';
+        taskBody.appendChild(el('p', { class: 'muted' },
+          el('em', {}, "The H3 title is this exercise's task:")));
+        taskBody.appendChild(el('blockquote', {}, titleText));
+      }
     }
     if (docsList) {
       docsList.innerHTML = '';
@@ -2451,16 +2464,21 @@ function renderExerciseCard(ex, opts = {}) {
     });
     card.appendChild(task);
     attachCopyButtons(task);
-    // Manual entry point for users who spot a problem with the task body or
-    // its docs links (missing kubernetes.io link, wrong breadcrumb, etc.).
-    // Mirrors the existing per-solution "🐛 Suggest a fix" affordance.
-    const taskReportLink = el('button',
-      { type: 'button', class: 'solution-report-link task-report-link',
-        title: 'Suggest an additional docs link, a clearer task wording, or a typo fix' },
-      '🐛 Suggest a fix for this task or docs');
-    taskReportLink.addEventListener('click', () => openFixReportModal(ex, { mode: 'task' }));
-    card.appendChild(taskReportLink);
   }
+
+  // Manual entry point for users who spot a problem with the task body or
+  // its docs links (missing kubernetes.io link, wrong breadcrumb, etc.).
+  // Mirrors the existing per-solution "🐛 Suggest a fix" affordance.
+  // Rendered unconditionally — the chadmcrowell-sourced "general" exercises
+  // (ca-1-001 through ~100 others) have no `**Task:**` block; the H3 title
+  // IS the task. Gating this on `ex.task` would hide the button on exactly
+  // the exercises the feature was designed for.
+  const taskReportLink = el('button',
+    { type: 'button', class: 'solution-report-link task-report-link',
+      title: 'Suggest an additional docs link, a clearer task wording, or a typo fix' },
+    '🐛 Suggest a fix for this task or docs');
+  taskReportLink.addEventListener('click', () => openFixReportModal(ex, { mode: 'task' }));
+  card.appendChild(taskReportLink);
 
   // Auto-grading answer box (between task/lab-context and solution).
   // Quiz mode passes opts.fromQuiz so the verdict updates State.quiz.status.
