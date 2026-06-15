@@ -1070,6 +1070,22 @@ kbd {
   outline: none;
 }
 .answer-box.answer-fullscreen .answer-tools-btn { display: inline-block; }
+/* Surfaced when the lazy CodeMirror upgrade fails (e.g. CDN hiccup, esm.sh
+   bundle dedup miss). Sits inside .answer-label next to ⛶, hover for the
+   underlying error message. */
+.cm-fail-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: var(--warn, #c97);
+  background: color-mix(in srgb, var(--warn, #c97) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn, #c97) 35%, transparent);
+  border-radius: var(--radius);
+  cursor: help;
+}
 /* Mirror of .answer-tools-btn for the per-card 📝 Task drawer trigger. */
 .answer-task-btn {
   display: none;

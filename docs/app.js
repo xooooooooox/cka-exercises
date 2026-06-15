@@ -1288,12 +1288,17 @@ let _cmPromise = null;
 function loadCodeMirror() {
   if (_cmPromise) return _cmPromise;
   _cmPromise = (async () => {
+    // No `?bundle` — esm.sh shares a single `@codemirror/state` + `view`
+    // instance across all five modules. With `?bundle`, each package inlines
+    // its own copy of state/view, breaking CodeMirror's identity-based
+    // facet resolver: "Unrecognized extension value … multiple instances of
+    // @codemirror/state are loaded, breaking instanceof checks."
     const [view, state, basic, langYaml, commands] = await Promise.all([
-      import('https://esm.sh/@codemirror/view@6.26.3?bundle'),
-      import('https://esm.sh/@codemirror/state@6.4.1?bundle'),
-      import('https://esm.sh/codemirror@6.0.1?bundle'),
-      import('https://esm.sh/@codemirror/lang-yaml@6.1.2?bundle'),
-      import('https://esm.sh/@codemirror/commands@6.5.0?bundle'),
+      import('https://esm.sh/@codemirror/view@6.26.3'),
+      import('https://esm.sh/@codemirror/state@6.4.1'),
+      import('https://esm.sh/codemirror@6.0.1'),
+      import('https://esm.sh/@codemirror/lang-yaml@6.1.2'),
+      import('https://esm.sh/@codemirror/commands@6.5.0'),
     ]);
     return {
       EditorView: view.EditorView,
@@ -1339,6 +1344,23 @@ const CM_THEME = {
 
 function isDark() {
   return document.documentElement.getAttribute('data-theme') === 'dark';
+}
+
+// Visible breadcrumb when the lazy CodeMirror upgrade throws (e.g. esm.sh
+// returned duplicate copies of @codemirror/state). Without this the user
+// just sees a plain textarea and has no idea CM was supposed to upgrade —
+// the previous `console.warn`-only path made debugging needlessly hard.
+function showCmFailureBadge(labelRow, err) {
+  if (!labelRow) return;
+  let badge = labelRow.querySelector('.cm-fail-badge');
+  if (!badge) {
+    badge = el('span', { class: 'cm-fail-badge', role: 'status' }, '⚠ editor failed');
+    labelRow.appendChild(badge);
+  }
+  badge.title = (err && err.message) ? err.message : 'CodeMirror upgrade failed — using plain textarea';
+}
+function clearCmFailureBadge(labelRow) {
+  labelRow?.querySelector('.cm-fail-badge')?.remove();
 }
 
 function renderAnswerBox(ex, opts = {}) {
@@ -1414,59 +1436,68 @@ function renderAnswerBox(ex, opts = {}) {
 
   // Idempotent CM upgrade. Called from `focusin` (existing trigger) AND from
   // the fullscreen-toggle click (so users who never tap the textarea before
-  // hitting ⛶ still get line numbers + Tab indent).
+  // hitting ⛶ still get line numbers + Tab indent). The whole upgrade —
+  // module load, EditorState build, EditorView mount — is wrapped in one
+  // try/catch so any throw degrades to the plain textarea instead of
+  // wedging _cmReadyPromise in a rejected state.
   function upgradeToCodeMirror() {
     if (cmView) return Promise.resolve(cmView);
     if (_cmReadyPromise) return _cmReadyPromise;
     _cmReadyPromise = (async () => {
-      let cm;
-      try { cm = await loadCodeMirror(); }
-      catch (e) {
-        console.warn('CodeMirror failed to load — keeping plain textarea', e);
+      try {
+        const cm = await loadCodeMirror();
+        const { EditorView, EditorState, Prec, basicSetup, yaml, indentWithTab, keymap } = cm;
+        const update = EditorView.updateListener.of(u => {
+          if (u.docChanged) persistDebounced();
+        });
+        const state = EditorState.create({
+          doc: ta.value,
+          extensions: [
+            basicSetup,
+            // Prec.highest beats basicSetup's defaultKeymap binding for Tab,
+            // which otherwise lets the key fall through to the browser's
+            // focus-shift default.
+            Prec.highest(keymap.of([indentWithTab])),
+            yaml(),
+            EditorView.lineWrapping,
+            EditorView.theme(CM_THEME, { dark: isDark() }),
+            // Layout theme — the outer .answer-cm container sets the height
+            // (96-360 px normal, flex: 1; min-height: 60vh fullscreen) and CM
+            // expands its scroller into that space. Without `height: 100%` on
+            // `&`, the CM editor lays out at content-height and leaves a huge
+            // empty area below in fullscreen.
+            EditorView.theme({
+              '&': { height: '100%' },
+              '.cm-scroller': { overflow: 'auto' },
+            }),
+            update,
+          ],
+        });
+        cmView = new EditorView({ state, parent: ta.parentNode });
+        cmView.dom.classList.add('answer-cm');
+        ta.replaceWith(cmView.dom);
+        clearCmFailureBadge(labelRow);
+        return cmView;
+      } catch (e) {
+        console.error('[answer-editor] CodeMirror upgrade failed:', e);
+        showCmFailureBadge(labelRow, e);
         _cmReadyPromise = null;
         return null;
       }
-      const { EditorView, EditorState, Prec, basicSetup, yaml, indentWithTab, keymap } = cm;
-      const update = EditorView.updateListener.of(u => {
-        if (u.docChanged) persistDebounced();
-      });
-      const state = EditorState.create({
-        doc: ta.value,
-        extensions: [
-          basicSetup,
-          // Prec.highest beats basicSetup's defaultKeymap binding for Tab,
-          // which otherwise lets the key fall through to the browser's
-          // focus-shift default.
-          Prec.highest(keymap.of([indentWithTab])),
-          yaml(),
-          EditorView.lineWrapping,
-          EditorView.theme(CM_THEME, { dark: isDark() }),
-          // Layout theme — the outer .answer-cm container sets the height
-          // (96-360 px normal, flex: 1; min-height: 60vh fullscreen) and CM
-          // expands its scroller into that space. Without `height: 100%` on
-          // `&`, the CM editor lays out at content-height and leaves a huge
-          // empty area below in fullscreen.
-          EditorView.theme({
-            '&': { height: '100%' },
-            '.cm-scroller': { overflow: 'auto' },
-          }),
-          update,
-        ],
-      });
-      cmView = new EditorView({ state, parent: ta.parentNode });
-      cmView.dom.classList.add('answer-cm');
-      ta.replaceWith(cmView.dom);
-      return cmView;
     })();
     return _cmReadyPromise;
   }
 
   // Lazy upgrade on first focus. Pre-CM textarea remains fully functional
-  // if the CDN load fails.
-  ta.addEventListener('focusin', function once() {
-    ta.removeEventListener('focusin', once);
-    upgradeToCodeMirror().then(view => view?.focus());
-  });
+  // if the CDN load fails. On failure we re-arm the listener so a later
+  // focus (e.g. after a transient esm.sh hiccup) retries automatically.
+  function attemptUpgradeOnFocus() {
+    upgradeToCodeMirror().then(view => {
+      if (view) view.focus();
+      else ta.addEventListener('focusin', attemptUpgradeOnFocus, { once: true });
+    });
+  }
+  ta.addEventListener('focusin', attemptUpgradeOnFocus, { once: true });
 
   // ⛶ fullscreen toggle. Same CM instance / textarea stays mounted — we
   // just relocate its containing .answer-box via a CSS class. We also
