@@ -3535,8 +3535,20 @@ function buildExplainIndex() {
     const def = State.tools.definitions[ref];
     if (!def) return;
     for (const f of def.fields || []) {
-      if (!f.ref || seenRefs.has(f.ref)) continue;
-      walk(f.ref, [...path, f.name], root, new Set([...seenRefs, f.ref]));
+      if (f.ref) {
+        if (seenRefs.has(f.ref)) continue;
+        walk(f.ref, [...path, f.name], root, new Set([...seenRefs, f.ref]));
+      } else {
+        // Primitive leaf (string, []string, int, …): emit a terminal entry so
+        // `csr.spec.usages` and friends can be searched, not just drilled to.
+        out.push({
+          kindRef: root.ref,
+          kindName: root.name,
+          path: [...path, f.name],
+          displayPath: [root.name, ...path, f.name].join('.'),
+          shortNames: [],
+        });
+      }
     }
   }
   _explainIndex = out;
@@ -3590,9 +3602,23 @@ function renderExplainKindList(query = '') {
   }
 
   // Normalise: strip leading dots, lowercase, collapse spaces to dot.
-  const q = query.toLowerCase().replace(/^\.+/, '').replace(/\s+/g, '.');
-  if (!q) {
+  const q0 = query.toLowerCase().replace(/^\.+/, '').replace(/\s+/g, '.');
+  if (!q0) {
     return renderExplainKindList('');
+  }
+
+  // Expand a leading kubectl short-name (csr, po, deploy, …) into the full kind
+  // name so dotted queries like `csr.spec.usages` match the way the user thinks
+  // — bare `csr` still hits via the existing shortHit branch below.
+  const firstSeg = q0.split('.')[0];
+  let q = q0;
+  if (q0.includes('.')) {
+    for (const root of State.tools.rootKinds) {
+      if ((root.shortNames || []).includes(firstSeg)) {
+        q = root.name.toLowerCase() + q0.slice(firstSeg.length);
+        break;
+      }
+    }
   }
 
   const index = buildExplainIndex();

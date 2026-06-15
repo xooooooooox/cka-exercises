@@ -1201,6 +1201,35 @@ body.answer-fullscreen-active { overflow: hidden; }
   gap: 6px;
   padding: 4px 0 8px;
 }
+/* Tools/Explain search + result-list overrides for the drawer. The desktop
+   `.tools-tree` selectors leak rules (sticky positioning, padding-right) that
+   trash the visual rhythm inside the narrow drawer card; restore tight,
+   ellipsis-safe layout here. */
+#view-tools.in-drawer #tools-explain-search,
+#view-tools.in-drawer #tools-kubectl-search {
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 8px;
+}
+#view-tools.in-drawer #tools-kind-list {
+  /* Anything inside is allowed to shrink rather than overflow the card. */
+  min-width: 0;
+}
+#view-tools.in-drawer #tools-kind-list button {
+  max-width: 100%;
+  min-width: 0;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 6px 8px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+#view-tools.in-drawer #tools-kind-list .kind-shortnames {
+  font-size: 11px;
+  opacity: 0.7;
+}
 @media (max-width: 768px) {
   #tools-drawer-overlay {
     align-items: flex-end;
@@ -2276,7 +2305,9 @@ body.answer-fullscreen-active { overflow: hidden; }
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  white-space: normal;
+  /* `pre-wrap` so the OpenAPI source's paragraph breaks (\n\n) count toward
+     the line-clamp instead of being collapsed into prose. */
+  white-space: pre-wrap;
 }
 .field-row:hover .field-desc {
   -webkit-line-clamp: unset;

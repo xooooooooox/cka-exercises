@@ -117,7 +117,14 @@ function fetchJson(url) {
 // the leaf-detail view shows the full text untouched.
 function compactDesc(s, max = 4000) {
   if (!s) return '';
-  const norm = s.replace(/\s+/g, ' ').trim();
+  // Preserve paragraph boundaries (blank lines in the OpenAPI source). Collapse
+  // horizontal whitespace within each paragraph. The SPA renders these with
+  // `white-space: pre-wrap` so the blank lines become visual breaks.
+  const norm = s
+    .split(/\n\s*\n/)
+    .map(p => p.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n\n');
   return norm.length > max ? norm.slice(0, max).replace(/\s\S*$/, '') + '…' : norm;
 }
 
