@@ -3619,6 +3619,31 @@ function renderExplainKindList(query = '') {
   for (const h of hits) list.appendChild(makeExplainRow(h, /*compact*/ false));
 }
 
+// Header block extracted so both the object-detail and leaf-detail branches
+// of renderExplainDetail can reuse it.
+function renderExplainHeader(detail, rootKind, path) {
+  const header = el('div', { class: 'explain-header' });
+  header.appendChild(el('div', {}, el('strong', {}, 'KIND:     '), rootKind?.name || ''));
+  if (rootKind?.version) header.appendChild(el('div', {}, el('strong', {}, 'VERSION:  '), `${rootKind.group ? rootKind.group + '/' : ''}${rootKind.version}`));
+  if (path.length) header.appendChild(el('div', {}, el('strong', {}, 'FIELD:    '), [rootKind?.name, ...path].join('.')));
+  detail.appendChild(header);
+}
+
+function renderExplainBreadcrumb(detail, rootKind, path) {
+  if (!path.length) return;
+  const crumbs = el('div', { class: 'explain-breadcrumb' });
+  const rootLink = el('a', { 'data-crumb-idx': '-1' }, rootKind?.name || 'root');
+  rootLink.addEventListener('click', () => navigateExplain([]));
+  crumbs.appendChild(rootLink);
+  path.forEach((seg, i) => {
+    crumbs.appendChild(document.createTextNode(' › '));
+    const a = el('a', { 'data-crumb-idx': String(i) }, seg);
+    a.addEventListener('click', () => navigateExplain(path.slice(0, i + 1)));
+    crumbs.appendChild(a);
+  });
+  detail.appendChild(crumbs);
+}
+
 function renderExplainDetail() {
   const detail = document.getElementById('tools-explain-detail');
   if (!detail) return;
@@ -3626,67 +3651,69 @@ function renderExplainDetail() {
   const { kindRef, path } = State.toolsExplain;
   if (!kindRef) return;
 
-  // Walk the path from the root kind to the current node
+  // Walk the path from the root kind to the current node. Capture leafField
+  // when we land on a primitive (no `ref`) so we can render its own detail
+  // view, mirroring `kubectl explain csr.spec.usages`.
   let cursorRef = kindRef;
+  let leafField = null;
   for (const seg of path) {
     const def = State.tools.definitions[cursorRef];
     if (!def) break;
     const field = (def.fields || []).find(f => f.name === seg);
-    if (!field?.ref) break;
+    if (!field) break;
+    if (!field.ref) { leafField = field; break; }
     cursorRef = field.ref;
   }
+  const rootKind = State.tools.rootKinds.find(k => k.ref === kindRef);
+
+  // --- Leaf branch: primitive field. Render TYPE + DESCRIPTION only. ---
+  if (leafField) {
+    renderExplainHeader(detail, rootKind, path);
+    renderExplainBreadcrumb(detail, rootKind, path);
+    detail.appendChild(el('div', { class: 'explain-section' },
+      el('strong', {}, 'TYPE:     '),
+      `${leafField.type}${leafField.required ? ' -required-' : ''}`));
+    if (leafField.description) {
+      detail.appendChild(el('div', { class: 'explain-desc' },
+        el('strong', {}, 'DESCRIPTION:\n     '),
+        leafField.description));
+    }
+    return;
+  }
+
+  // --- Object branch: walked into a sub-schema. Render fields list. ---
   const def = State.tools.definitions[cursorRef];
   if (!def) {
     detail.appendChild(el('p', { class: 'muted' }, `Schema not bundled: ${cursorRef}`));
     return;
   }
 
-  // Header — KIND / VERSION / RESOURCE / DESCRIPTION
-  const rootKind = State.tools.rootKinds.find(k => k.ref === kindRef);
-  const header = el('div', { class: 'explain-header' });
-  header.appendChild(el('div', {}, el('strong', {}, 'KIND:     '), rootKind?.name || ''));
-  if (rootKind?.version) header.appendChild(el('div', {}, el('strong', {}, 'VERSION:  '), `${rootKind.group ? rootKind.group + '/' : ''}${rootKind.version}`));
-  if (path.length) header.appendChild(el('div', {}, el('strong', {}, 'FIELD:    '), [rootKind?.name, ...path].join('.')));
-  detail.appendChild(header);
+  renderExplainHeader(detail, rootKind, path);
+  renderExplainBreadcrumb(detail, rootKind, path);
 
-  // Breadcrumb
-  if (path.length) {
-    const crumbs = el('div', { class: 'explain-breadcrumb' });
-    const rootLink = el('a', { 'data-crumb-idx': '-1' }, rootKind?.name || 'root');
-    rootLink.addEventListener('click', () => navigateExplain([]));
-    crumbs.appendChild(rootLink);
-    path.forEach((seg, i) => {
-      crumbs.appendChild(document.createTextNode(' › '));
-      const a = el('a', { 'data-crumb-idx': String(i) }, seg);
-      a.addEventListener('click', () => navigateExplain(path.slice(0, i + 1)));
-      crumbs.appendChild(a);
-    });
-    detail.appendChild(crumbs);
-  }
-
-  // Description
   if (def.description) {
     detail.appendChild(el('div', { class: 'explain-desc' }, el('strong', {}, 'DESCRIPTION:\n     '), def.description));
   }
 
-  // Fields
   const fields = def.fields || [];
   if (fields.length) {
     detail.appendChild(el('div', { class: 'explain-section' }, el('strong', {}, 'FIELDS:')));
     for (const f of fields) {
       const row = el('div', { class: 'field-row' });
       const head = el('div', { class: 'field-head' });
-      const nameSpan = el('span', { class: 'field-name' }, f.name);
+      const nameSpan = el('span', { class: 'field-name', role: 'button', tabindex: '0' }, f.name);
       const typeSpan = el('span', { class: 'field-type' }, ` <${f.type}>${f.required ? ' -required-' : ''}`);
-      if (f.ref) {
-        const drill = el('button', { type: 'button', class: 'field-drill', title: 'Drill into this sub-schema' }, '↳');
-        drill.addEventListener('click', () => navigateExplain([...path, f.name]));
-        head.append(nameSpan, typeSpan, drill);
-        nameSpan.addEventListener('click', () => navigateExplain([...path, f.name]));
-        nameSpan.style.cursor = 'pointer';
-      } else {
-        head.append(nameSpan, typeSpan);
-      }
+      const isRef = !!f.ref;
+      const drill = el('button', {
+        type: 'button',
+        class: 'field-drill',
+        title: isRef ? 'Drill into this sub-schema' : 'Show the full description for this field',
+      }, isRef ? '↳' : '↵');
+      const onClick = () => navigateExplain([...path, f.name]);
+      nameSpan.style.cursor = 'pointer';
+      nameSpan.addEventListener('click', onClick);
+      drill.addEventListener('click', onClick);
+      head.append(nameSpan, typeSpan, drill);
       row.appendChild(head);
       if (f.description) row.appendChild(el('div', { class: 'field-desc' }, f.description));
       detail.appendChild(row);

@@ -110,9 +110,12 @@ function fetchJson(url) {
   });
 }
 
-// Truncate descriptions aggressively — full text is at kubernetes.io.
-// 200 chars is enough for a "what is this" hint in the Explain panel.
-function compactDesc(s, max = 200) {
+// Cap at 4000 chars — covers every real description in the bundled kinds
+// (longest seen ~1500 chars on RBAC and TLS-cert fields) while keeping a
+// safety ceiling against runaway pathological data. The SPA's field-list
+// rows line-clamp the rendered text to 4 lines so the panel stays scannable;
+// the leaf-detail view shows the full text untouched.
+function compactDesc(s, max = 4000) {
   if (!s) return '';
   const norm = s.replace(/\s+/g, ' ').trim();
   return norm.length > max ? norm.slice(0, max).replace(/\s\S*$/, '') + '…' : norm;

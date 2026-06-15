@@ -2233,6 +2233,8 @@ body.answer-fullscreen-active { overflow: hidden; }
 .explain-desc {
   margin: 8px 0 14px;
   font-size: 13px;
+  /* Leaf-detail + object-detail full descriptions render with original
+     paragraph breaks preserved. */
   white-space: pre-wrap;
 }
 .explain-desc strong { color: var(--fg-muted); }
@@ -2267,6 +2269,18 @@ body.answer-fullscreen-active { overflow: hidden; }
   color: var(--fg-muted);
   margin-top: 2px;
   padding-left: 16px;
+  /* Field list stays scannable even when descriptions are 500-1500 chars —
+     clamp at 4 lines, expand on hover (desktop) / click into leaf detail
+     (mobile + keyboard). */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+}
+.field-row:hover .field-desc {
+  -webkit-line-clamp: unset;
+  display: block;
 }
 
 /* kubectl -h panel detail */
