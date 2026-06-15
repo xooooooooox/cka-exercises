@@ -1298,6 +1298,7 @@ function loadCodeMirror() {
     return {
       EditorView: view.EditorView,
       EditorState: state.EditorState,
+      Prec: state.Prec,
       basicSetup: basic.basicSetup,
       yaml: langYaml.yaml,
       keymap: view.keymap,
@@ -1387,8 +1388,10 @@ function renderAnswerBox(ex, opts = {}) {
   box.appendChild(ta);
 
   // Editor abstraction: starts as a plain textarea; upgrades to CodeMirror
-  // lazily on first focus. getText / setText route to whichever is active.
+  // lazily on first focus OR on entering fullscreen. getText / setText route
+  // to whichever is active.
   let cmView = null;
+  let _cmReadyPromise = null;
   const getText = () => cmView ? cmView.state.doc.toString() : ta.value;
   const setText = (v) => {
     if (cmView) {
@@ -1409,46 +1412,73 @@ function renderAnswerBox(ex, opts = {}) {
   };
   ta.addEventListener('input', persistDebounced);
 
-  // Lazy CodeMirror upgrade on first focus. The pre-CM textarea is fully
-  // functional, so a failed CDN load (offline / blocked) leaves it editable.
-  ta.addEventListener('focusin', async function once() {
+  // Idempotent CM upgrade. Called from `focusin` (existing trigger) AND from
+  // the fullscreen-toggle click (so users who never tap the textarea before
+  // hitting ⛶ still get line numbers + Tab indent).
+  function upgradeToCodeMirror() {
+    if (cmView) return Promise.resolve(cmView);
+    if (_cmReadyPromise) return _cmReadyPromise;
+    _cmReadyPromise = (async () => {
+      let cm;
+      try { cm = await loadCodeMirror(); }
+      catch (e) {
+        console.warn('CodeMirror failed to load — keeping plain textarea', e);
+        _cmReadyPromise = null;
+        return null;
+      }
+      const { EditorView, EditorState, Prec, basicSetup, yaml, indentWithTab, keymap } = cm;
+      const update = EditorView.updateListener.of(u => {
+        if (u.docChanged) persistDebounced();
+      });
+      const state = EditorState.create({
+        doc: ta.value,
+        extensions: [
+          basicSetup,
+          // Prec.highest beats basicSetup's defaultKeymap binding for Tab,
+          // which otherwise lets the key fall through to the browser's
+          // focus-shift default.
+          Prec.highest(keymap.of([indentWithTab])),
+          yaml(),
+          EditorView.lineWrapping,
+          EditorView.theme(CM_THEME, { dark: isDark() }),
+          // Layout theme — the outer .answer-cm container sets the height
+          // (96-360 px normal, flex: 1; min-height: 60vh fullscreen) and CM
+          // expands its scroller into that space. Without `height: 100%` on
+          // `&`, the CM editor lays out at content-height and leaves a huge
+          // empty area below in fullscreen.
+          EditorView.theme({
+            '&': { height: '100%' },
+            '.cm-scroller': { overflow: 'auto' },
+          }),
+          update,
+        ],
+      });
+      cmView = new EditorView({ state, parent: ta.parentNode });
+      cmView.dom.classList.add('answer-cm');
+      ta.replaceWith(cmView.dom);
+      return cmView;
+    })();
+    return _cmReadyPromise;
+  }
+
+  // Lazy upgrade on first focus. Pre-CM textarea remains fully functional
+  // if the CDN load fails.
+  ta.addEventListener('focusin', function once() {
     ta.removeEventListener('focusin', once);
-    let cm;
-    try { cm = await loadCodeMirror(); }
-    catch (e) {
-      console.warn('CodeMirror failed to load — keeping plain textarea', e);
-      return;
-    }
-    const { EditorView, EditorState, basicSetup, yaml, indentWithTab, keymap } = cm;
-    const update = EditorView.updateListener.of(u => {
-      if (u.docChanged) persistDebounced();
-    });
-    const state = EditorState.create({
-      doc: ta.value,
-      extensions: [
-        basicSetup,
-        keymap.of([indentWithTab]),
-        yaml(),
-        EditorView.lineWrapping,
-        EditorView.theme(CM_THEME, { dark: isDark() }),
-        update,
-      ],
-    });
-    cmView = new EditorView({ state, parent: ta.parentNode });
-    cmView.dom.classList.add('answer-cm');
-    ta.replaceWith(cmView.dom);
-    cmView.focus();
+    upgradeToCodeMirror().then(view => view?.focus());
   });
 
   // ⛶ fullscreen toggle. Same CM instance / textarea stays mounted — we
-  // just relocate its containing .answer-box via a CSS class.
+  // just relocate its containing .answer-box via a CSS class. We also
+  // trigger the CM upgrade here so users who go straight to fullscreen
+  // (without focusing the textarea first) still get the real editor.
   expandBtn.addEventListener('click', () => {
     const onNow = box.classList.toggle('answer-fullscreen');
     expandBtn.textContent = onNow ? '✕' : '⛶';
     expandBtn.title = onNow ? 'Exit fullscreen (Esc)' : 'Expand to fullscreen — useful for long YAML manifests';
     if (onNow) {
       document.body.classList.add('answer-fullscreen-active');
-      cmView?.focus();
+      upgradeToCodeMirror().then(view => view?.focus());
     } else {
       document.body.classList.remove('answer-fullscreen-active');
     }

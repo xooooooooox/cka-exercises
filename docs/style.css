@@ -1107,7 +1107,8 @@ kbd {
 .answer-cm {
   min-height: 96px;
   max-height: 360px;
-  overflow: auto;
+  /* No outer overflow — CM's .cm-scroller handles scrolling internally
+     (height: 100% theme rule in app.js makes it fill this container). */
 }
 .answer-box.answer-fullscreen .answer-cm {
   max-height: none;
