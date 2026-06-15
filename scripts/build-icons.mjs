@@ -3,7 +3,11 @@
 // Usage: npm run build:icons
 //
 // Generated files (committed to the repo):
-//   docs/icons/icon.svg                  — vector source
+//   docs/icons/icon.svg                  — vector source (with "CKA" wordmark)
+//   docs/icons/icon-mark.svg             — helm-only variant for in-app header
+//                                           (matches install icon's branding
+//                                           without a duplicated, illegible
+//                                           wordmark at the header's ~24 px size)
 //   docs/icons/icon-180.png              — iOS apple-touch-icon
 //   docs/icons/icon-192.png              — standard PWA
 //   docs/icons/icon-512.png              — high-res PWA
@@ -24,15 +28,18 @@ const FG     = '#ffffff';
 // Helm-style mark inspired by the kubernetes logo. Hand-traced as paths so we
 // don't depend on a system emoji font when rendering on Linux CI runners.
 // The "CKA" wordmark sits below the helm.
-function makeSvg({ size = 512, padding = 0 } = {}) {
+function makeSvg({ size = 512, padding = 0, wordmark = true } = {}) {
   const safe = size - padding * 2;
   // viewBox stays at 0 0 512 512 so all sub-paths are size-agnostic;
   // the surrounding <svg> handles the safe-area padding for maskable icons.
+  // When `wordmark` is false the helm is dead-centered (y=256); when true it
+  // sits higher (y=200) to leave room for the "CKA" text below.
+  const helmY = wordmark ? 200 : 256;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
   <rect width="${size}" height="${size}" rx="${Math.round(size * 0.18)}" fill="${ACCENT}"/>
   <g transform="translate(${padding} ${padding}) scale(${safe / 512})">
     <!-- Helm wheel: outer ring + 8 spokes + inner hub -->
-    <g transform="translate(256 200)" fill="none" stroke="${FG}" stroke-width="16" stroke-linecap="round">
+    <g transform="translate(256 ${helmY})" fill="none" stroke="${FG}" stroke-width="16" stroke-linecap="round">
       <circle r="110"/>
       <g>
         <line x1="0" y1="-110" x2="0" y2="-60"/>
@@ -45,11 +52,11 @@ function makeSvg({ size = 512, padding = 0 } = {}) {
         <line x1="42"  y1="-42" x2="78"  y2="-78"/>
       </g>
       <circle r="36" fill="${FG}" stroke="none"/>
-    </g>
+    </g>${wordmark ? `
     <!-- CKA wordmark -->
     <text x="256" y="410" fill="${FG}" text-anchor="middle"
           font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif"
-          font-weight="800" font-size="96" letter-spacing="6">CKA</text>
+          font-weight="800" font-size="96" letter-spacing="6">CKA</text>` : ''}
   </g>
 </svg>`;
 }
@@ -60,6 +67,11 @@ async function main() {
   const svg = makeSvg();
   // The exposed SVG (no extra padding — used as <link rel="icon">)
   fs.writeFileSync(path.join(OUT_DIR, 'icon.svg'), svg);
+  // Wordmark-less helm variant for the in-app header. Same brand identity
+  // (blue rounded square + white helm) as the install icon, minus the "CKA"
+  // wordmark — which would be illegible at the header's ~24 px size and
+  // would duplicate the adjacent "CKA Practice" text.
+  fs.writeFileSync(path.join(OUT_DIR, 'icon-mark.svg'), makeSvg({ wordmark: false }));
 
   const variants = [
     { name: 'icon-180.png', size: 180, padding: 0 },

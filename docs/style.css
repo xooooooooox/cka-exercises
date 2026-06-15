@@ -115,7 +115,15 @@ pre .copy-btn.copied { color: var(--success); }
   z-index: 50;
 }
 .brand { display: flex; align-items: center; gap: 8px; font-size: 16px; }
-.brand-icon { font-size: 20px; }
+.brand-icon {
+  /* Mini PWA-install-icon variant (icons/icon-mark.svg) — blue rounded square
+     + white helm, no wordmark (would duplicate the adjacent "CKA Practice"
+     text and be illegible at this size). */
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+  vertical-align: middle;
+}
 .mode-tabs { display: flex; gap: 4px; }
 .mode-tab { border: 1px solid transparent; background: transparent; }
 .mode-tab.active { background: var(--bg); border-color: var(--border); font-weight: 600; }
