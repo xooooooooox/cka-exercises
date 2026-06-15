@@ -188,6 +188,7 @@
       <div class="quiz-progress">
         <span id="quiz-progress-text"></span>
         <progress id="quiz-progress-bar" value="0" max="1"></progress>
+        <button id="quiz-nav-toggle" type="button" title="Jump to any question / see status of all questions">📋 Questions</button>
       </div>
       <div id="quiz-card"></div>
       <div class="quiz-controls">
@@ -480,6 +481,27 @@
         <button id="task-drawer-close" type="button" class="overlay-close" aria-label="Close">✕</button>
       </header>
       <div id="task-drawer-host"></div>
+    </div>
+  </div>
+
+  <!-- Quiz navigator: grid of all questions in the active quiz, colour-coded
+       by status with a 🚩 corner for flagged. Tap a cell to jump. -->
+  <div id="quiz-nav-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="quiz-nav-title">
+    <div class="overlay-card quiz-nav-card">
+      <header>
+        <h2 id="quiz-nav-title">📋 Questions</h2>
+        <button id="quiz-nav-close" type="button" class="overlay-close" aria-label="Close">✕</button>
+      </header>
+      <div id="quiz-nav-summary" class="quiz-nav-summary"></div>
+      <div id="quiz-nav-grid" class="quiz-nav-grid"></div>
+      <div class="quiz-nav-legend">
+        <span class="qnav-cell qnav-cell--got">✓</span> Got
+        <span class="qnav-cell qnav-cell--partial">◐</span> Partial
+        <span class="qnav-cell qnav-cell--missed">✗</span> Missed
+        <span class="qnav-cell qnav-cell--skipped">↷</span> Skipped
+        <span class="qnav-cell">·</span> Unanswered
+        <span class="qnav-cell"><span class="qnav-flag">🚩</span></span> Flagged
+      </div>
     </div>
   </div>
 

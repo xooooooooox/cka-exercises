@@ -2633,6 +2633,9 @@ function renderQuizCard() {
   revealBtn.hidden = !q.solutionsHidden || q.revealed.has(ex.id);
 
   document.getElementById('quiz-prev').disabled = q.idx === 0;
+  // Keep the nav drawer in sync if it's open (covers the keyboard-shortcut
+  // flow where grading happens while the drawer is briefly visible).
+  if (_quizNavOpen) renderQuizNavGrid();
 }
 
 function quizNext() {
@@ -2679,6 +2682,87 @@ function quizReveal() {
   State.quiz.revealed.add(id);
   renderQuizCard();
   saveActiveQuiz();
+}
+
+// ---------- Quiz navigator drawer (📋 Questions) ----------
+
+let _quizNavOpen = false;
+
+function openQuizNav() {
+  if (_quizNavOpen || !State.quiz) return;
+  const overlay = document.getElementById('quiz-nav-overlay');
+  if (!overlay) return;
+  renderQuizNavGrid();
+  overlay.hidden = false;
+  _quizNavOpen = true;
+  document.addEventListener('keydown', _onQuizNavEsc, true);
+  document.getElementById('quiz-nav-close').onclick = closeQuizNav;
+  overlay.onclick = (e) => { if (e.target === overlay) closeQuizNav(); };
+}
+
+function closeQuizNav() {
+  if (!_quizNavOpen) return;
+  document.getElementById('quiz-nav-overlay').hidden = true;
+  _quizNavOpen = false;
+  document.removeEventListener('keydown', _onQuizNavEsc, true);
+}
+
+function _onQuizNavEsc(e) {
+  if (e.key !== 'Escape') return;
+  e.stopPropagation();
+  closeQuizNav();
+}
+
+function renderQuizNavGrid() {
+  const q = State.quiz;
+  if (!q) return;
+  // Summary line — counts by status + flagged total.
+  const counts = { got: 0, partial: 0, missed: 0, skipped: 0, unanswered: 0, flagged: q.flagged.size };
+  for (const id of q.ids) {
+    const s = q.status.get(id);
+    if (s === 'got') counts.got++;
+    else if (s === 'partial') counts.partial++;
+    else if (s === 'missed') counts.missed++;
+    else if (s === 'skipped') counts.skipped++;
+    else counts.unanswered++;
+  }
+  const summary = document.getElementById('quiz-nav-summary');
+  if (summary) {
+    summary.textContent =
+      `✓ ${counts.got}  ◐ ${counts.partial}  ✗ ${counts.missed}  ↷ ${counts.skipped}  ` +
+      `· ${counts.unanswered} unanswered  🚩 ${counts.flagged}`;
+  }
+
+  // Grid of numbered cells, one per question.
+  const grid = document.getElementById('quiz-nav-grid');
+  if (!grid) return;
+  grid.replaceChildren();
+  for (let i = 0; i < q.ids.length; i++) {
+    const id = q.ids[i];
+    const ex = State.byId.get(id);
+    const status = q.status.get(id) || '';
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'qnav-cell' + (status ? ` qnav-cell--${status}` : '');
+    if (i === q.idx) cell.classList.add('qnav-cell--current');
+    const label = `${i + 1}. ${ex?.title || id} (${id})`;
+    cell.title = label;
+    cell.setAttribute('aria-label', label);
+    cell.textContent = String(i + 1);
+    if (q.flagged.has(id)) {
+      const flag = document.createElement('span');
+      flag.className = 'qnav-flag';
+      flag.textContent = '🚩';
+      cell.appendChild(flag);
+    }
+    cell.addEventListener('click', () => {
+      State.quiz.idx = i;
+      renderQuizCard();
+      saveActiveQuiz();
+      closeQuizNav();
+    });
+    grid.appendChild(cell);
+  }
 }
 
 function startQuizTimer() {
@@ -4137,6 +4221,7 @@ async function init() {
   document.getElementById('quiz-skip').addEventListener('click', quizSkip);
   document.getElementById('quiz-flag').addEventListener('click', quizFlag);
   document.getElementById('quiz-reveal').addEventListener('click', quizReveal);
+  document.getElementById('quiz-nav-toggle')?.addEventListener('click', openQuizNav);
   document.getElementById('quiz-finish').addEventListener('click', () => {
     if (confirm('End this quiz session and see your summary?')) finishQuiz();
   });
