@@ -1291,20 +1291,23 @@ function loadCodeMirror() {
     // CM6's facet resolver does `instanceof` checks, so every package on the
     // graph MUST resolve `@codemirror/state` and `@codemirror/view` to the
     // exact same URL. esm.sh's default resolution returns semver-range URLs
-    // (e.g. `/@codemirror/state@^6.4.0?target=es2022`) which the browser sees
-    // as distinct modules from our direct `/@codemirror/state@6.4.1` import,
-    // even though they point to the same physical file — triggering the
-    // "multiple instances of @codemirror/state are loaded" runtime error on
-    // Chrome 149. Solution: pin every package's transitive deps with
-    // `?deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3&target=es2022`,
-    // and import view + state through the same pinning so all URLs collapse.
-    const DEPS = 'deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3&target=es2022';
+    // which the browser sees as distinct modules from our direct exact-version
+    // imports — triggering "multiple instances of @codemirror/state are loaded"
+    // on Chrome 149.
+    //
+    // Solution: pin every package's transitive state+view with `?deps=…` so
+    // esm.sh rewrites all references to *one* canonical variant URL, and use
+    // versions recent enough that the transitive packages (autocomplete via
+    // basicSetup, language, etc.) can find their expected exports. The
+    // previous pin to view@6.26.3 + state@6.4.1 made language@6.12.3 attempt
+    // to import `activateHover` from a stale view variant that didn't have it.
+    const DEPS = 'deps=@codemirror/state@6.5.2,@codemirror/view@6.43.1&target=es2022';
     const [view, state, basic, langYaml, commands] = await Promise.all([
-      import(`https://esm.sh/@codemirror/view@6.26.3?${DEPS}`),
-      import('https://esm.sh/@codemirror/state@6.4.1?target=es2022'),
+      import(`https://esm.sh/@codemirror/view@6.43.1?${DEPS}`),
+      import('https://esm.sh/@codemirror/state@6.5.2?target=es2022'),
       import(`https://esm.sh/codemirror@6.0.1?${DEPS}`),
-      import(`https://esm.sh/@codemirror/lang-yaml@6.1.2?${DEPS}`),
-      import(`https://esm.sh/@codemirror/commands@6.5.0?${DEPS}`),
+      import(`https://esm.sh/@codemirror/lang-yaml@6.1.3?${DEPS}`),
+      import(`https://esm.sh/@codemirror/commands@6.10.3?${DEPS}`),
     ]);
     return {
       EditorView: view.EditorView,
