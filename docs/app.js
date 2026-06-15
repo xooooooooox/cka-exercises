@@ -1288,17 +1288,23 @@ let _cmPromise = null;
 function loadCodeMirror() {
   if (_cmPromise) return _cmPromise;
   _cmPromise = (async () => {
-    // No `?bundle` — esm.sh shares a single `@codemirror/state` + `view`
-    // instance across all five modules. With `?bundle`, each package inlines
-    // its own copy of state/view, breaking CodeMirror's identity-based
-    // facet resolver: "Unrecognized extension value … multiple instances of
-    // @codemirror/state are loaded, breaking instanceof checks."
+    // CM6's facet resolver does `instanceof` checks, so every package on the
+    // graph MUST resolve `@codemirror/state` and `@codemirror/view` to the
+    // exact same URL. esm.sh's default resolution returns semver-range URLs
+    // (e.g. `/@codemirror/state@^6.4.0?target=es2022`) which the browser sees
+    // as distinct modules from our direct `/@codemirror/state@6.4.1` import,
+    // even though they point to the same physical file — triggering the
+    // "multiple instances of @codemirror/state are loaded" runtime error on
+    // Chrome 149. Solution: pin every package's transitive deps with
+    // `?deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3&target=es2022`,
+    // and import view + state through the same pinning so all URLs collapse.
+    const DEPS = 'deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3&target=es2022';
     const [view, state, basic, langYaml, commands] = await Promise.all([
-      import('https://esm.sh/@codemirror/view@6.26.3'),
-      import('https://esm.sh/@codemirror/state@6.4.1'),
-      import('https://esm.sh/codemirror@6.0.1'),
-      import('https://esm.sh/@codemirror/lang-yaml@6.1.2'),
-      import('https://esm.sh/@codemirror/commands@6.5.0'),
+      import(`https://esm.sh/@codemirror/view@6.26.3?${DEPS}`),
+      import('https://esm.sh/@codemirror/state@6.4.1?target=es2022'),
+      import(`https://esm.sh/codemirror@6.0.1?${DEPS}`),
+      import(`https://esm.sh/@codemirror/lang-yaml@6.1.2?${DEPS}`),
+      import(`https://esm.sh/@codemirror/commands@6.5.0?${DEPS}`),
     ]);
     return {
       EditorView: view.EditorView,
