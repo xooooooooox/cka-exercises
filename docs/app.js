@@ -55,6 +55,7 @@ const KEY = {
   answerPrefix: 'cka:answer:',   // appended with <exerciseId>
   fixDraftPrefix: 'cka:fix-draft:', // appended with <exerciseId>
   taskFixDraftPrefix: 'cka:task-fix-draft:', // task / docs reports — appended with <exerciseId>
+  helpLang: 'cka:help:lang',     // 'en' | 'zh' — Help-tab language preference
   filters: 'cka:filters',        // Browse-mode filter bar (persists across sessions + sync)
   gistToken: 'cka:gist:token',
   gistId: 'cka:gist:id',
@@ -196,6 +197,19 @@ function saveFilters() {
     revealSolutions: f.revealSolutions,
   });
 }
+// Help-tab language preference. First visit picks based on the browser's
+// reported locale; subsequent visits respect whatever the user clicked. The
+// key sits in the `cka:*` namespace so it rides along in Backup / Gist sync.
+function defaultHelpLang() {
+  return /^zh\b/i.test(typeof navigator !== 'undefined' && navigator.language || '') ? 'zh' : 'en';
+}
+function getHelpLang() {
+  return storageGet(KEY.helpLang, null) || defaultHelpLang();
+}
+function setHelpLang(lang) {
+  storageSet(KEY.helpLang, lang === 'zh' ? 'zh' : 'en');
+}
+
 function getFixDraft(id) { return storageGet(KEY.fixDraftPrefix + id, null); }
 function setFixDraft(id, payload) {
   // Drop empty drafts entirely so they don't show in Backup. A draft is empty
@@ -3558,24 +3572,70 @@ function setMode(mode, opts = {}) {
 
 let _helpRendered = false;
 
-function renderHelpView() {
-  if (_helpRendered) return;
+function renderHelpView(opts = {}) {
+  // `opts.force` re-renders even if we've rendered once already — used by the
+  // language toggle so EN ⇄ 中文 switches actually swap content.
+  if (_helpRendered && !opts.force) return;
   const body = document.getElementById('help-body');
   const toc = document.getElementById('help-toc');
   if (!body || !toc) return;
-  const md = State.data && State.data.helpGuide;
+  // Language-aware markdown pick. The CN guide is bundled by build-exercises.mjs
+  // alongside the EN one. If we want zh but no CN content shipped (file missing
+  // at build time), silently fall back to EN so the Help tab never goes blank.
+  const lang = getHelpLang();
+  const en = (State.data && State.data.helpGuide) || '';
+  const cn = (State.data && State.data.helpGuideCN) || '';
+  const md = (lang === 'zh' && cn) ? cn : en;
   if (!md) {
     body.innerHTML = '<p class="muted">Help content not bundled — run <code>npm run build</code> to regenerate <code>exercises.json</code>.</p>';
     return;
   }
   body.innerHTML = renderMarkdown(md);
 
+  // Inject the EN ⇄ 中文 toggle at the very top of the body. Only shows when
+  // both languages were bundled (cn truthy); otherwise stays out of the way.
+  if (cn) {
+    const langSwitch = el('div', { class: 'help-lang-switch', role: 'group', 'aria-label': 'Language' });
+    const mkBtn = (code, label) => {
+      const b = el('button', {
+        type: 'button',
+        class: 'help-lang-btn' + (lang === code ? ' active' : ''),
+        'aria-pressed': String(lang === code),
+      }, label);
+      b.addEventListener('click', () => {
+        if (lang === code) return;
+        setHelpLang(code);
+        renderHelpView({ force: true });
+        body.scrollIntoView({ behavior: 'auto', block: 'start' });
+      });
+      return b;
+    };
+    langSwitch.appendChild(mkBtn('en', 'EN'));
+    langSwitch.appendChild(mkBtn('zh', '中文'));
+    body.prepend(langSwitch);
+  }
+
   // Rewrite repo-relative links → GitHub blob URLs (open in new tab).
   // Same-page anchors (#…) and absolute URLs (https://…, mailto:…) are left untouched.
+  // Exception: the cross-language link (WEBAPP_GUIDE_CN.md / WEBAPP_GUIDE.md) is
+  // intercepted to switch in-app instead of navigating to a path that 404s on Pages.
   const REPO_BLOB = 'https://github.com/xooooooooox/cka-exercises/blob/main/';
   body.querySelectorAll('a[href]').forEach(a => {
     const href = a.getAttribute('href');
     if (!href) return;
+    // In-app language switch — intercept clicks on the markdown's own
+    // "中文版" / "English" links before they navigate.
+    if (/(^|\/)WEBAPP_GUIDE(_CN)?\.md$/.test(href)) {
+      const next = /WEBAPP_GUIDE_CN\.md$/.test(href) ? 'zh' : 'en';
+      a.setAttribute('href', '#help-lang-' + next);   // visual hint only
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        setHelpLang(next);
+        renderHelpView({ force: true });
+        body.scrollIntoView({ behavior: 'auto', block: 'start' });
+      });
+      return;
+    }
     if (/^([a-z][a-z0-9+.-]*:)|^#|^\/\//i.test(href)) return;
     a.setAttribute('href', REPO_BLOB + href.replace(/^\.\//, ''));
     a.setAttribute('target', '_blank');
