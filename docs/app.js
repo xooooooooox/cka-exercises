@@ -1324,26 +1324,68 @@ function installSyncDotIndicator() {
 // ---------- Header 🔄 refresh + update-available banner ----------
 
 function installRefreshAffordances() {
-  document.getElementById('refresh-toggle')?.addEventListener('click', () => {
-    // Belt-and-suspenders for iOS standalone PWA: location.reload() picks up
-    // fresh HTML when cache headers are honoured; appending a cache-buster on
-    // top forces the browser to re-fetch even when standalone mode hangs onto
-    // the bootstrap HTML.
-    const u = new URL(location.href);
-    u.searchParams.set('_rev', String(Date.now()));
-    location.replace(u.toString());
-  });
-  document.getElementById('update-refresh')?.addEventListener('click', () => {
-    const u = new URL(location.href);
-    u.searchParams.set('_rev', String(Date.now()));
-    location.replace(u.toString());
-  });
+  document.getElementById('refresh-toggle')?.addEventListener('click', manualRefresh);
+  document.getElementById('update-refresh')?.addEventListener('click', manualRefresh);
   document.getElementById('update-dismiss')?.addEventListener('click', () => {
     const b = document.getElementById('update-banner');
     if (b) b.hidden = true;
   });
   // Run the check after we've yielded so the first paint isn't blocked.
   setTimeout(checkForUpdate, 1500);
+}
+
+// Click handler for both the header 🔄 button and the in-banner Refresh button.
+// Pre-checks `version.json` against the bundled `generatedAt`:
+//   - unchanged  → toast "✓ Already up to date" and DO NOT reload
+//   - newer      → toast "✨ New content — reloading…" then bust-the-cache reload
+//   - fetch fail → toast "✗ Refresh check failed"
+// Without this pre-check, clicks always reload, leaving the user with no signal
+// that anything happened (especially painful when content is unchanged).
+async function manualRefresh() {
+  const btn = document.getElementById('refresh-toggle');
+  btn?.classList.add('refreshing');
+  try {
+    const here = State.data?.generatedAt || '';
+    const r = await fetch('version.json?_rev=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('version.json: HTTP ' + r.status);
+    const v = await r.json();
+    if (v?.generatedAt && v.generatedAt !== here) {
+      showRefreshToast(`✨ New content (built ${formatBuildTime(v.generatedAt)}) — reloading…`, 'ok');
+      setTimeout(() => {
+        const u = new URL(location.href);
+        u.searchParams.set('_rev', String(Date.now()));
+        location.replace(u.toString());
+      }, 700);
+    } else {
+      showRefreshToast(`✓ Already up to date (built ${formatBuildTime(here)})`, 'ok');
+      btn?.classList.remove('refreshing');
+    }
+  } catch {
+    showRefreshToast('✗ Refresh check failed — try again', 'err');
+    btn?.classList.remove('refreshing');
+  }
+}
+
+function showRefreshToast(msg, kind) {
+  // Single-slot toast — any previous one is replaced.
+  document.querySelectorAll('.refresh-toast').forEach(el => el.remove());
+  const t = document.createElement('div');
+  t.className = 'refresh-toast refresh-toast--' + (kind === 'err' ? 'err' : 'ok');
+  t.textContent = msg;
+  t.setAttribute('role', 'status');
+  document.body.appendChild(t);
+  // Auto-dismiss: 4s for errors so the user has time to read, 3s otherwise.
+  setTimeout(() => t.remove(), kind === 'err' ? 4000 : 3000);
+}
+
+function formatBuildTime(iso) {
+  if (!iso) return '?';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return iso;
+  }
 }
 
 async function checkForUpdate() {
@@ -2949,7 +2991,10 @@ function startQuiz() {
   if (eligible.length === 0) return;
   // Count
   const countRadio = document.querySelector('[name="quiz-count"]:checked').value;
-  let count = countRadio === 'custom' ? parseInt(document.getElementById('quiz-count-custom').value, 10) : parseInt(countRadio, 10);
+  let count;
+  if (countRadio === 'all') count = eligible.length;
+  else if (countRadio === 'custom') count = parseInt(document.getElementById('quiz-count-custom').value, 10);
+  else count = parseInt(countRadio, 10);
   count = Math.min(Math.max(1, count || 10), eligible.length);
   // Order
   const order = document.querySelector('[name="quiz-order"]:checked')?.value || 'random';

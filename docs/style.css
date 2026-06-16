@@ -150,6 +150,34 @@ pre .copy-btn.copied { color: var(--success); }
 #quiz-timer.danger { color: var(--danger); border-color: var(--danger); animation: pulse 1s infinite; }
 @keyframes pulse { 50% { opacity: .55; } }
 
+/* Refresh button: spin the 🔄 emoji while the manual refresh pre-check is in
+   flight. Cleared automatically on success/error. */
+#refresh-toggle.refreshing { animation: refresh-spin 0.6s linear infinite; }
+@keyframes refresh-spin { to { transform: rotate(360deg); } }
+
+/* Top-anchored refresh-result toast. Single-slot — any previous toast is
+   replaced by manualRefresh(). Auto-dismisses in 3s (4s on error). */
+.refresh-toast {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  animation: refresh-toast-in 200ms ease forwards;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+}
+@keyframes refresh-toast-in { to { opacity: 1; } }
+.refresh-toast--ok  { border-color: var(--success); color: var(--success); }
+.refresh-toast--err { border-color: var(--danger);  color: var(--danger); }
+
 /* Filter bar — desktop layout */
 #filter-bar {
   border-bottom: 1px solid var(--border);
