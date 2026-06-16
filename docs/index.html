@@ -55,7 +55,7 @@
         </div>
       </div>
       <button id="refresh-toggle" class="icon-btn" type="button" title="Reload the latest content from the server" aria-label="Reload">🔄</button>
-      <button id="settings-toggle" class="icon-btn" type="button" title="Grading settings" aria-label="Grading settings">⚙️</button>
+      <button id="settings-toggle" class="icon-btn" type="button" title="LLM settings" aria-label="LLM settings">⚙️</button>
       <button id="help-toggle" class="icon-btn" type="button" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨️</button>
       <a class="icon-btn" href="https://github.com/xooooooooox/cka-exercises" target="_blank" rel="noopener" title="View source on GitHub" aria-label="GitHub repository">
         <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
@@ -356,7 +356,7 @@
     </div>
   </div>
 
-  <!-- Settings overlay (LLM grading config) -->
+  <!-- Settings overlay (LLM provider config) -->
   <div id="settings-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <div class="overlay-card">
       <header>
@@ -365,7 +365,7 @@
       </header>
 
       <nav class="settings-subtabs" role="tablist" aria-label="Settings categories">
-        <button data-settings-tab="grading" type="button" class="active" title="LLM provider config used by the Check button">🤖 Grading <span id="settings-grading-count" class="muted"></span></button>
+        <button data-settings-tab="grading" type="button" class="active" title="LLM provider config used by the Check button">🤖 LLM <span id="settings-grading-count" class="muted"></span></button>
         <button data-settings-tab="backup"  type="button" title="Export / import your local progress as JSON">💾 Backup</button>
         <button data-settings-tab="sync"    type="button" title="Push / pull your progress via a private GitHub Gist">☁ Sync</button>
       </nav>
@@ -376,12 +376,12 @@
       <div class="settings-section">
         <label class="settings-label">Provider</label>
         <div class="provider-grid">
-          <label class="provider-card"><input type="radio" name="llm-provider" value="anthropic"> <span>Anthropic</span><small>Claude</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="openai"> <span>OpenAI</span><small>GPT-4o</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="deepseek"> <span>DeepSeek</span><small>cheapest cloud</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="qwen"> <span>Qwen</span><small>Alibaba DashScope</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="doubao"> <span>Doubao</span><small>ByteDance Ark</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="ollama"> <span>Ollama</span><small>local · free</small><span class="provider-badge"></span><button type="button" class="provider-use" hidden title="Use this provider for grading">Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="anthropic"> <span>Anthropic</span><small>Claude</small><span class="provider-badge"></span></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="openai"> <span>OpenAI</span><small>GPT-4o</small><span class="provider-badge"></span></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="deepseek"> <span>DeepSeek</span><small>cheapest cloud</small><span class="provider-badge"></span></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="qwen"> <span>Qwen</span><small>Alibaba DashScope</small><span class="provider-badge"></span></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="doubao"> <span>Doubao</span><small>ByteDance Ark</small><span class="provider-badge"></span></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="ollama"> <span>Ollama</span><small>local · free</small><span class="provider-badge"></span></label>
         </div>
       </div>
 
@@ -398,7 +398,12 @@
       <div class="settings-row">
         <label class="settings-label" for="settings-model">Model</label>
         <input id="settings-model" type="text" autocomplete="off" placeholder="Pick a suggestion below, or type a custom id">
+        <div id="settings-model-suggestions-controls" class="model-suggestions-controls" hidden>
+          <input id="settings-model-filter" type="search" placeholder="Filter models…" autocomplete="off">
+          <span id="settings-model-count" class="muted"></span>
+        </div>
         <div id="settings-model-suggestions" class="model-chip-row"></div>
+        <button id="settings-model-show-all" type="button" class="model-show-all" hidden></button>
         <small class="muted" id="settings-model-hint"></small>
       </div>
 
@@ -419,7 +424,7 @@
       </div>
 
       <div class="settings-actions">
-        <button id="settings-save" type="button" class="primary" title="Save the current form into this provider's slot AND make this provider active for grading">💾 Save &amp; set as active</button>
+        <button id="settings-save" type="button" class="primary" title="Save the current form into this provider's slot AND make this provider the active LLM">💾 Save &amp; set as active</button>
         <button id="settings-clear-one" type="button" title="Wipe just the currently-selected provider's API key, model and baseUrl">🧽 Clear this provider</button>
         <button id="settings-clear" type="button" class="danger" title="Wipe every provider's saved config (API keys, models, baseUrls)">🗑 Clear all</button>
         <span id="settings-status" class="muted"></span>

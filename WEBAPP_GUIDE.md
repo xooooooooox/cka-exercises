@@ -118,15 +118,15 @@ Bundle size is ~30KB per version, lazy-loaded only when you first open the Nodes
 | 🔄 Refresh | Force-reload the latest deployment from the server — useful on iOS PWA standalone, where the app otherwise caches aggressively until you force-quit. A small "✨ New content available" banner also auto-appears at the bottom whenever a newer deploy is detected (compared against a tiny `version.json` fetched fresh on each launch). |
 | 🌓 Theme toggle | Light / dark mode (persisted) |
 | ⌨️ Help | Keyboard shortcut cheatsheet |
-| ⚙️ Settings | LLM grading config, Backup, Gist sync |
+| ⚙️ Settings | LLM provider config, Backup, Gist sync |
 
 ---
 
 ## 4. ⚙️ Settings Panel
 
-The dialog is split into three subtabs: **🤖 Grading**, **💾 Backup**, **☁ Sync**. Only one is visible at a time so the dialog stays compact — no big scrollbar. The last-opened tab is remembered via `cka:settings:lastTab` so the dialog re-opens where you left off.
+The dialog is split into three subtabs: **🤖 LLM**, **💾 Backup**, **☁ Sync**. Only one is visible at a time so the dialog stays compact — no big scrollbar. The last-opened tab is remembered via `cka:settings:lastTab` so the dialog re-opens where you left off.
 
-### 🤖 Grading (LLM grading, optional)
+### 🤖 LLM (optional grading)
 
 Lets the **✓ Check** button on each Browse card send your answer to an LLM and get back a verdict (Correct / Partial / Not yet), a 0–100 score, what you got right, and what you missed.
 
@@ -139,9 +139,7 @@ Lets the **✓ Check** button on each Browse card send your answer to an LLM and
 
 **Per-provider memory.** Each provider's API key, model, baseUrl, and last-tested model list are stored **separately**. Clicking another provider radio swaps the **form view** to that provider's saved config — so switching from DeepSeek to OpenAI doesn't overwrite your DeepSeek key. The provider header shows "N of 6 configured" at a glance; configured providers get a green ✓ badge, and the currently active one gets a blue ★.
 
-**Two ways to make a provider active for grading:**
-1. **💾 Save & set as active** — writes the form into the currently-selected provider's slot AND makes that provider active. The status line confirms which provider just became active.
-2. **Use** — a small pill that appears on any configured-but-not-active provider card. One click activates that provider without going through Save. Use this when you've already got two providers configured and just want to swap which one grades.
+**How to make a provider active for grading:** click the provider's radio button (the form view swaps to that provider's saved API key + model), then click **💾 Save & set as active** — writes the form into the currently-selected provider's slot AND makes that provider active. The status line confirms which provider just became active.
 
 What gets sent on Check: `{ exercise question, reference solution, your answer }`. Sent to your chosen provider's endpoint over HTTPS. **Ollama runs on `localhost`** so nothing leaves your machine.
 

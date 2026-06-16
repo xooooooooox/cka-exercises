@@ -44,7 +44,7 @@ The webapp has three modes:
 
 Progress persists in `localStorage`. Press <kbd>?</kbd> in the webapp to see keyboard shortcuts.
 
-### ✏️ Automatic answer grading
+### ✏️ Automatic LLM grading
 
 The webapp can grade your answers automatically using an LLM as judge. Click ⚙️ in the header to configure:
 

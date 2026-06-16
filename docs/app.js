@@ -511,13 +511,54 @@ const MODEL_FALLBACK = {
   ollama:    ['llama3.1:8b', 'qwen2.5:7b', 'mistral:7b'],
 };
 
+// Model-suggestion picker state. _modelChipState.all is the full list
+// returned by the provider's Test call; _modelChipState.expanded gates
+// the "+ N more" / "Show less" toggle. Reset on each populateModelChips
+// call so a re-Test (or provider switch) starts fresh.
+const _modelChipState = { all: [], expanded: false };
+const MODEL_CHIP_VISIBLE_CAP = 12;
+
 function populateModelChips(models) {
+  _modelChipState.all = Array.isArray(models) ? models.slice() : [];
+  _modelChipState.expanded = false;
+  const controls = document.getElementById('settings-model-suggestions-controls');
+  const filterInput = document.getElementById('settings-model-filter');
+  if (filterInput) filterInput.value = '';
+  // Hide the filter + counter row entirely when there's no list to filter
+  // (e.g. user hasn't Tested yet, or Test returned zero models).
+  if (controls) controls.hidden = _modelChipState.all.length === 0;
+  renderModelChips();
+}
+
+function renderModelChips() {
   const row = document.getElementById('settings-model-suggestions');
   if (!row) return;
-  row.innerHTML = '';
   const input = document.getElementById('settings-model');
   const currentValue = input?.value || '';
-  for (const m of (models || [])) {
+  const filterInput = document.getElementById('settings-model-filter');
+  const filter = (filterInput?.value || '').trim().toLowerCase();
+
+  const matches = filter
+    ? _modelChipState.all.filter(m => m.toLowerCase().includes(filter))
+    : _modelChipState.all;
+  const visible = _modelChipState.expanded ? matches : matches.slice(0, MODEL_CHIP_VISIBLE_CAP);
+
+  // Counter
+  const count = document.getElementById('settings-model-count');
+  if (count) {
+    if (_modelChipState.all.length === 0) {
+      count.textContent = '';
+    } else if (matches.length !== _modelChipState.all.length) {
+      count.textContent = `${visible.length} of ${matches.length} match (${_modelChipState.all.length} total)`;
+    } else {
+      count.textContent = `${visible.length} of ${_modelChipState.all.length} shown`;
+    }
+  }
+
+  // Chips
+  row.innerHTML = '';
+  row.classList.toggle('expanded', _modelChipState.expanded);
+  for (const m of visible) {
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.className = 'model-chip' + (m === currentValue ? ' active' : '');
@@ -530,6 +571,22 @@ function populateModelChips(models) {
       chip.classList.add('active');
     });
     row.appendChild(chip);
+  }
+
+  // Show-all toggle
+  const showAll = document.getElementById('settings-model-show-all');
+  if (showAll) {
+    const overflow = matches.length - visible.length;
+    if (overflow > 0) {
+      showAll.hidden = false;
+      showAll.textContent = `+ ${overflow} more`;
+    } else if (_modelChipState.expanded && matches.length > MODEL_CHIP_VISIBLE_CAP) {
+      showAll.hidden = false;
+      showAll.textContent = 'Show less';
+    } else {
+      showAll.hidden = true;
+      showAll.textContent = '';
+    }
   }
 }
 
@@ -592,24 +649,6 @@ function installSettingsOverlay() {
                           : hasConfig                     ? '✓'
                           : '';
         badge.classList.toggle('is-active', p === v2.active);
-      }
-      // "Use" button: shown only on configured providers that aren't the
-      // currently-active one. Clicking it sets active without requiring Save.
-      const useBtn = card.querySelector('.provider-use');
-      if (useBtn) {
-        useBtn.hidden = !(hasConfig && p !== v2.active);
-        // Re-bind every refresh — keeps closure references current.
-        useBtn.onclick = (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setActiveProvider(p);
-          providerInputs.forEach(rr => { rr.checked = (rr.value === p); });
-          loadSlotIntoForm(p);
-          refreshProviderBadges();
-          status.textContent = `✓ ${p} is now active`;
-          setTimeout(() => { status.textContent = ''; }, 1500);
-          if (State.mode === 'browse') renderBrowse();
-        };
       }
       if (hasConfig) configured++;
     }
@@ -769,6 +808,21 @@ function installSettingsOverlay() {
       testStatus.className = 'test-status err';
       testStatus.textContent = `✗ ${e.message || String(e)}`;
     }
+  });
+
+  // Filterable model-suggestion picker. Type `qwen-plus` to narrow the
+  // chip list; Enter accepts the first visible chip; "+ N more" toggles
+  // the full scrollable view. Avoids the 100+ chip brick-wall on Qwen.
+  document.getElementById('settings-model-filter')?.addEventListener('input', renderModelChips);
+  document.getElementById('settings-model-filter')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.querySelector('#settings-model-suggestions .model-chip')?.click();
+    }
+  });
+  document.getElementById('settings-model-show-all')?.addEventListener('click', () => {
+    _modelChipState.expanded = !_modelChipState.expanded;
+    renderModelChips();
   });
 
   installBackupHandlers();
@@ -1572,7 +1626,7 @@ function renderAnswerBox(ex, opts = {}) {
     }
 
     checkBtn.disabled = true;
-    checkBtn.textContent = '⏳ Grading…';
+    checkBtn.textContent = '⏳ Calling LLM…';
     verdictSlot.innerHTML = '';
     try {
       const v = await window.LLM.grade({
@@ -1603,7 +1657,7 @@ function renderAnswerBox(ex, opts = {}) {
       }
     } catch (e) {
       verdictSlot.appendChild(el('div', { class: 'verdict verdict-error' },
-        el('strong', {}, '✗ Grading failed'),
+        el('strong', {}, '✗ LLM call failed'),
         el('pre', { class: 'verdict-error-detail' }, e.message || String(e)),
       ));
     } finally {

@@ -1697,27 +1697,6 @@ body.answer-fullscreen-active { overflow: hidden; }
   #settings-grading-count { display: none; }
 }
 
-/* Small "Use" pill on configured-but-not-active provider cards.
-   Clicking sets that provider active without going through Save. */
-.provider-card .provider-use {
-  position: absolute;
-  bottom: 6px;
-  right: 8px;
-  font-size: 10px;
-  line-height: 1.2;
-  padding: 2px 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--bg);
-  color: var(--fg-muted);
-  cursor: pointer;
-}
-.provider-card .provider-use:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-.provider-card .provider-use[hidden] { display: none; }
-
 .settings-row {
   margin: 12px 0;
   display: flex; flex-direction: column; gap: 4px;
@@ -1890,6 +1869,48 @@ body.answer-fullscreen-active { overflow: hidden; }
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Filter + counter row above the chip list. Hidden until populateModelChips
+   gets at least one model (e.g. after a successful Test call). */
+.model-suggestions-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.model-suggestions-controls input[type="search"] {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 12px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+#settings-model-count {
+  font-size: 11px;
+  white-space: nowrap;
+}
+/* When expanded the chip row becomes a scrollable container so the brick
+   wall of 100+ models doesn't push the rest of the dialog out of view. */
+.model-chip-row.expanded {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.model-show-all {
+  display: block;
+  margin-top: 4px;
+  background: transparent;
+  border: 0;
+  padding: 4px 0;
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.model-show-all:hover { text-decoration: underline; }
+.model-show-all[hidden] { display: none; }
 
 /* ============================================================ */
 /* Help view                                                       */
