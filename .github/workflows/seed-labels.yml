@@ -1,0 +1,67 @@
+name: Seed labels
+
+# Idempotent label bootstrap for the SPA's two fix-issue flows.
+#
+# Why a dedicated workflow:
+#   The SPA's report buttons pre-fill the New Issue URL with
+#   `?labels=task-fix,kind/...` (see docs/app.js:2130-2137). GitHub applies
+#   those labels ONLY if they already exist on the repo — unknown label
+#   names get silently dropped. The first-ever issue of a new kind would
+#   therefore land without labels, and the fix workflows' `Validate label`
+#   gate would bail. This workflow pre-creates every label both fix
+#   pipelines expect so the SPA's ?labels= resolves at creation time.
+#
+# Why these triggers:
+#   - workflow_dispatch — manual re-seed any time (e.g. after a label is
+#     accidentally deleted via the UI).
+#   - push to main, paths-filtered to THIS file only — runs automatically
+#     when a maintainer edits this file (e.g. adding a new kind/* label).
+#     Does NOT fire on routine pushes (corpus edits, SPA tweaks, docs).
+#
+# Why we keep the in-workflow `Ensure repo labels exist` steps in
+# answer-fix-pr.yml and task-fix-pr.yml as well:
+#   Defensive belt-and-suspenders — idempotent --force costs ~1s and
+#   self-heals if a label was deleted between dedicated re-seeds.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/seed-labels.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Seed answer-fix + task-fix labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          create() {
+            gh label create "$1" --description "$2" --color "$3" --force >/dev/null 2>&1 || true
+          }
+          # ── answer-fix family ───────────────────────────────────────────
+          create "answer-fix"                "Reference solution mismatch reported via the SPA" "d73a4a"
+          create "kind/verification-bundled" "Reference solution bundles verification commands" "fbca04"
+          create "kind/wrong-resource"       "Reference uses wrong resource details"            "fbca04"
+          create "kind/outdated-flag"        "Reference uses deprecated kubectl flag / syntax"  "fbca04"
+          create "kind/missing-step"         "Reference is incomplete (missing required step)"  "fbca04"
+          create "kind/typo"                 "Typo / formatting issue"                          "fbca04"
+          # ── task-fix family ─────────────────────────────────────────────
+          create "task-fix"                  "Task / docs problem reported via the SPA"         "d73a4a"
+          create "kind/missing-docs-link"    "Task is missing a relevant kubernetes.io link"    "fbca04"
+          create "kind/incorrect-docs-link"  "Existing docs link points to the wrong page"      "fbca04"
+          create "kind/outdated-breadcrumb"  "Docs link's breadcrumb text drifted"              "fbca04"
+          create "kind/unclear-task"         "Task wording is ambiguous or unclear"             "fbca04"
+          create "kind/factual-error"        "Task contains a factual error about Kubernetes"   "fbca04"
+          create "kind/typo-task"            "Typo / formatting issue in the task body"         "fbca04"
+          # ── shared ──────────────────────────────────────────────────────
+          create "kind/other"                "Other (described in issue body)"                  "fbca04"
+          echo "✓ Seeded 14 labels."
