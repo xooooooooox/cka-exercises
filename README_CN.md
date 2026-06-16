@@ -39,13 +39,26 @@
 │   ├── networking.md                  # 20% —  24 道题
 │   ├── storage.md                     # 10% —  18 道题
 │   └── troubleshooting.md             # 30% —  24 道题
-└── scripts/
-    ├── build-exercises.mjs            # MD → JSON 转换（每次构建 / Pages 部署都会运行）
-    ├── lint-exercises.mjs             # 校验 exercises markdown 格式
-    ├── check-links.mjs                # ping 所有 kubernetes.io URL
-    ├── apply-enriched-tasks.mjs       # 一次性脚本: 从 PDF Q&A 补全 killer.sh task body
-    ├── apply-killersh-polish.mjs      # 一次性脚本: 给 killer.sh 加 docs 链接 + 重写标题
-    └── k8s-docs-map.json              # kubernetes.io 面包屑 → URL 查找表（polish 脚本使用）
+├── scripts/
+│   ├── build-exercises.mjs            # MD → JSON 转换（每次构建 / Pages 部署都会运行）
+│   ├── lint-exercises.mjs             # 校验 exercises markdown 格式
+│   ├── check-links.mjs                # ping 所有 kubernetes.io URL
+│   ├── apply-enriched-tasks.mjs       # 一次性脚本: 从 PDF Q&A 补全 killer.sh task body
+│   ├── apply-killersh-polish.mjs      # 一次性脚本: 给 killer.sh 加 docs 链接 + 重写标题
+│   ├── k8s-docs-map.json              # kubernetes.io 面包屑 → URL 查找表（polish 脚本使用）
+│   └── answer-fix/                    # answer-fix-pr.yml + task-fix-pr.yml 共用的 aider 助手
+│       ├── extract-context.mjs        # issue 正文 → env + prompt
+│       └── h3-range.mjs               # 抽取 / splice 单个 H3 块
+└── .github/
+    ├── answer-fix/prompt.md           # 参考解答类 issue 的 aider 提示词
+    ├── task-fix/prompt.md             # task / docs 链接类 issue 的 aider 提示词
+    └── workflows/
+        ├── build-and-deploy-docs.yml  # CI: lint + build + 部署到 Pages
+        ├── lint.yml                   # PR 检查: lint exercises markdown
+        ├── link-check.yml             # 每周一次: ping 所有 kubernetes.io URL
+        ├── answer-fix-pr.yml          # 手动触发: answer-fix issue → draft PR (aider)
+        ├── task-fix-pr.yml            # 手动触发: task-fix issue → draft PR (aider)
+        └── seed-labels.yml            # 幂等 label 引导（首次部署 + 文件被编辑时自动跑）
 ```
 
 两个 `apply-*.mjs` 是幂等的一次性脚本，保留作为 killer.sh 数据加工的可追溯记录。CI 中只运行 `build-exercises.mjs` 和 `lint-exercises.mjs`。
@@ -67,11 +80,14 @@ npm run link-check   # ping 所有 kubernetes.io URL（慢 —— 约 106 个 UR
 
 ## CI
 
-三个 GitHub Actions workflow：
+六个 GitHub Actions workflow：
 
 - **`build-and-deploy-docs.yml`** —— `main` 推送时：lint、build `exercises.json`、把 `docs/` 部署到 Pages。
 - **`lint.yml`** —— 非 main 分支推送和 PR 时：lint + 验证 build 仍可用。
 - **`link-check.yml`** —— 每周一定时 + 手动触发：ping 题目里引用的所有 kubernetes.io URL。
+- **`answer-fix-pr.yml`** —— 手动触发：把指定的 `answer-fix` issue 用 aider 处理一段 H3 → 开 draft PR 关闭该 issue。
+- **`task-fix-pr.yml`** —— 手动触发：跟 `answer-fix-pr.yml` 同形态，但处理 `task-fix` issue（缺失的 docs 链接、不清晰的题干等等）。
+- **`seed-labels.yml`** —— 幂等的 label 引导。触发条件：`workflow_dispatch` + 推送到 `main` 且路径限定在它自己 —— 首次部署时自动跑一次，之后只在 seed 文件本身被改动（例如新增 `kind/*` 标签）时才再跑，常规 push 不会触发它。
 
 ## 贡献
 

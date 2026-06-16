@@ -39,13 +39,26 @@ Progress (✓ Done, ⭐ Bookmark, theme, last-selected docs page) persists in `l
 │   ├── networking.md                  # 20% —  24 exercises
 │   ├── storage.md                     # 10% —  18 exercises
 │   └── troubleshooting.md             # 30% —  24 exercises
-└── scripts/
-    ├── build-exercises.mjs            # MD → JSON extractor (runs on every build / Pages deploy)
-    ├── lint-exercises.mjs             # validates exercise markdown format
-    ├── check-links.mjs                # pings every kubernetes.io URL
-    ├── apply-enriched-tasks.mjs       # one-shot: enrich killer.sh task bodies from PDF Q&A
-    ├── apply-killersh-polish.mjs      # one-shot: add docs hints + shorten titles for killer.sh
-    └── k8s-docs-map.json              # kubernetes.io breadcrumb → URL lookup (used by polish script)
+├── scripts/
+│   ├── build-exercises.mjs            # MD → JSON extractor (runs on every build / Pages deploy)
+│   ├── lint-exercises.mjs             # validates exercise markdown format
+│   ├── check-links.mjs                # pings every kubernetes.io URL
+│   ├── apply-enriched-tasks.mjs       # one-shot: enrich killer.sh task bodies from PDF Q&A
+│   ├── apply-killersh-polish.mjs      # one-shot: add docs hints + shorten titles for killer.sh
+│   ├── k8s-docs-map.json              # kubernetes.io breadcrumb → URL lookup (used by polish script)
+│   └── answer-fix/                    # aider helpers shared by answer-fix-pr.yml + task-fix-pr.yml
+│       ├── extract-context.mjs        # issue body → env + prompt
+│       └── h3-range.mjs               # extract / splice a single exercise H3
+└── .github/
+    ├── answer-fix/prompt.md           # aider prompt for solution-fix issues
+    ├── task-fix/prompt.md             # aider prompt for task / docs-fix issues
+    └── workflows/
+        ├── build-and-deploy-docs.yml  # CI: lint + build + deploy to Pages
+        ├── lint.yml                   # PR-check: lint exercises markdown
+        ├── link-check.yml             # weekly: ping every kubernetes.io URL
+        ├── answer-fix-pr.yml          # manual: answer-fix issue → draft PR via aider
+        ├── task-fix-pr.yml            # manual: task-fix issue → draft PR via aider
+        └── seed-labels.yml            # idempotent label bootstrap (auto on first deploy + on file edit)
 ```
 
 The two `apply-*.mjs` scripts are idempotent one-shots kept as provenance for how the killer.sh exercises were enriched. Only `build-exercises.mjs` and `lint-exercises.mjs` run in CI.
@@ -67,11 +80,14 @@ npm run link-check   # ping every kubernetes.io URL (slow — ~106 URLs)
 
 ## CI
 
-Three GitHub Actions workflows:
+Six GitHub Actions workflows:
 
 - **`build-and-deploy-docs.yml`** — on push to `main`: lint, build `exercises.json`, deploy `docs/` to Pages.
 - **`lint.yml`** — on push to any non-main branch and on PRs: lint + verify the build still works.
 - **`link-check.yml`** — weekly Monday cron + manual: pings every kubernetes.io URL referenced by an exercise.
+- **`answer-fix-pr.yml`** — manual dispatch: takes a `answer-fix`-labelled issue → runs aider against the offending exercise's H3 block → opens a draft PR that closes the issue.
+- **`task-fix-pr.yml`** — manual dispatch: same shape as `answer-fix-pr.yml` but for `task-fix`-labelled issues (missing docs links, unclear task wording, etc.).
+- **`seed-labels.yml`** — idempotent label bootstrap. Triggers on `workflow_dispatch` and on push to `main` paths-filtered to its own file — so it fires once on first deploy + automatically whenever a new label is added to the seed list, but NOT on routine pushes.
 
 ## Contributing
 

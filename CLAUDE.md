@@ -35,14 +35,23 @@ Currently 205 exercises across 5 domains. The repo has a small Node-based build 
 │   ├── check-links.mjs                 # kubernetes.io URL ping (used by weekly CI)
 │   ├── apply-enriched-tasks.mjs        # one-shot: killer.sh task-body enrichment
 │   ├── apply-killersh-polish.mjs       # one-shot: docs hints + title rewrites
-│   └── k8s-docs-map.json               # kubernetes.io breadcrumb → URL lookup
-└── .github/workflows/
-    ├── build-and-deploy-docs.yml       # CI: lint + build + deploy to Pages
-    ├── lint.yml                        # PR-check: lint exercises markdown
-    └── link-check.yml                  # weekly: ping every kubernetes.io URL
+│   ├── k8s-docs-map.json               # kubernetes.io breadcrumb → URL lookup
+│   └── answer-fix/                     # aider helpers shared by answer-fix-pr.yml + task-fix-pr.yml
+│       ├── extract-context.mjs         # issue body → env + prompt
+│       └── h3-range.mjs                # extract / splice a single exercise H3
+└── .github/
+    ├── answer-fix/prompt.md            # aider prompt for solution-fix issues
+    ├── task-fix/prompt.md              # aider prompt for task / docs-fix issues
+    └── workflows/
+        ├── build-and-deploy-docs.yml   # CI: lint + build + deploy to Pages
+        ├── lint.yml                    # PR-check: lint exercises markdown
+        ├── link-check.yml              # weekly: ping every kubernetes.io URL
+        ├── answer-fix-pr.yml           # manual: answer-fix issue → draft PR (aider)
+        ├── task-fix-pr.yml             # manual: task-fix issue → draft PR (aider)
+        └── seed-labels.yml             # idempotent label bootstrap (auto on file edit + manual)
 ```
 
-`build-exercises.mjs`, `lint-exercises.mjs`, and `check-links.mjs` run in CI. The two `apply-*.mjs` scripts are idempotent one-shots kept for provenance.
+`build-exercises.mjs`, `lint-exercises.mjs`, and `check-links.mjs` run in CI on every push. The two `apply-*.mjs` scripts are idempotent one-shots kept for provenance. `answer-fix-pr.yml` and `task-fix-pr.yml` are manual-dispatch — a maintainer triggers each from the Actions tab against a specific labelled issue. `seed-labels.yml` runs once on first deploy and again whenever its own file is edited; it pre-creates the 14 issue labels both fix workflows expect so the SPA's pre-filled `?labels=…` resolves at issue-creation time.
 
 The split between `README.md` (engineering) and `EXAM_GUIDE.md` (study index) is intentional: anyone hitting the repo from a code/contribute angle reads README; anyone landing here to study for the CKA exam reads EXAM_GUIDE. Don't move exam-prep content (dotfiles, sync script, practice-lab links, curriculum table) back into README.
 
