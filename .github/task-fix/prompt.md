@@ -23,7 +23,7 @@ Apply a minimal surgical edit to `snippet.md` to fix the issue. Do nothing else.
 
 ## Issue-type-specific guidance
 
-- `missing-docs-link` — Read **## Suggested docs link** from the issue body. Add ONE new `> [breadcrumb](url)` line inside the existing `> 🔗` block (immediately under the primary 🔗 line, before any blank line). Use the URL verbatim. Pick a breadcrumb label that matches the page's actual navigation on kubernetes.io (e.g. `Reference > API Access Control > Authenticating`). Don't invent a breadcrumb if you can't reasonably derive one from the URL.
+- `missing-docs-link` — Read **## Suggested docs link** from the issue body. Add ONE new `> [breadcrumb](url)` line inside the existing `> 🔗` block (immediately under the primary 🔗 line, before any blank line). Use the URL verbatim — but **always include a trailing slash for `/docs/.../` paths** (kubernetes.io 301-redirects URLs without one — works but is non-canonical and the link-check workflow runs slower because of the redirect round-trip). Pick a breadcrumb label that matches the page's actual navigation on kubernetes.io (e.g. `Reference > API Access Control > Authenticating`). Don't invent a breadcrumb if you can't reasonably derive one from the URL.
 
 - `incorrect-docs-link` — Read **## Link to change** and **## Suggested docs link**. Replace the existing line's URL (and the breadcrumb if the user provided a new label) with the suggested values. Keep the same `>` blockquote indentation.
 

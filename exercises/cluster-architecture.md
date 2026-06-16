@@ -47,7 +47,7 @@ openssl x509 -in /var/lib/kubelet/pki/kubelet-client-current.pem -text -noout
 ### Create a new user named "Sandra", first creating the private key, then the certificate signing request, then using the CSR resource in Kubernetes to generate the client certificate.
 
 > 🔗 [Reference > API Access Control > Certificates and Certificate Signing Requests](https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/)
-> 🔗 [Reference > API Access Control > Authentication](https://kubernetes.io/docs/reference/access-authn-authz/authentication)
+> 🔗 [Reference > API Access Control > Authentication](https://kubernetes.io/docs/reference/access-authn-authz/authentication/)
 
 <details><summary>show</summary>
 <p>

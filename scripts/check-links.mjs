@@ -80,11 +80,34 @@ async function runPool(items, worker, concurrency) {
   return out;
 }
 
+// Retry transient failures (5xx, 429, network errors, timeouts) up to 2 times
+// with exponential backoff. 4xx fails immediately — it's a genuinely broken
+// link and retrying won't fix it. Eliminates the false-positive workflow runs
+// caused by sporadic kubernetes.io 5xx / TLS-handshake hiccups from GitHub
+// Actions runner IPs (the original cause of the 2026-06-15 link-check fail).
+async function probeWithRetry(url, maxAttempts = 3) {
+  let last;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const r = await probe(url);
+    r.attempts = attempt;
+    if (r.ok) return r;
+    // 4xx (except 429) is a hard fail — don't retry.
+    if (r.status >= 400 && r.status < 500 && r.status !== 429) return r;
+    last = r;
+    if (attempt < maxAttempts) {
+      const backoffMs = attempt === 1 ? 500 : 2000;
+      await new Promise(res => setTimeout(res, backoffMs));
+    }
+  }
+  return last;
+}
+
 const results = await runPool(all, async (url) => {
-  const r = await probe(url);
+  const r = await probeWithRetry(url);
   const mark = r.ok ? '✓' : '✗';
   const code = r.status || (r.error || '?');
-  process.stdout.write(`${mark} ${String(code).padEnd(8)} ${url}\n`);
+  const retried = (r.attempts || 1) > 1 ? ` (retried ${r.attempts - 1}x)` : '';
+  process.stdout.write(`${mark} ${String(code).padEnd(8)} ${url}${retried}\n`);
   return r;
 }, CONCURRENCY);
 
