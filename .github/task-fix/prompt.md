@@ -35,7 +35,7 @@ Apply a minimal surgical edit to `snippet.md` to fix the issue. Do nothing else.
 
 - `typo` or `typo-task` — Apply a small text correction inside the task body or the docs-block breadcrumb. Don't rewrite surrounding prose.
 
-- `other` — Read **## Additional context** carefully. If the requested change isn't obvious from the issue body, leave `snippet.md` unchanged and make no edits.
+- `other` — **Default to no edit.** Read **## Additional context** carefully. Only edit if the reporter clearly states an action verb (*add, remove, replace, fix, reorder, annotate as optional, …*) **AND** what to apply it to. If the context lists items without a clear action ("X is optional", "Y should be different"), emit no edit — the maintainer will triage. **Never make structural / whitespace-only changes** (trailing blank lines, indentation cleanup, etc.); they don't address the report and they corrupt the corpus.
 
 ## Issue body (verbatim — your single source of truth)
 

@@ -29,7 +29,7 @@ Apply a minimal surgical edit to `snippet.md` to fix the issue. Do nothing else.
 - `outdated-flag` — Replace the deprecated or wrong flag/syntax with the current one for the targeted k8s version. Don't introduce a new dependency.
 - `missing-step` — Add the smallest sufficient step to make the reference end-to-end correct. Keep style consistent with the surrounding solution.
 - `typo` — Fix the typo. Don't rewrite surrounding prose.
-- `other` — Read the "Additional context" section of the issue body carefully. If the requested change isn't obvious from the issue, leave `snippet.md` unchanged and make no edits.
+- `other` — **Default to no edit.** Read the "Additional context" section carefully. Only edit if the reporter clearly states an action verb (*add, remove, replace, fix, reorder, annotate as optional, …*) **AND** what to apply it to. If the context lists items without a clear action ("X is optional", "Y should be different"), emit no edit — the maintainer will triage. **Never make structural / whitespace-only changes** (trailing blank lines, indentation cleanup, etc.); they don't address the report and they corrupt the corpus.
 
 ## Issue body (verbatim — your single source of truth)
 

@@ -101,8 +101,19 @@ if (!target) {
   process.exit(2);
 }
 
+// Inter-H3 separator integrity:
+//   target.endLine is the LAST line of the H3 block — i.e. the blank line
+//   right before the next `### ` heading. If aider's edit strips trailing
+//   whitespace from the snippet, naively splicing it back makes `</details>`
+//   butt directly against the next `### `, corrupting the corpus structure.
+//   Fix: on extract, drop trailing blank lines (so aider's snippet never
+//   contains the separator and can't influence it); on splice, re-insert
+//   exactly one blank line if the target wasn't the last H3 in the file.
+const isLastRange = ranges.indexOf(target) === ranges.length - 1;
+
 if (args.extract) {
-  const slice = lines.slice(target.startLine, target.endLine + 1).join('\n');
+  let slice = lines.slice(target.startLine, target.endLine + 1).join('\n');
+  slice = slice.replace(/\n+$/, '');   // strip trailing blank lines
   process.stdout.write(slice + '\n');
   process.exit(0);
 }
@@ -113,12 +124,16 @@ if (args.splice) {
     process.exit(2);
   }
   let snippetText = readFileSync(args.snippet, 'utf8');
-  // Drop a single trailing newline so splicing doesn't introduce a blank line
-  // for snippets that happened to end with one (the typical case).
-  snippetText = snippetText.replace(/\n$/, '');
+  // Belt: drop ALL trailing blanks from whatever aider wrote so the
+  // separator is always re-inserted from scratch.
+  snippetText = snippetText.replace(/\n+$/, '');
+  const snippetLines = snippetText.split('\n');
+  // Re-insert exactly one blank-line separator when there's a next H3 in
+  // the file. The last H3 in a file legitimately has no trailing separator.
+  if (!isLastRange) snippetLines.push('');
   const before = lines.slice(0, target.startLine);
   const after  = lines.slice(target.endLine + 1);
-  const merged = [...before, ...snippetText.split('\n'), ...after].join('\n');
+  const merged = [...before, ...snippetLines, ...after].join('\n');
   writeFileSync(sourceFile, merged);
   process.exit(0);
 }

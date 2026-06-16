@@ -299,6 +299,21 @@ jobs:
             echo "skip=1" >> "$GITHUB_ENV"
           fi
 
+      - name: Bail if the edit is whitespace-only (likely unrelated to the issue)
+        if: env.skip != '1'
+        run: |
+          set -eo pipefail
+          # `git diff --ignore-all-space --ignore-blank-lines --quiet` exits 0
+          # when the diff contains only whitespace / blank-line changes. That's
+          # almost always an aider hallucination — see PR #8 (`kind=other`,
+          # ca-1-002, deleted the inter-H3 separator).
+          if git diff --ignore-all-space --ignore-blank-lines --quiet; then
+            BODY="🤷 The editor's only change was whitespace / blank-line — almost certainly unrelated to the reported issue (the splice already normalises inter-H3 separators on its own). Skipping PR; please review the issue manually."$'\n\n'"<details><summary>Editor log</summary>"$'\n\n'"\`\`\`"$'\n'"$(tail -80 /tmp/aider.log)"$'\n'"\`\`\`"$'\n\n'"</details>"
+            gh issue comment "$ISSUE" --body "$BODY"
+            git checkout -- .
+            echo "skip=1" >> "$GITHUB_ENV"
+          fi
+
       - name: Tighten file scope
         if: env.skip != '1'
         run: |
