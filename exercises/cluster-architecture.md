@@ -77,15 +77,18 @@ spec:
   - client auth
 EOF
 
-# list the requests in the Kubernetes cluster
-k get csr
-
 # approve the csr resource
 k certificate approve sandra
 
 # extract the client certificate from the approved csr
 k get csr sandra -o jsonpath='{.status.certificate}' | base64 -d > sandra.crt
 
+```
+
+> 💡 **Verify (optional)**:
+```bash
+# list the requests in the Kubernetes cluster
+k get csr
 ```
 
 [Try this in Killercoda's Kubernetes Lab Environment](https://killercoda.com/chadmcrowell/course/cka/kubernetes-create-user)
