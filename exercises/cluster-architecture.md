@@ -92,7 +92,6 @@ k get csr sandra -o jsonpath='{.status.certificate}' | base64 -d > sandra.crt
 
 </p>
 </details>
-
 ### Add that new user `sandra` to your local kubeconfig using the kubectl config command
 
 > 🔗 [Tasks > Access Application in a Cluster > Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
