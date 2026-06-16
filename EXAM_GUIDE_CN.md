@@ -28,7 +28,8 @@
 大部分题目没有前缀，是覆盖某个考点的常规练习题。
 
 - **[CKA Past Exam]** — 历年真题，按考试大纲归类到对应章节（来源于社区流传的真题合集）
-- **[Killer.sh A-Qn / B-Qn]** — killer.sh CKA 模拟考题（Simulator A & B），统一归在每个文件末尾的专门章节。原版 PDF 见 [`assets/`](assets/)
+- **[Killer.sh A-Qn / B-Qn]** — killer.sh CKA 模拟考题（Simulator A & B），统一归在每个文件末尾的 `## Killer.sh Mock Exam Questions` 章节。原版 PDF 见 [`assets/killer-sh/`](assets/killer-sh/)
+- **[KillerCoda-Qn]** — KillerCoda CKA 模拟考题（5 个 PDF，每个考点一份，共 66 道）。统一归在每个文件末尾的 `## KillerCoda Mock Exam Questions` 章节。原版 PDF 见 [`assets/killercoda/`](assets/killercoda/)
 
 在 webapp 中可按以上标签任意组合过滤。
 
@@ -157,6 +158,6 @@ done
 
 ## 🧪 额外练习资源
 
-- **[Killercoda CKA 模拟考 (sachin)](https://killercoda.com/sachin/course/CKA)** — 79+ 道交互式浏览器实操场景，覆盖完整 CKA 大纲（需登录）
-- **[Killer.sh CKA 模拟考](https://killer.sh)** — CKA 官方模拟考试（报名考试后赠送 2 次）。Simulator A & B PDF 已放入 [`assets/`](assets/)；34 道题已按 `[Killer.sh A-Qn]` / `[Killer.sh B-Qn]` 标签整合到对应练习中
+- **[Killercoda CKA 模拟考 (sachin)](https://killercoda.com/sachin/course/CKA)** — 79+ 道交互式浏览器实操场景，覆盖完整 CKA 大纲（需登录）。配套的 PDF 模拟考题已放入 [`assets/killercoda/`](assets/killercoda/)；**66 道题**已按 `[KillerCoda-Qn]` 标签整合到对应练习中
+- **[Killer.sh CKA 模拟考](https://killer.sh)** — CKA 官方模拟考试（报名考试后赠送 2 次）。Simulator A & B PDF 已放入 [`assets/killer-sh/`](assets/killer-sh/)；34 道题已按 `[Killer.sh A-Qn]` / `[Killer.sh B-Qn]` 标签整合到对应练习中
 - [Killercoda CKA Exercises (chadmcrowell)](https://killercoda.com/cka)

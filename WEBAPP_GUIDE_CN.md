@@ -35,7 +35,7 @@
 
 默认模式。约 271 道题一个滚动列表。
 
-- **搜索 / 过滤**：自由文本 + domain + 标签（`CKA Past Exam` / `Killer.sh A / B` / `General`）+ 收藏 + "未完成"
+- **搜索 / 过滤**：自由文本 + domain + 标签（`CKA Past Exam` / `Killer.sh A / B` / `KillerCoda` / `General`）+ 收藏 + "未完成"
 - 每张卡片可独立 **展开 / 折叠解答** — 不会剧透其它题
 - 每题可标 **✓ Done** 和 **⭐ Bookmark**；侧边栏按 domain 显示进度条
 - 在 **✏️ Your answer** 编辑器输入答案，点 **✓ Check** 由 LLM 批改（需先在 Settings 中配置）。编辑器是 CodeMirror（首次聚焦时按需懒加载），支持 YAML 语法高亮、Tab 缩进，右上角 **⛶** 按钮可一键全屏 — 写多资源 manifest 时尤其方便。移动端字号为 16px，避免 iOS Safari 聚焦时自动放大
@@ -49,7 +49,7 @@
 - 来源过滤（domain、标签、只看收藏、只看未完成）
 - 题量（5 / 10 / 17 整套模考 / 自定义最多 500）
 - 时限（无 / 30 / 60 / 120 分钟）
-- **顺序：** 🎲 Random（默认，均匀随机）、↑ Sequential（按题号顺序）、🏷 By tag、📑 By section。*By tag* 和 *By section* 都是先**均匀随机抽 N 道**，再把这 N 道按 tag（general → past exam → killer.sh A → B）或 section（§1 → §2 → …）排序，让每个 tag/section 都按比例出现，而不是把所有题都给到第一组。
+- **顺序：** 🎲 Random（默认，均匀随机）、↑ Sequential（按题号顺序）、🏷 By tag、📑 By section。*By tag* 和 *By section* 都是先**均匀随机抽 N 道**，再把这 N 道按 tag（general → past exam → killer.sh A → B → killercoda）或 section（§1 → §2 → …）排序，让每个 tag/section 都按比例出现，而不是把所有题都给到第一组。
 - 解答可见性（默认隐藏，点 **Reveal** 才显示 / 一直显示）
 
 点 **▶ Start quiz** 开始。如果设置了时限，header 会显示倒计时。

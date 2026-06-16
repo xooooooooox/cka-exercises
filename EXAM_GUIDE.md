@@ -28,7 +28,8 @@ Based on [CKA Curriculum v1.35](https://github.com/cncf/curriculum/blob/master/C
 Most exercises carry no prefix — those are general practice questions covering a topic.
 
 - **[CKA Past Exam]** — historical CKA exam questions integrated under the relevant curriculum sections (sourced from past-exam collections circulating in study communities)
-- **[Killer.sh A-Qn / B-Qn]** — questions from the killer.sh CKA simulator (Simulator A & B), grouped in a dedicated section at the end of each domain file. Source PDFs are in [`assets/`](assets/).
+- **[Killer.sh A-Qn / B-Qn]** — questions from the killer.sh CKA simulator (Simulator A & B), grouped in a dedicated `## Killer.sh Mock Exam Questions` section at the end of each domain file. Source PDFs are in [`assets/killer-sh/`](assets/killer-sh/).
+- **[KillerCoda-Qn]** — questions from the KillerCoda CKA mock-exam PDFs (one per CKA domain, 66 questions total). Grouped in a dedicated `## KillerCoda Mock Exam Questions` section at the end of each domain file. Source PDFs are in [`assets/killercoda/`](assets/killercoda/).
 
 In the webapp you can filter by any combination of these tags.
 
@@ -157,6 +158,6 @@ Save it as e.g. `~/sync-dotfiles.sh`, `chmod +x ~/sync-dotfiles.sh`, then run on
 
 ## 🧪 Additional Practice Labs
 
-- **[Killercoda CKA Mock Exam (sachin)](https://killercoda.com/sachin/course/CKA)** — 79+ interactive browser-based scenarios covering the full CKA curriculum (login required)
-- **[Killer.sh CKA Exam Simulator](https://killer.sh)** — official CKA simulator (2 sessions included with exam registration). Simulator A & B PDFs in [`assets/`](assets/); 34 questions integrated into exercises with `[Killer.sh A-Qn]` / `[Killer.sh B-Qn]` tags
+- **[Killercoda CKA Mock Exam (sachin)](https://killercoda.com/sachin/course/CKA)** — 79+ interactive browser-based scenarios covering the full CKA curriculum (login required). The accompanying PDF mock exams are bundled in [`assets/killercoda/`](assets/killercoda/); **66 questions integrated** into exercises with `[KillerCoda-Qn]` tags.
+- **[Killer.sh CKA Exam Simulator](https://killer.sh)** — official CKA simulator (2 sessions included with exam registration). Simulator A & B PDFs in [`assets/killer-sh/`](assets/killer-sh/); 34 questions integrated into exercises with `[Killer.sh A-Qn]` / `[Killer.sh B-Qn]` tags.
 - [Killercoda CKA Exercises (chadmcrowell)](https://killercoda.com/cka)

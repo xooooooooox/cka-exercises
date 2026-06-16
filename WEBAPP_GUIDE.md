@@ -35,7 +35,7 @@ The installed app is **online-only** (it still fetches `index.html` + `exercises
 
 The default mode. All ~271 exercises in a scrollable list.
 
-- **Search / filter** by free text, domain, tags (`CKA Past Exam` / `Killer.sh A / B` / `General`), bookmarks, or "not yet done".
+- **Search / filter** by free text, domain, tags (`CKA Past Exam` / `Killer.sh A / B` / `KillerCoda` / `General`), bookmarks, or "not yet done".
 - Each card has its own **show / hide solution** toggle — expand individual cards without spoiling the rest.
 - Mark **✓ Done** and **⭐ Bookmark** per card. The sidebar shows a per-domain progress bar.
 - Type into the **✏️ Your answer** box and click **✓ Check** to ask the LLM grader for feedback (requires Settings → LLM grading). The editor is a real CodeMirror instance (lazy-loaded on first focus) with YAML syntax highlighting, Tab indent, and a **⛶** button that expands it to fullscreen — handy when the expected answer is a multi-resource manifest. On mobile the editor uses a 16 px font so iOS Safari doesn't auto-zoom when you tap it.
@@ -49,7 +49,7 @@ Random-draw practice under exam-like conditions.
 - Source filters (domain, tags, only bookmarks, only not-yet-done)
 - Question count (5 / 10 / 17 full mock / custom up to 500)
 - Time limit (none / 30 / 60 / 120 min)
-- **Order:** 🎲 Random (default — uniform shuffle), ↑ Sequential (by question number, source order), 🏷 By source tag, 📑 By section. *By tag* and *By section* both pick a uniform **random sample of N** first, then **sort the sample** so the questions appear grouped by tag (general → past exam → killer.sh A → B) or by section (§1 → §2 → …). That way each tag/section is represented proportionally — you don't get all N questions from the first group.
+- **Order:** 🎲 Random (default — uniform shuffle), ↑ Sequential (by question number, source order), 🏷 By source tag, 📑 By section. *By tag* and *By section* both pick a uniform **random sample of N** first, then **sort the sample** so the questions appear grouped by tag (general → past exam → killer.sh A → B → killercoda) or by section (§1 → §2 → …). That way each tag/section is represented proportionally — you don't get all N questions from the first group.
 - Solutions visibility (hidden until you click **Reveal**, or always visible)
 
 Click **▶ Start quiz** to begin. The header shows a live timer (if a limit is set).

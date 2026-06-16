@@ -2,7 +2,7 @@
 
 [English version](README.md)
 
-整理过的 CKA（Certified Kubernetes Administrator）练习题库，来源于上游 [chadmcrowell/CKA-Exercises](https://github.com/chadmcrowell/CKA-Exercises)、killer.sh Simulator A/B PDF，以及社区流传的 CKA 历年真题。清洗、规整、按来源打标签，最终以两种形态呈现：
+整理过的 CKA（Certified Kubernetes Administrator）练习题库，来源于上游 [chadmcrowell/CKA-Exercises](https://github.com/chadmcrowell/CKA-Exercises)、killer.sh Simulator A/B PDF、KillerCoda CKA 模拟考 PDF（每个考点一份），以及社区流传的 CKA 历年真题。清洗、规整、按来源打标签，最终以两种形态呈现：
 
 - **Markdown 文件** —— [`exercises/`](exercises/) 下，每个 CKA 考点一个文件，共 ~271 个 H3 条目。
 - **静态 SPA** —— [`docs/`](docs/)，提供浏览 / 测验 / Docs 树 三种模式。通过 GitHub Actions 自动构建并部署。

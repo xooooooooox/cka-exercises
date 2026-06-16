@@ -210,6 +210,8 @@ If a deletion is genuinely unavoidable, call it out in the commit message so use
 
 Killer.sh exercises go at the end of `## Killer.sh Mock Exam Questions`. CKA Past Exam entries go at the end of their domain section. New "general" exercises append to whichever numbered section they fit.
 
+KillerCoda exercises live in `## KillerCoda Mock Exam Questions` and are typically **bulk-imported** via `scripts/apply-killercoda-import.mjs` from the PDFs in `assets/killercoda/` — not hand-added. If you need to add a single KillerCoda question by hand, follow the same H3 format with the `[KillerCoda-Q<N>]` tag prefix.
+
 ### Adding a killer.sh question
 
 1. Use the H3 format `### [Killer.sh A-Q<N>] <topic>: <short verb-phrase>` (mirror existing).

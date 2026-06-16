@@ -2,7 +2,7 @@
 
 [Chinese version](README_CN.md)
 
-A curated CKA (Certified Kubernetes Administrator) practice corpus, collected from the upstream [chadmcrowell/CKA-Exercises](https://github.com/chadmcrowell/CKA-Exercises) repository, the killer.sh Simulator A/B PDFs, and historical CKA exam questions sourced from study communities. Cleaned, normalized, tagged by source, and exposed in two forms:
+A curated CKA (Certified Kubernetes Administrator) practice corpus, collected from the upstream [chadmcrowell/CKA-Exercises](https://github.com/chadmcrowell/CKA-Exercises) repository, the killer.sh Simulator A/B PDFs, the KillerCoda CKA mock-exam PDFs (one per domain), and historical CKA exam questions sourced from study communities. Cleaned, normalized, tagged by source, and exposed in two forms:
 
 - **Markdown files** under [`exercises/`](exercises/) — one file per CKA curriculum domain, ~271 H3 entries total.
 - **Static SPA** in [`docs/`](docs/) — searchable browse / quiz / docs-tree practice. Built and deployed via GitHub Actions.
