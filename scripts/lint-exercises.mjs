@@ -22,6 +22,7 @@ const FILES = [
 const ALLOWED_TAG_REGEXES = [
   /^\[CKA\s+Past\s+Exam\s+-\s+\d+\s+pts?\]/i,
   /^\[Killer\.sh\s+[AB]-Q\d+\]/i,
+  /^\[KillerCoda-Q\d+\]/i,
 ];
 
 const SCENARIO_MARKERS = [
@@ -79,7 +80,7 @@ function lintExerciseBlock(file, headLine, block) {
     const ok = ALLOWED_TAG_REGEXES.some(re => re.test(title));
     if (!ok) {
       pushIssue(file, headLine,
-        `H3 tag does not match any allowed pattern (allowed: [CKA Past Exam - N pts], [Killer.sh A-Q<N>], [Killer.sh B-Q<N>]): "${title.slice(0, 80)}"`);
+        `H3 tag does not match any allowed pattern (allowed: [CKA Past Exam - N pts], [Killer.sh A-Q<N>], [Killer.sh B-Q<N>], [KillerCoda-Q<N>]): "${title.slice(0, 80)}"`);
     }
   }
 

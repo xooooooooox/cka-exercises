@@ -13,7 +13,7 @@ A curated CKA (Certified Kubernetes Administrator) practice corpus, collected fr
 
 **Live site:** <https://xooooooooox.github.io/cka-exercises/> · **Usage guide:** [`WEBAPP_GUIDE.md`](WEBAPP_GUIDE.md)
 
-A static SPA in [`docs/`](docs/) gives you searchable browse / quiz / docs-tree practice across all ~277 exercises. Filter by domain, tag (`CKA Past Exam` / `Killer.sh A / B` / `KillerCoda` / general), bookmarks, or undone state. Quiz mode pulls random questions with optional time limits (30 / 60 / 120 min), self-graded scoring, and end-of-session summary. Docs mode mirrors the kubernetes.io navigation hierarchy and reverse-links each page to the exercises that drill it.
+A static SPA in [`docs/`](docs/) gives you searchable browse / quiz / docs-tree practice across all ~271 exercises. Filter by domain, tag (`CKA Past Exam` / `Killer.sh A / B` / `KillerCoda` / general), bookmarks, or undone state. Quiz mode pulls random questions with optional time limits (30 / 60 / 120 min), self-graded scoring, and end-of-session summary. Docs mode mirrors the kubernetes.io navigation hierarchy and reverse-links each page to the exercises that drill it.
 
 GitHub Pages serves `docs/` automatically on push to `main` via [`.github/workflows/build-and-deploy-docs.yml`](.github/workflows/build-and-deploy-docs.yml) (enable in repo Settings → Pages → Source = GitHub Actions).
 

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CKA (Certified Kubernetes Administrator) exam preparation, based on [CKA Curriculum v1.35](https://github.com/cncf/curriculum). Originally sourced from [chadmcrowell/CKA-Exercises](https://github.com/chadmcrowell/CKA-Exercises), then reorganized by exam curriculum structure and substantially enriched with: kubernetes.io documentation breadcrumbs on every exercise, past-exam questions, the killer.sh Simulator A & B questions (PDF source in `assets/killer-sh/`), the KillerCoda CKA mock exams (PDF source in `assets/killercoda/`, one per domain), and a static SPA in `docs/` that surfaces all of this with browse / quiz / docs-tree modes.
 
-Currently 277 exercises across 5 domains. The repo has a small Node-based build pipeline that compiles the markdown into `docs/exercises.json` (consumed by the SPA at runtime), but **no runtime dependencies** — Marked.js loads from CDN.
+Currently 271 exercises across 5 domains. The repo has a small Node-based build pipeline that compiles the markdown into `docs/exercises.json` (consumed by the SPA at runtime), but **no runtime dependencies** — Marked.js loads from CDN.
 
 ## Repository Layout
 
@@ -104,7 +104,7 @@ The H3 title's bracketed prefix classifies the entry. Parsed by `classifyTag()` 
 | `[CKA Past Exam - <N> pts]`           | `cka-past-exam`    | past-exam collections (19 entries)   |
 | `[Killer.sh A-Q<N>]`                  | `killersh-a`       | killer.sh Simulator A PDF (17 entries) |
 | `[Killer.sh B-Q<N>]`                  | `killersh-b`       | killer.sh Simulator B PDF (17 entries) |
-| `[KillerCoda-Q<N>]`                   | `killercoda`       | KillerCoda CKA mock exam PDFs (one per domain, in `assets/killercoda/`; 72 entries total) |
+| `[KillerCoda-Q<N>]`                   | `killercoda`       | KillerCoda CKA mock exam PDFs (one per domain, in `assets/killercoda/`; 66 entries total — source PDFs have gaps in their numbering) |
 
 ### Section structure (H2)
 
