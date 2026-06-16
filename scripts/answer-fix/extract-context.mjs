@@ -68,6 +68,7 @@ const appLink     = body.match(/\*\*App link:\*\*\s*(https?:\S+)/)?.[1] || '';
 // labels. Used as a fallback when the kind/* label didn't make it onto the
 // issue (e.g. the SPA pre-fill URL referenced labels that didn't exist yet).
 const KIND_BY_BODY_SNIPPET = [
+  // Solution-mode (answer-fix) kinds
   ['bundles verification',  'verification-bundled'],
   ['wrong resource',        'wrong-resource'],
   ['outdated',              'outdated-flag'],
@@ -75,6 +76,15 @@ const KIND_BY_BODY_SNIPPET = [
   ['missing a required',    'missing-step'],
   ['typo',                  'typo'],
   ['formatting',            'typo'],
+  // Task-mode (task-fix) kinds. Reached only when no `kind/*` label was
+  // present on the issue — defensive fallback for issues filed by URL during
+  // a brief window before the repo labels existed. The SPA always sets the
+  // label, in which case the label-walk above picks the kind directly.
+  ['missing a relevant',                       'missing-docs-link'],
+  ['existing docs link points to the wrong',   'incorrect-docs-link'],
+  ['breadcrumb text drifted',                  'outdated-breadcrumb'],
+  ['wording is ambiguous',                     'unclear-task'],
+  ['factual error',                            'factual-error'],
 ];
 
 let issueType = (labels.find(l => l.startsWith('kind/')) || '').slice(5);
