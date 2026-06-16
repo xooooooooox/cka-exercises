@@ -13,10 +13,11 @@
   --danger: #d1242f;
   --warning: #9a6700;
 
-  --tag-cka:       #d1242f;
-  --tag-killer-a:  #bc4c00;
-  --tag-killer-b:  #8250df;
-  --tag-general:   #6e7781;
+  --tag-cka:        #d1242f;
+  --tag-killer-a:   #bc4c00;
+  --tag-killer-b:   #8250df;
+  --tag-killercoda: #1f883d;   /* green — KillerCoda is the live-lab provider; distinct from Killer.sh's red/purple */
+  --tag-general:    #6e7781;
 
   --shadow: 0 1px 3px rgba(31,35,40,.08);
   --radius: 6px;
@@ -361,6 +362,7 @@ pre .copy-btn.copied { color: var(--success); }
 .tag-cka-past-exam { background: var(--tag-cka); }
 .tag-killersh-a { background: var(--tag-killer-a); }
 .tag-killersh-b { background: var(--tag-killer-b); }
+.tag-killercoda { background: var(--tag-killercoda); }
 .tag-general    { background: var(--tag-general); }
 .points-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; background: var(--border); color: var(--fg); font-weight: 600; }
 .id-pill { font-family: ui-monospace, monospace; color: var(--fg-muted); }

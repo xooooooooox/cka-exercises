@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CKA (Certified Kubernetes Administrator) exam preparation, based on [CKA Curriculum v1.35](https://github.com/cncf/curriculum). Originally sourced from [chadmcrowell/CKA-Exercises](https://github.com/chadmcrowell/CKA-Exercises), then reorganized by exam curriculum structure and substantially enriched with: kubernetes.io documentation breadcrumbs on every exercise, past-exam questions, the killer.sh Simulator A & B questions (PDF source in `assets/`), and a static SPA in `docs/` that surfaces all of this with browse / quiz / docs-tree modes.
+CKA (Certified Kubernetes Administrator) exam preparation, based on [CKA Curriculum v1.35](https://github.com/cncf/curriculum). Originally sourced from [chadmcrowell/CKA-Exercises](https://github.com/chadmcrowell/CKA-Exercises), then reorganized by exam curriculum structure and substantially enriched with: kubernetes.io documentation breadcrumbs on every exercise, past-exam questions, the killer.sh Simulator A & B questions (PDF source in `assets/killer-sh/`), the KillerCoda CKA mock exams (PDF source in `assets/killercoda/`, one per domain), and a static SPA in `docs/` that surfaces all of this with browse / quiz / docs-tree modes.
 
-Currently 205 exercises across 5 domains. The repo has a small Node-based build pipeline that compiles the markdown into `docs/exercises.json` (consumed by the SPA at runtime), but **no runtime dependencies** — Marked.js loads from CDN.
+Currently 277 exercises across 5 domains. The repo has a small Node-based build pipeline that compiles the markdown into `docs/exercises.json` (consumed by the SPA at runtime), but **no runtime dependencies** — Marked.js loads from CDN.
 
 ## Repository Layout
 
@@ -16,7 +16,9 @@ Currently 205 exercises across 5 domains. The repo has a small Node-based build 
 ├── README.md / README_CN.md            # engineering README (corpus + build + CI)
 ├── EXAM_GUIDE.md / EXAM_GUIDE_CN.md    # study index for CKA exam takers
 ├── package.json                        # npm run build / serve / preserve / lint / link-check
-├── assets/                             # killer.sh Simulator A/B PDFs
+├── assets/
+│   ├── killer-sh/                      # killer.sh Simulator A/B PDFs
+│   └── killercoda/                     # KillerCoda CKA mock exam PDFs (per-domain)
 ├── exercises/                          # 5 markdown files, one per curriculum domain
 │   ├── cluster-architecture.md         # 25% — 100 exercises
 │   ├── scheduling.md                   # 15% —  39 exercises
@@ -35,6 +37,7 @@ Currently 205 exercises across 5 domains. The repo has a small Node-based build 
 │   ├── check-links.mjs                 # kubernetes.io URL ping (used by weekly CI)
 │   ├── apply-enriched-tasks.mjs        # one-shot: killer.sh task-body enrichment
 │   ├── apply-killersh-polish.mjs       # one-shot: docs hints + title rewrites
+│   ├── apply-killercoda-import.mjs     # one-shot: import KillerCoda PDFs → exercises/*.md
 │   ├── k8s-docs-map.json               # kubernetes.io breadcrumb → URL lookup
 │   └── answer-fix/                     # aider helpers shared by answer-fix-pr.yml + task-fix-pr.yml
 │       ├── extract-context.mjs         # issue body → env + prompt
@@ -101,12 +104,14 @@ The H3 title's bracketed prefix classifies the entry. Parsed by `classifyTag()` 
 | `[CKA Past Exam - <N> pts]`           | `cka-past-exam`    | past-exam collections (19 entries)   |
 | `[Killer.sh A-Q<N>]`                  | `killersh-a`       | killer.sh Simulator A PDF (17 entries) |
 | `[Killer.sh B-Q<N>]`                  | `killersh-b`       | killer.sh Simulator B PDF (17 entries) |
+| `[KillerCoda-Q<N>]`                   | `killercoda`       | KillerCoda CKA mock exam PDFs (one per domain, in `assets/killercoda/`; 72 entries total) |
 
 ### Section structure (H2)
 
 - `## 考试大纲考点` — exam-topic checklist for the domain (skipped by parser)
 - `## <N>. <Section title>` — numbered curriculum sub-section with `## 1.` … `## N.`
-- `## Killer.sh Mock Exam Questions` — special last section housing killer.sh entries (`sectionNumber = 99`)
+- `## Killer.sh Mock Exam Questions` — special section housing killer.sh entries (`sectionNumber = 99`, `kind = 'killersh'`)
+- `## KillerCoda Mock Exam Questions` — same shape for KillerCoda entries (`sectionNumber = 98`, `kind = 'killercoda'`)
 
 ## Build Pipeline
 
@@ -241,7 +246,7 @@ Pages source must be set to "GitHub Actions" in the repo settings.
 ## Things to be aware of
 
 - `docs/exercises.json` is **gitignored** (it's a build artifact). Don't commit it.
-- The killer.sh PDFs in `assets/` are user-provided after CKA registration — they ship with the repo for now but might be removed if licensing concerns arise.
+- The killer.sh PDFs in `assets/killer-sh/` are user-provided after CKA registration; the KillerCoda PDFs in `assets/killercoda/` are similarly sourced. Both ship with the repo for now but might be removed if licensing concerns arise.
 - Killercoda's `sachin/CKA` course is referenced from the README but its content requires login and isn't reproducible here.
 
 ## Out of scope

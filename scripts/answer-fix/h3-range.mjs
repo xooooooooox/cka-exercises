@@ -82,6 +82,9 @@ for (let i = 0; i < lines.length; i++) {
     } else if (/Killer\.sh\s*Mock\s*Exam/i.test(title)) {
       currentSectionNumber = 99;
       h3CountInSection = 0;
+    } else if (/KillerCoda\s*Mock\s*Exam/i.test(title)) {
+      currentSectionNumber = 98;
+      h3CountInSection = 0;
     } else {
       // intro / non-numbered section — exercises here are skipped by the build script
       currentSectionNumber = null;

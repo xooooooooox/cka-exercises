@@ -27,7 +27,9 @@
 ├── EXAM_GUIDE.md / EXAM_GUIDE_CN.md   # 面向 CKA 考生的备考索引
 ├── CLAUDE.md                          # Claude Code 的仓库指引
 ├── package.json                       # npm run build / lint / link-check / serve
-├── assets/                            # killer.sh Simulator A/B PDF
+├── assets/
+│   ├── killer-sh/                     # killer.sh Simulator A/B PDF
+│   └── killercoda/                    # KillerCoda CKA 模拟考 PDF（按 domain 拆分）
 ├── docs/                              # 练习 SPA（GitHub Pages 源目录）
 │   ├── index.html
 │   ├── app.js
@@ -45,6 +47,7 @@
 │   ├── check-links.mjs                # ping 所有 kubernetes.io URL
 │   ├── apply-enriched-tasks.mjs       # 一次性脚本: 从 PDF Q&A 补全 killer.sh task body
 │   ├── apply-killersh-polish.mjs      # 一次性脚本: 给 killer.sh 加 docs 链接 + 重写标题
+│   ├── apply-killercoda-import.mjs    # 一次性脚本: 把 KillerCoda 模拟考 PDF 导入 exercises/*.md
 │   ├── k8s-docs-map.json              # kubernetes.io 面包屑 → URL 查找表（polish 脚本使用）
 │   └── answer-fix/                    # answer-fix-pr.yml + task-fix-pr.yml 共用的 aider 助手
 │       ├── extract-context.mjs        # issue 正文 → env + prompt

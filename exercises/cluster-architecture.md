@@ -2665,7 +2665,7 @@ kubectl logs deploy/<operator-name> -n <operator-namespace>
 
 ## Killer.sh Mock Exam Questions
 
-> 📚 Source PDFs: [`assets/CKA Simulator A Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20A%20Kubernetes%201.35%20-%20Killer%20Shell.pdf) | [`assets/CKA Simulator B Kubernetes 1.35 - Killer Shell.pdf`](../assets/CKA%20Simulator%20B%20Kubernetes%201.35%20-%20Killer%20Shell.pdf)
+> 📚 Source PDFs: [`assets/killer-sh/cka-simulator-a-k8s-1.35.pdf`](../assets/killer-sh/cka-simulator-a-k8s-1.35.pdf) | [`assets/killer-sh/cka-simulator-b-k8s-1.35.pdf`](../assets/killer-sh/cka-simulator-b-k8s-1.35.pdf)
 >
 > CKA 报名后 killer.sh 提供两次模拟考试（Simulator A & B），各 17 题，难度高于真实考试。下文整理了与本章节（集群架构）相关的题目，完整解答见 PDF。
 

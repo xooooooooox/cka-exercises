@@ -23,6 +23,7 @@ function classifyTag(title) {
   if (/^\[CKA\s+Past\s+Exam/i.test(title)) return 'cka-past-exam';
   if (/^\[Killer\.sh\s*A-/i.test(title)) return 'killersh-a';
   if (/^\[Killer\.sh\s*B-/i.test(title)) return 'killersh-b';
+  if (/^\[KillerCoda-/i.test(title))    return 'killercoda';
   return 'general';
 }
 
@@ -144,6 +145,10 @@ function parseFile(file, domainInfo) {
       sectionNumber = 99;
       sectionTitle = cur.title;
       kind = 'killersh';
+    } else if (/KillerCoda\s*Mock\s*Exam/i.test(cur.title)) {
+      sectionNumber = 98;
+      sectionTitle = cur.title;
+      kind = 'killercoda';
     } else {
       // skip intro sections like "考试大纲考点"
       continue;

@@ -13,7 +13,7 @@ A curated CKA (Certified Kubernetes Administrator) practice corpus, collected fr
 
 **Live site:** <https://xooooooooox.github.io/cka-exercises/> · **Usage guide:** [`WEBAPP_GUIDE.md`](WEBAPP_GUIDE.md)
 
-A static SPA in [`docs/`](docs/) gives you searchable browse / quiz / docs-tree practice across all ~205 exercises. Filter by domain, tag (`CKA Past Exam` / `Killer.sh A / B` / general), bookmarks, or undone state. Quiz mode pulls random questions with optional time limits (30 / 60 / 120 min), self-graded scoring, and end-of-session summary. Docs mode mirrors the kubernetes.io navigation hierarchy and reverse-links each page to the exercises that drill it.
+A static SPA in [`docs/`](docs/) gives you searchable browse / quiz / docs-tree practice across all ~277 exercises. Filter by domain, tag (`CKA Past Exam` / `Killer.sh A / B` / `KillerCoda` / general), bookmarks, or undone state. Quiz mode pulls random questions with optional time limits (30 / 60 / 120 min), self-graded scoring, and end-of-session summary. Docs mode mirrors the kubernetes.io navigation hierarchy and reverse-links each page to the exercises that drill it.
 
 GitHub Pages serves `docs/` automatically on push to `main` via [`.github/workflows/build-and-deploy-docs.yml`](.github/workflows/build-and-deploy-docs.yml) (enable in repo Settings → Pages → Source = GitHub Actions).
 
@@ -27,7 +27,9 @@ Progress (✓ Done, ⭐ Bookmark, theme, last-selected docs page) persists in `l
 ├── EXAM_GUIDE.md / EXAM_GUIDE_CN.md   # study index for CKA exam takers
 ├── CLAUDE.md                          # Claude Code guidance for this repo
 ├── package.json                       # npm run build / lint / link-check / serve
-├── assets/                            # killer.sh Simulator A/B PDFs
+├── assets/
+│   ├── killer-sh/                     # killer.sh Simulator A/B PDFs
+│   └── killercoda/                    # KillerCoda CKA mock exam PDFs (per domain)
 ├── docs/                              # Practice SPA (GitHub Pages source)
 │   ├── index.html
 │   ├── app.js
@@ -45,6 +47,7 @@ Progress (✓ Done, ⭐ Bookmark, theme, last-selected docs page) persists in `l
 │   ├── check-links.mjs                # pings every kubernetes.io URL
 │   ├── apply-enriched-tasks.mjs       # one-shot: enrich killer.sh task bodies from PDF Q&A
 │   ├── apply-killersh-polish.mjs      # one-shot: add docs hints + shorten titles for killer.sh
+│   ├── apply-killercoda-import.mjs    # one-shot: import KillerCoda mock-exam PDFs → exercises/*.md
 │   ├── k8s-docs-map.json              # kubernetes.io breadcrumb → URL lookup (used by polish script)
 │   └── answer-fix/                    # aider helpers shared by answer-fix-pr.yml + task-fix-pr.yml
 │       ├── extract-context.mjs        # issue body → env + prompt

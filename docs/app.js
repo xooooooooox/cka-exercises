@@ -11,7 +11,7 @@ const State = {
   mode: 'browse',
   filters: {
     domains: new Set(),          // all selected by default
-    tags: new Set(['general', 'cka-past-exam', 'killersh-a', 'killersh-b']),
+    tags: new Set(['general', 'cka-past-exam', 'killersh-a', 'killersh-b', 'killercoda']),
     search: '',
     onlyBookmarks: false,
     onlyUndone: false,
@@ -166,7 +166,7 @@ function loadFilters() {
   const raw = storageGet(KEY.filters, null);
   const defaults = {
     domains: new Set(State.data ? State.data.domains.map(d => d.key) : []),
-    tags: new Set(['general', 'cka-past-exam', 'killersh-a', 'killersh-b']),
+    tags: new Set(['general', 'cka-past-exam', 'killersh-a', 'killersh-b', 'killercoda']),
     search: '',
     onlyBookmarks: false,
     onlyUndone: false,
@@ -285,6 +285,7 @@ const TAG_LABEL = {
   'cka-past-exam': 'CKA Past Exam',
   'killersh-a': 'Killer.sh A',
   'killersh-b': 'Killer.sh B',
+  'killercoda': 'KillerCoda',
 };
 
 function tagPill(tag) {
@@ -404,7 +405,7 @@ function renderFilterBar() {
   document.getElementById('filter-reset').addEventListener('click', () => {
     State.filters = {
       domains: new Set(State.data.domains.map(d => d.key)),
-      tags: new Set(['general', 'cka-past-exam', 'killersh-a', 'killersh-b']),
+      tags: new Set(['general', 'cka-past-exam', 'killersh-a', 'killersh-b', 'killercoda']),
       search: '', onlyBookmarks: false, onlyUndone: false, revealSolutions: false,
     };
     saveFilters();
@@ -2485,7 +2486,7 @@ function renderExerciseCard(ex, opts = {}) {
   meta.appendChild(tagPill(ex.tag));
   if (ex.points != null) meta.appendChild(el('span', { class: 'points-pill' }, `${ex.points} pts`));
   meta.appendChild(el('span', { class: 'id-pill' }, ex.id));
-  meta.appendChild(el('span', {}, `${ex.domain.title.split(',')[0]} · ${ex.section.kind === 'killersh' ? 'Killer.sh' : `§${ex.section.number} ${ex.section.title}`}`));
+  meta.appendChild(el('span', {}, `${ex.domain.title.split(',')[0]} · ${ex.section.kind === 'killersh' ? 'Killer.sh' : ex.section.kind === 'killercoda' ? 'KillerCoda' : `§${ex.section.number} ${ex.section.title}`}`));
   if (ex.solveOn) {
     meta.appendChild(el('span', { class: 'solve-on-chip', title: 'Solve this question on this host' }, `🖥 ${ex.solveOn}`));
   }
@@ -2606,7 +2607,7 @@ function renderBrowse() {
       currentSection = null;
     }
     if (ex.section.number !== currentSection) {
-      const label = ex.section.kind === 'killersh' ? '🎯 ' + ex.section.title : `§${ex.section.number} ${ex.section.title}`;
+      const label = (ex.section.kind === 'killersh' || ex.section.kind === 'killercoda') ? '🎯 ' + ex.section.title : `§${ex.section.number} ${ex.section.title}`;
       main.appendChild(el('h3', { class: 'muted', style: { marginTop: '12px' } }, label));
       currentSection = ex.section.number;
     }
@@ -2918,7 +2919,7 @@ function pickQuizExercises(eligible, count, order) {
   if (order === 'random') return sample;
 
   if (order === 'tag') {
-    const TAG_ORDER = ['general', 'cka-past-exam', 'killersh-a', 'killersh-b'];
+    const TAG_ORDER = ['general', 'cka-past-exam', 'killersh-a', 'killersh-b', 'killercoda'];
     const idx = new Map(TAG_ORDER.map((t, i) => [t, i]));
     // Stable sort by canonical tag order. Items with an unknown tag sink last.
     return sample
