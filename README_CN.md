@@ -4,7 +4,7 @@
 
 整理过的 CKA（Certified Kubernetes Administrator）练习题库，来源于上游 [chadmcrowell/CKA-Exercises](https://github.com/chadmcrowell/CKA-Exercises)、killer.sh Simulator A/B PDF，以及社区流传的 CKA 历年真题。清洗、规整、按来源打标签，最终以两种形态呈现：
 
-- **Markdown 文件** —— [`exercises/`](exercises/) 下，每个 CKA 考点一个文件，共 ~205 个 H3 条目。
+- **Markdown 文件** —— [`exercises/`](exercises/) 下，每个 CKA 考点一个文件，共 ~271 个 H3 条目。
 - **静态 SPA** —— [`docs/`](docs/)，提供浏览 / 测验 / Docs 树 三种模式。通过 GitHub Actions 自动构建并部署。
 
 > 👉 **要备考 CKA 吗？** 从 [`EXAM_GUIDE_CN.md`](EXAM_GUIDE_CN.md) 开始 —— 那是面向考生的备考索引（大纲、标签说明、考前 dotfiles、同步脚本、参考资料、其他练习平台）。
@@ -13,7 +13,7 @@
 
 **在线地址：** <https://xooooooooox.github.io/cka-exercises/> · **使用指南：** [`WEBAPP_GUIDE_CN.md`](WEBAPP_GUIDE_CN.md)
 
-[`docs/`](docs/) 下是一个静态 SPA，提供浏览 / 测验 / 文档树 三种模式，覆盖全部 ~205 道题。支持按考点 / 标签（`CKA Past Exam` / `Killer.sh A / B` / 通用）/ 收藏 / 未完成多维过滤。测验模式可随机抽题、设置 30 / 60 / 120 分钟限时、自我打分、生成会话总结。Docs 模式镜像 kubernetes.io 导航树，每个文档页反向链接关联的题目。
+[`docs/`](docs/) 下是一个静态 SPA，提供浏览 / 测验 / 文档树 三种模式，覆盖全部 ~271 道题。支持按考点 / 标签（`CKA Past Exam` / `Killer.sh A / B` / `KillerCoda` / 通用）/ 收藏 / 未完成多维过滤。测验模式可随机抽题、设置 30 / 60 / 120 分钟限时、自我打分、生成会话总结。Docs 模式镜像 kubernetes.io 导航树，每个文档页反向链接关联的题目。
 
 推送到 `main` 后，GitHub Pages 通过 [`.github/workflows/build-and-deploy-docs.yml`](.github/workflows/build-and-deploy-docs.yml) 自动部署（需在仓库 Settings → Pages → Source 选择 GitHub Actions）。
 
@@ -36,11 +36,11 @@
 │   ├── style.css
 │   └── exercises.json                 # gitignore —— 由 scripts/build-exercises.mjs 生成
 ├── exercises/                         # 源 markdown —— 每个 CKA 考点一个文件
-│   ├── cluster-architecture.md        # 25% — 100 道题
-│   ├── scheduling.md                  # 15% —  39 道题
-│   ├── networking.md                  # 20% —  24 道题
-│   ├── storage.md                     # 10% —  18 道题
-│   └── troubleshooting.md             # 30% —  24 道题
+│   ├── cluster-architecture.md        # 25% — 114 道题
+│   ├── scheduling.md                  # 15% —  49 道题
+│   ├── networking.md                  # 20% —  32 道题
+│   ├── storage.md                     # 10% —  28 道题
+│   └── troubleshooting.md             # 30% —  48 道题
 ├── scripts/
 │   ├── build-exercises.mjs            # MD → JSON 转换（每次构建 / Pages 部署都会运行）
 │   ├── lint-exercises.mjs             # 校验 exercises markdown 格式

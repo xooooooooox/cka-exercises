@@ -33,7 +33,7 @@ The installed app is **online-only** (it still fetches `index.html` + `exercises
 
 ### 📚 Browse
 
-The default mode. All ~205 exercises in a scrollable list.
+The default mode. All ~271 exercises in a scrollable list.
 
 - **Search / filter** by free text, domain, tags (`CKA Past Exam` / `Killer.sh A / B` / `General`), bookmarks, or "not yet done".
 - Each card has its own **show / hide solution** toggle — expand individual cards without spoiling the rest.

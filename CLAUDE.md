@@ -20,11 +20,11 @@ Currently 271 exercises across 5 domains. The repo has a small Node-based build 
 │   ├── killer-sh/                      # killer.sh Simulator A/B PDFs
 │   └── killercoda/                     # KillerCoda CKA mock exam PDFs (per-domain)
 ├── exercises/                          # 5 markdown files, one per curriculum domain
-│   ├── cluster-architecture.md         # 25% — 100 exercises
-│   ├── scheduling.md                   # 15% —  39 exercises
-│   ├── networking.md                   # 20% —  24 exercises
-│   ├── storage.md                      # 10% —  18 exercises
-│   └── troubleshooting.md              # 30% —  24 exercises
+│   ├── cluster-architecture.md         # 25% — 114 exercises
+│   ├── scheduling.md                   # 15% —  49 exercises
+│   ├── networking.md                   # 20% —  32 exercises
+│   ├── storage.md                      # 10% —  28 exercises
+│   └── troubleshooting.md              # 30% —  48 exercises
 ├── docs/                               # GitHub Pages source (the SPA)
 │   ├── index.html
 │   ├── app.js                          # ~1400 LOC, no framework

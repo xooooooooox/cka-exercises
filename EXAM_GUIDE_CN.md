@@ -13,15 +13,15 @@
 
 ## 📋 CKA 考试大纲
 
-基于 [CKA Curriculum v1.35](https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.35.pdf)，205 道题按考试权重分布在 5 个考点上：
+基于 [CKA Curriculum v1.35](https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.35.pdf)，271 道题按考试权重分布在 5 个考点上：
 
 | 部分 | 占比 | 练习 |
 |------|------|------|
-| [Cluster Architecture, Installation and Configuration](exercises/cluster-architecture.md) | 25% | 100 |
-| [Workloads & Scheduling](exercises/scheduling.md) | 15% | 39 |
-| [Services & Networking](exercises/networking.md) | 20% | 24 |
-| [Storage](exercises/storage.md) | 10% | 18 |
-| [Troubleshooting](exercises/troubleshooting.md) | 30% | 24 |
+| [Cluster Architecture, Installation and Configuration](exercises/cluster-architecture.md) | 25% | 114 |
+| [Workloads & Scheduling](exercises/scheduling.md) | 15% | 49 |
+| [Services & Networking](exercises/networking.md) | 20% | 32 |
+| [Storage](exercises/storage.md) | 10% | 28 |
+| [Troubleshooting](exercises/troubleshooting.md) | 30% | 48 |
 
 ## 🏷 题目的标签说明
 

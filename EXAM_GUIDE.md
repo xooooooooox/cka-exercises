@@ -13,15 +13,15 @@ If you want to know *how* this repo collects and cleans the corpus, or to run/co
 
 ## 📋 CKA Exam Curriculum
 
-Based on [CKA Curriculum v1.35](https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.35.pdf). 205 exercises distributed across 5 domains in proportion to exam weight:
+Based on [CKA Curriculum v1.35](https://github.com/cncf/curriculum/blob/master/CKA_Curriculum_v1.35.pdf). 271 exercises distributed across 5 domains in proportion to exam weight:
 
 | Domain | Weight | Exercises |
 |--------|--------|-----------|
-| [Cluster Architecture, Installation and Configuration](exercises/cluster-architecture.md) | 25% | 100 |
-| [Workloads & Scheduling](exercises/scheduling.md) | 15% | 39 |
-| [Services & Networking](exercises/networking.md) | 20% | 24 |
-| [Storage](exercises/storage.md) | 10% | 18 |
-| [Troubleshooting](exercises/troubleshooting.md) | 30% | 24 |
+| [Cluster Architecture, Installation and Configuration](exercises/cluster-architecture.md) | 25% | 114 |
+| [Workloads & Scheduling](exercises/scheduling.md) | 15% | 49 |
+| [Services & Networking](exercises/networking.md) | 20% | 32 |
+| [Storage](exercises/storage.md) | 10% | 28 |
+| [Troubleshooting](exercises/troubleshooting.md) | 30% | 48 |
 
 ## 🏷 How exercises are tagged
 
