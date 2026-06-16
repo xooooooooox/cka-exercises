@@ -203,8 +203,12 @@ function parseFile(file, domainInfo) {
 
 const guidePath   = path.join(ROOT, 'WEBAPP_GUIDE.md');
 const guideCnPath = path.join(ROOT, 'WEBAPP_GUIDE_CN.md');
+const examPath    = path.join(ROOT, 'EXAM_GUIDE.md');
+const examCnPath  = path.join(ROOT, 'EXAM_GUIDE_CN.md');
 const helpGuide   = fs.existsSync(guidePath)   ? fs.readFileSync(guidePath,   'utf8') : '';
 const helpGuideCN = fs.existsSync(guideCnPath) ? fs.readFileSync(guideCnPath, 'utf8') : '';
+const examGuide   = fs.existsSync(examPath)    ? fs.readFileSync(examPath,    'utf8') : '';
+const examGuideCN = fs.existsSync(examCnPath)  ? fs.readFileSync(examCnPath,  'utf8') : '';
 
 const result = {
   generatedAt: new Date().toISOString(),
@@ -217,6 +221,8 @@ const result = {
   })),
   helpGuide,
   helpGuideCN,
+  examGuide,
+  examGuideCN,
 };
 
 // Post-pass: assign a per-domain question number (1..N) in the order they

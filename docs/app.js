@@ -56,6 +56,7 @@ const KEY = {
   fixDraftPrefix: 'cka:fix-draft:', // appended with <exerciseId>
   taskFixDraftPrefix: 'cka:task-fix-draft:', // task / docs reports — appended with <exerciseId>
   helpLang: 'cka:help:lang',     // 'en' | 'zh' — Help-tab language preference
+  helpDoc:  'cka:help:doc',      // 'webapp' | 'exam' — Help-tab document preference
   filters: 'cka:filters',        // Browse-mode filter bar (persists across sessions + sync)
   gistToken: 'cka:gist:token',
   gistId: 'cka:gist:id',
@@ -208,6 +209,17 @@ function getHelpLang() {
 }
 function setHelpLang(lang) {
   storageSet(KEY.helpLang, lang === 'zh' ? 'zh' : 'en');
+}
+
+// Help-tab document preference. Two values: 'webapp' (default — the SPA's own
+// usage guide, the user's most likely entry point) and 'exam' (the CKA study
+// index). Persisted across reloads + carried in Backup / Gist export via the
+// cka:* prefix walker.
+function getHelpDoc() {
+  return storageGet(KEY.helpDoc, null) === 'exam' ? 'exam' : 'webapp';
+}
+function setHelpDoc(doc) {
+  storageSet(KEY.helpDoc, doc === 'exam' ? 'exam' : 'webapp');
 }
 
 function getFixDraft(id) { return storageGet(KEY.fixDraftPrefix + id, null); }
@@ -3625,22 +3637,57 @@ function renderHelpView(opts = {}) {
   const body = document.getElementById('help-body');
   const toc = document.getElementById('help-toc');
   if (!body || !toc) return;
-  // Language-aware markdown pick. The CN guide is bundled by build-exercises.mjs
-  // alongside the EN one. If we want zh but no CN content shipped (file missing
-  // at build time), silently fall back to EN so the Help tab never goes blank.
+  // (doc × lang) markdown pick. Both documents are bundled by build-exercises.mjs;
+  // missing-file fallback returns empty string so the SPA hides the missing
+  // toggle gracefully. Resolution chain:
+  //   requested (doc, lang) → same-doc EN → webapp EN → empty.
   const lang = getHelpLang();
-  const en = (State.data && State.data.helpGuide) || '';
-  const cn = (State.data && State.data.helpGuideCN) || '';
-  const md = (lang === 'zh' && cn) ? cn : en;
+  const doc  = getHelpDoc();
+  const helpEn = (State.data && State.data.helpGuide)   || '';
+  const helpCn = (State.data && State.data.helpGuideCN) || '';
+  const examEn = (State.data && State.data.examGuide)   || '';
+  const examCn = (State.data && State.data.examGuideCN) || '';
+  const cnForCurrentDoc = doc === 'exam' ? examCn : helpCn;
+  const enForCurrentDoc = doc === 'exam' ? examEn : helpEn;
+  const md = (lang === 'zh' && cnForCurrentDoc)
+    ? cnForCurrentDoc
+    : (enForCurrentDoc || helpEn);
   if (!md) {
     body.innerHTML = '<p class="muted">Help content not bundled — run <code>npm run build</code> to regenerate <code>exercises.json</code>.</p>';
     return;
   }
   body.innerHTML = renderMarkdown(md);
 
-  // Inject the EN ⇄ 中文 toggle at the very top of the body. Only shows when
-  // both languages were bundled (cn truthy); otherwise stays out of the way.
-  if (cn) {
+  // Two pill switchers above the rendered markdown:
+  //   1. Document selector (📖 Webapp Guide | 🎯 Study Index)
+  //   2. Language selector (EN | 中文)
+  // Both are gated on the corresponding source being bundled so the SPA
+  // degrades gracefully if a file is missing at build time.
+  const hasExam = !!(examEn || examCn);
+  const controls = el('div', { class: 'help-controls' });
+
+  if (hasExam) {
+    const docSwitch = el('div', { class: 'help-doc-switch', role: 'group', 'aria-label': 'Document' });
+    const mkDocBtn = (code, label) => {
+      const b = el('button', {
+        type: 'button',
+        class: 'help-doc-btn' + (doc === code ? ' active' : ''),
+        'aria-pressed': String(doc === code),
+      }, label);
+      b.addEventListener('click', () => {
+        if (doc === code) return;
+        setHelpDoc(code);
+        renderHelpView({ force: true });
+        body.scrollIntoView({ behavior: 'auto', block: 'start' });
+      });
+      return b;
+    };
+    docSwitch.appendChild(mkDocBtn('webapp', '📖 Webapp Guide'));
+    docSwitch.appendChild(mkDocBtn('exam',   '🎯 Study Index'));
+    controls.appendChild(docSwitch);
+  }
+
+  if (cnForCurrentDoc) {
     const langSwitch = el('div', { class: 'help-lang-switch', role: 'group', 'aria-label': 'Language' });
     const mkBtn = (code, label) => {
       const b = el('button', {
@@ -3658,25 +3705,35 @@ function renderHelpView(opts = {}) {
     };
     langSwitch.appendChild(mkBtn('en', 'EN'));
     langSwitch.appendChild(mkBtn('zh', '中文'));
-    body.prepend(langSwitch);
+    controls.appendChild(langSwitch);
   }
+
+  if (controls.children.length) body.prepend(controls);
 
   // Rewrite repo-relative links → GitHub blob URLs (open in new tab).
   // Same-page anchors (#…) and absolute URLs (https://…, mailto:…) are left untouched.
-  // Exception: the cross-language link (WEBAPP_GUIDE_CN.md / WEBAPP_GUIDE.md) is
-  // intercepted to switch in-app instead of navigating to a path that 404s on Pages.
+  // Exception: cross-doc + cross-lang sibling links (WEBAPP_GUIDE{,_CN}.md /
+  // EXAM_GUIDE{,_CN}.md) are intercepted to switch state in-app instead of
+  // navigating to a path that 404s on Pages.
   const REPO_BLOB = 'https://github.com/xooooooooox/cka-exercises/blob/main/';
+  const SELF_LINK_RE = /(^|\/)(WEBAPP_GUIDE_CN|WEBAPP_GUIDE|EXAM_GUIDE_CN|EXAM_GUIDE)\.md$/;
+  const LINK_TO_STATE = {
+    'WEBAPP_GUIDE.md':    { doc: 'webapp', lang: 'en' },
+    'WEBAPP_GUIDE_CN.md': { doc: 'webapp', lang: 'zh' },
+    'EXAM_GUIDE.md':      { doc: 'exam',   lang: 'en' },
+    'EXAM_GUIDE_CN.md':   { doc: 'exam',   lang: 'zh' },
+  };
   body.querySelectorAll('a[href]').forEach(a => {
     const href = a.getAttribute('href');
     if (!href) return;
-    // In-app language switch — intercept clicks on the markdown's own
-    // "中文版" / "English" links before they navigate.
-    if (/(^|\/)WEBAPP_GUIDE(_CN)?\.md$/.test(href)) {
-      const next = /WEBAPP_GUIDE_CN\.md$/.test(href) ? 'zh' : 'en';
-      a.setAttribute('href', '#help-lang-' + next);   // visual hint only
+    const m = href.match(SELF_LINK_RE);
+    if (m) {
+      const target = LINK_TO_STATE[m[2] + '.md'];
+      a.setAttribute('href', '#help-' + target.doc + '-' + target.lang);
       a.addEventListener('click', (e) => {
         e.preventDefault();
-        setHelpLang(next);
+        setHelpDoc(target.doc);
+        setHelpLang(target.lang);
         renderHelpView({ force: true });
         body.scrollIntoView({ behavior: 'auto', block: 'start' });
       });
