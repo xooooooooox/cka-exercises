@@ -895,6 +895,11 @@ function collectExportable() {
     const k = localStorage.key(i);
     if (!k || !k.startsWith('cka:')) continue;
     if (k === KEY.gistToken) continue;
+    // Sync metadata (lastPushAt / lastPullAt / lastError) is per-device and
+    // round-tripping it through the gist made the popover show stale "X d ago"
+    // times after a reload (the gist's snapshot from the last push would
+    // overwrite the local lastPullAt that _run() had just stamped).
+    if (k === KEY.syncMeta) continue;
     let val = storageGet(k, null);
     if (k === KEY.llmSettings && val && typeof val === 'object') {
       // v2 shape: scrub every provider's apiKey. v1 legacy: scrub the top-level
@@ -920,6 +925,10 @@ function importPayload(payload) {
   }
   for (const [k, v] of Object.entries(payload.data)) {
     if (!k.startsWith('cka:')) continue;
+    // Defensive skip for old gists that still contain sync metadata —
+    // preserves the fresh lastPullAt that _run('pull', …) stamped moments
+    // before this import runs (see paired skip in collectExportable).
+    if (k === KEY.syncMeta) continue;
     if (k === KEY.llmSettings && v && typeof v === 'object') {
       const existing = storageGet(k, {}) || {};
       // Preserve any apiKeys already present locally for providers whose slot
@@ -1547,51 +1556,27 @@ async function checkForUpdate() {
 
 // ---------- Auto-grading UI (textarea + Check + verdict) ----------
 
-// CodeMirror 6 — lazy-loaded from esm.sh on first answer-box focus. ~120 KB
-// over the wire, cached by the browser; we cache the module promise so a
-// second editor instance reuses the same download.
+// CodeMirror 6 — lazy-loaded on first answer-box focus, cached for reuse.
+// Specifiers go through the <script type="importmap"> block in index.html;
+// the browser resolves every @codemirror/* (and transitive @lezer/*) to
+// exactly one URL, guaranteeing one module instance per package. That's the
+// architectural fix for the bash-highlighting "monochrome editor" bug —
+// three prior attempts on esm.sh's ?deps= cascade silently produced two
+// @lezer/highlight instances, which made tag-identity instanceof checks fail
+// inside StreamLanguage. With JSPM-served importmap resolution, those
+// instances merge correctly.
 let _cmPromise = null;
 function loadCodeMirror() {
   if (_cmPromise) return _cmPromise;
   _cmPromise = (async () => {
-    // CM6's facet resolver does `instanceof` checks, so every package on the
-    // graph MUST resolve `@codemirror/state` and `@codemirror/view` to the
-    // exact same URL. esm.sh's default resolution returns semver-range URLs
-    // which the browser sees as distinct modules from our direct exact-version
-    // imports — triggering "multiple instances of @codemirror/state are loaded"
-    // on Chrome 149.
-    //
-    // Solution: pin every package's transitive state+view with `?deps=…` so
-    // esm.sh rewrites all references to *one* canonical variant URL, and use
-    // versions recent enough that the transitive packages (autocomplete via
-    // basicSetup, language, etc.) can find their expected exports. The
-    // previous pin to view@6.26.3 + state@6.4.1 made language@6.12.3 attempt
-    // to import `activateHover` from a stale view variant that didn't have it.
-    // IMPORTANT — past failed attempts to add bash highlighting (DO NOT repeat
-    // without solving the underlying issue first):
-    //   1. Adding `@codemirror/language` or `@lezer/highlight` to this DEPS
-    //      cascade. esm.sh re-bakes transitive packages and silently breaks
-    //      basicSetup's extension array — net effect was monochrome editor
-    //      with NO line numbers either (commit ca19cc9).
-    //   2. Adding `syntaxHighlighting(defaultHighlightStyle, {fallback:true})`
-    //      as a parallel extension to compensate. Doesn't help if basicSetup
-    //      itself was broken upstream.
-    //   3. Switching the language extension from yaml() to
-    //      StreamLanguage.define(shell) without (1)+(2). Mounts cleanly but
-    //      tokens never get styled — the two `@lezer/highlight` instances
-    //      (one transitive from basicSetup, one from our explicit import)
-    //      fail `instanceof` checks on tag identity (commit e085d9f).
-    // The right path for bash highlighting needs a different architecture —
-    // browser <script type="importmap"> in index.html so every @codemirror/*
-    // specifier resolves to one canonical URL, OR self-host a pre-bundled CM
-    // build under docs/vendor/. Tracked as a separate follow-up.
-    const DEPS = 'deps=@codemirror/state@6.5.2,@codemirror/view@6.43.1&target=es2022';
-    const [view, state, basic, langYaml, commands] = await Promise.all([
-      import(`https://esm.sh/@codemirror/view@6.43.1?${DEPS}`),
-      import('https://esm.sh/@codemirror/state@6.5.2?target=es2022'),
-      import(`https://esm.sh/codemirror@6.0.1?${DEPS}`),
-      import(`https://esm.sh/@codemirror/lang-yaml@6.1.3?${DEPS}`),
-      import(`https://esm.sh/@codemirror/commands@6.10.3?${DEPS}`),
+    const [view, state, basic, langYaml, commands, language, legacyShell] = await Promise.all([
+      import('@codemirror/view'),
+      import('@codemirror/state'),
+      import('codemirror'),
+      import('@codemirror/lang-yaml'),
+      import('@codemirror/commands'),
+      import('@codemirror/language'),
+      import('@codemirror/legacy-modes/mode/shell'),
     ]);
     return {
       EditorView: view.EditorView,
@@ -1601,6 +1586,8 @@ function loadCodeMirror() {
       yaml: langYaml.yaml,
       keymap: view.keymap,
       indentWithTab: commands.indentWithTab,
+      StreamLanguage: language.StreamLanguage,
+      shell: legacyShell.shell,
     };
   })().catch(e => { _cmPromise = null; throw e; });
   return _cmPromise;
@@ -1754,10 +1741,17 @@ function renderAnswerBox(ex, opts = {}) {
     _cmReadyPromise = (async () => {
       try {
         const cm = await loadCodeMirror();
-        const { EditorView, EditorState, Prec, basicSetup, yaml, indentWithTab, keymap } = cm;
+        const { EditorView, EditorState, Prec, basicSetup, StreamLanguage, shell,
+                indentWithTab, keymap } = cm;
         const update = EditorView.updateListener.of(u => {
           if (u.docChanged) persistDebounced();
         });
+        // CKA answers are predominantly bash (kubectl + openssl + heredocs).
+        // Shell highlighting handles those tokens correctly; YAML inside a
+        // <<EOF heredoc renders as plain text (acceptable — nested parsing
+        // is a separate, larger project). The importmap in index.html
+        // guarantees one @lezer/highlight instance so tags actually match.
+        const shellLang = StreamLanguage.define(shell);
         const state = EditorState.create({
           doc: ta.value,
           extensions: [
@@ -1766,10 +1760,7 @@ function renderAnswerBox(ex, opts = {}) {
             // which otherwise lets the key fall through to the browser's
             // focus-shift default.
             Prec.highest(keymap.of([indentWithTab])),
-            // Language extension is `yaml()` — the corpus is heavy on YAML
-            // manifests so this is the least-wrong default. Bash highlighting
-            // is a known gap; see the cautionary comment in loadCodeMirror().
-            yaml(),
+            shellLang,
             EditorView.lineWrapping,
             EditorView.theme(CM_THEME, { dark: isDark() }),
             // Layout theme — the outer .answer-cm container sets the height
