@@ -164,6 +164,14 @@ Three top-level modes (tabs in the header):
 - **🎯 Quiz** — pre-quiz form (source filters + count + time limit + solution-visibility policy), active session with sticky countdown timer + prev/next/flag/skip/grade controls, end-of-session summary.
 - **📖 Docs** — two-pane: left = multi-level collapsible tree mirroring kubernetes.io navigation, built from breadcrumbs at runtime; right = selected page detail with breadcrumb, link-out, and the list of exercises referencing it.
 
+### CodeMirror via JSPM importmap (DO NOT revert)
+
+The answer-editor's CodeMirror dependencies (state / view / language / commands / lang-yaml / legacy-modes/mode/shell / codemirror / lezer-*) resolve via a `<script type="importmap">` block in `docs/index.html`, served by JSPM (`https://ga.jspm.io/...`). `docs/app.js`'s `loadCodeMirror()` then does bare-specifier dynamic imports (`import('@codemirror/view')` etc.). Every `@codemirror/*` and `@lezer/*` specifier — including the transitive ones loaded inside `basicSetup` — resolves to **exactly one URL**. That's what makes `StreamLanguage.define(shell)`'s tag-identity work correctly and bash syntax highlighting actually appear.
+
+**DO NOT** swap back to esm.sh's `?deps=` cascade — three earlier attempts in this codebase silently produced two `@lezer/highlight` instances, which failed `instanceof` tag checks. The cautionary trail lives in commits `e085d9f` → `ca19cc9` → `5cd5433` → `a5738a7`.
+
+Bash highlighting in the answer editor uses `@codemirror/legacy-modes/mode/shell` + `StreamLanguage.define` from the same importmap. The corpus is bash-heavy (kubectl + openssl + heredocs), so shell mode is the right default — YAML inside heredocs renders as plain text (acceptable trade-off; nested parsing is out of scope).
+
 State management is in module-scope `State` object; no framework. Persistence via `localStorage`:
 
 | Key              | Purpose                                            |
@@ -173,9 +181,15 @@ State management is in module-scope `State` object; no framework. Persistence vi
 | `cka:theme`      | `"light" | "dark"`                                  |
 | `cka:lastQuiz`   | last quiz settings (count, time, source filters)   |
 | `cka:docs:lastUrl` | last-selected leaf in Docs tab (auto-restore)    |
-| `cka:llm:settings` | LLM grading config (provider, apiKey, model, baseUrl, autoDoneThreshold) |
+| `cka:llm:settings` | LLM grading config — v2 per-provider shape (providers + active + autoDoneThreshold) |
 | `cka:llm:privacyAck` | `true` after the first-use privacy dialog dismissal |
-| `cka:answer:<id>` | per-exercise saved answer + last verdict          |
+| `cka:answer:<id>` | per-exercise saved answer + last verdict (with provider/model/usage pinned at grade-time) |
+| `cka:gist:token` | GitHub PAT (never exported, never round-tripped through gist) |
+| `cka:gist:id`    | Gist ID used by Push / Pull |
+| `cka:sync:meta`  | Per-device sync metadata — last push/pull/test timestamps, lastError, lastSyncedGistUpdatedAt (conflict-detection baseline) |
+| `cka:sync:prepull-backup` | Snapshot taken before any Pull / Import; restorable via the Settings button |
+| `cka:sync:autoDisabled` | `true` if the user opted out of auto-push |
+| `cka:sync:dirtyAt` | ISO timestamp of last sync-worthy edit; cleared after a successful auto-push |
 
 ## Content Conventions
 

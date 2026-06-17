@@ -6,6 +6,16 @@ A 5-minute tour of the static SPA at <https://xooooooooox.github.io/cka-exercise
 
 > **TL;DR.** Pick a mode at the top. Browse to study, Quiz to drill under time pressure, Docs to learn the kubernetes.io tree. Everything you do is saved in your browser's `localStorage` — nothing leaves your machine unless you click **Test / Check** (sends to your chosen LLM provider) or **Push / Pull** (sends to your private GitHub Gist).
 
+> **What's new.**
+> - **Streaming grader.** Click ✓ Check and watch the response stream in live with a Cancel button + elapsed-time + char-count display, ending with a 🪙 token-usage line on the verdict.
+> - **🤖 LLM quick-switch.** Header popover next to ☁ Sync — one click to switch between configured providers without opening Settings.
+> - **GLM provider added.** Zhipu BigModel joins Anthropic / OpenAI / DeepSeek / Qwen / Doubao / Ollama (7 total).
+> - **📑 api-resources in Tools.** New third Tools sub-tab — a `kubectl api-resources` lookup table with filter syntax (`namespaced:false`, `verb:patch`, `group:apps`).
+> - **Fullscreen quiz controls.** Maximise the answer editor in quiz mode and you now keep Prev / Next / Got / Missed / Skip / Flag / Reveal / 📋 Questions in a sticky strip at the bottom — no exit-fullscreen-to-navigate dance.
+> - **💡 Solution drawer.** Even in fullscreen, click 💡 (or Reveal) to see the reference solution in an overlay drawer.
+> - **Auto-sync.** Configure a Gist and edits auto-push 30 s after you stop changing things. Plus pre-pull backup + conflict detection guard against multi-device clobber.
+> - **Bash syntax highlighting** in the answer editor (was YAML — bash is closer to what you'll type during the exam).
+
 ---
 
 ## 1. Quick Start
@@ -38,7 +48,7 @@ The default mode. All ~271 exercises in a scrollable list.
 - **Search / filter** by free text, domain, tags (`CKA Past Exam` / `Killer.sh A / B` / `KillerCoda` / `General`), bookmarks, or "not yet done".
 - Each card has its own **show / hide solution** toggle — expand individual cards without spoiling the rest.
 - Mark **✓ Done** and **⭐ Bookmark** per card. The sidebar shows a per-domain progress bar.
-- Type into the **✏️ Your answer** box and click **✓ Check** to ask the LLM grader for feedback (requires Settings → LLM grading). The editor is a real CodeMirror instance (lazy-loaded on first focus) with YAML syntax highlighting, Tab indent, and a **⛶** button that expands it to fullscreen — handy when the expected answer is a multi-resource manifest. On mobile the editor uses a 16 px font so iOS Safari doesn't auto-zoom when you tap it.
+- Type into the **✏️ Your answer** box and click **✓ Check** to ask the LLM grader for feedback (requires Settings → LLM grading). The editor is a real CodeMirror instance (lazy-loaded on first focus) with **bash syntax highlighting** (kubectl / openssl / heredoc keywords coloured correctly; YAML inside `<<EOF` renders as plain text — that's intentional), Tab indent, and a **⛶** button that expands it to fullscreen. In fullscreen the answer-box label row reveals three drawer triggers — **🛠 Tools** (kubectl explain / kubectl -h), **📝 Task** (the task body), **💡 Solution** (the reference solution) — so you can look up syntax or peek at the answer without exiting fullscreen. On mobile the editor uses a 16 px font so iOS Safari doesn't auto-zoom when you tap it.
 
 ### 🎯 Quiz
 
@@ -68,6 +78,8 @@ Click **▶ Start quiz** to begin. The header shows a live timer (if a limit is 
 | **💾 Save snapshot** | Stash this whole quiz under a name so you can resume it later. The active slot becomes empty so you can start a new quiz; the snapshot appears on the setup screen. |
 | **⏹ End session** | Stop the quiz immediately. You'll see the summary for whatever you completed so far. |
 
+**Fullscreen editor + sticky quizbar.** Click **⛶** in the answer box to maximise the editor — useful when the expected answer is a long YAML manifest. While maximised, a sticky strip at the bottom of the overlay surfaces the full quiz nav (**📋 Questions / ← Prev / 🚩 Flag / 👁 Reveal / ✓ Got it / ✗ Missed / ↷ Skip / Next →**) so you don't have to exit fullscreen to navigate or grade. Clicking 👁 Reveal also pops the **💡 Solution** drawer above the editor at the same time so the reference solution is reachable without exiting. Prev/Next preserve the fullscreen state, so you can sprint through a session without leaving the maximised view.
+
 **Resume & snapshots.** Every action in an active quiz auto-saves to `localStorage`. If you accidentally close the tab or reload, you'll see a ⏸ banner at the top of the Quiz setup screen offering **▶ Resume** or **✕ Discard**. The 🎯 Quiz tab also shows a small ● dot whenever a saved session exists. Need to keep multiple quizzes side-by-side? Click **💾 Save snapshot** during a session — name it, and it lives under the **💾 Snapshots** list on the setup screen until you Resume or delete it.
 
 **Summary screen** — shows total / got / missed / skipped / flagged, with a per-question list. Click **▶ New quiz** to restart.
@@ -84,10 +96,11 @@ Mirror of the kubernetes.io documentation tree, reverse-indexed against the exer
 
 ### 🔧 Tools
 
-Two reference tools that mirror what you reach for in the real exam terminal — bundled into the SPA so they work offline once loaded.
+Three reference tools that mirror what you reach for in the real exam terminal — bundled into the SPA so they work offline once loaded.
 
 - **📘 Explain** — a `kubectl explain` schema browser. Pick a kind on the left (Pod, Deployment, Service, …) and the right pane shows `KIND / VERSION / DESCRIPTION / FIELDS` exactly like the CLI. Click any field that references a sub-schema to drill in (`Pod → spec → containers → resources → limits`). Use the breadcrumb to walk back up. Search box on the left filters by kind name or by any field name reachable from a kind ("affinity" finds Pod, Deployment, …).
 - **📋 kubectl -h** — the **verbatim** `kubectl <verb> -h` output for every kubectl subcommand (~80 of them, including `kubectl create deployment`, `kubectl set image`, `kubectl rollout undo`, …). Identical to what you'd see in the exam shell, rendered monospace. A **📋 Copy** button on top copies `kubectl <cmd>` to your clipboard.
+- **📑 api-resources** — a lookup table mirroring `kubectl api-resources -o wide` for the 40 CKA-relevant kinds. Columns: **NAME** (plural) / **SHORTNAMES** / **APIVERSION** / **NAMESPACED** / **KIND** / **VERBS**. The filter box accepts plain text on any column (`hpa`, `rbac`, `ingress`) and three prefix tokens: `namespaced:true|false` (cluster-scoped vs namespaced), `verb:<name>` (e.g. `verb:patch`), `group:<name>` (e.g. `group:apps` to narrow to Deployment / DaemonSet / ReplicaSet / StatefulSet). Click any row to jump straight into 📘 Explain for that kind's full schema — so api-resources is the index and Explain is the detail, mirroring how `kubectl api-resources` and `kubectl explain` relate in the CLI. On phones (≤600 px) the table collapses to stacked cards so the long VERBS CSV doesn't force horizontal scrolling.
 
 **Version dropdown.** The Tools subtab strip has a `Version` `<select>` for choosing the Kubernetes minor — defaults to **v1.35** (the current CKA exam target). The bundle ships **the two latest stable minors + always v1.35**, so today that's v1.35 + v1.34; once k8s v1.36 ships, the list rolls forward to v1.36 + v1.35. Your selection is sticky across reloads via `cka:tools:version`. Each version's bundle is fetched lazily on first selection.
 
@@ -115,6 +128,7 @@ Bundle size is ~30KB per version, lazy-loaded only when you first open the Nodes
 | Search box | Free-text filter (Browse mode) |
 | ⏱ Timer | Live countdown during a timed quiz |
 | ☁ Sync | Quick Gist Push / Pull / Test popover (uses the same PAT + Gist ID configured in Settings) |
+| 🤖 LLM | Quick provider switch — popover lists every provider you've configured (with API key) and shows the active one ✓-marked. One click flips the active provider without opening Settings. The "Using X (Y)" hint on every answer-box refreshes in place. |
 | 🔄 Refresh | Force-reload the latest deployment from the server — useful on iOS PWA standalone, where the app otherwise caches aggressively until you force-quit. A small "✨ New content available" banner also auto-appears at the bottom whenever a newer deploy is detected (compared against a tiny `version.json` fetched fresh on each launch). |
 | 🌓 Theme toggle | Light / dark mode (persisted) |
 | ⌨️ Help | Keyboard shortcut cheatsheet |
@@ -130,16 +144,20 @@ The dialog is split into three subtabs: **🤖 LLM**, **💾 Backup**, **☁ Syn
 
 Lets the **✓ Check** button on each Browse card send your answer to an LLM and get back a verdict (Correct / Partial / Not yet), a 0–100 score, what you got right, and what you missed.
 
-1. **Provider** — pick one: Anthropic / OpenAI / DeepSeek / Qwen / Doubao / Ollama (local).
+1. **Provider** — pick one: Anthropic / OpenAI / DeepSeek / Qwen / Doubao / **GLM** (Zhipu BigModel) / Ollama (local). Seven providers.
 2. **API key** — your provider key (Ollama doesn't need one).
 3. **Test** — verifies the key, repopulates the **Model** dropdown with that provider's real model list.
 4. **Model** — pick from the live list, or paste a custom model id.
 5. **Auto-mark Done at score ≥ N** — when the grader returns a score ≥ this threshold, the exercise is auto-marked Done.
 6. **Save** persists. **🧽 Clear this provider** wipes just the current radio's slot; **🗑 Clear all** drops every provider's saved config. Your progress is never affected.
 
-**Per-provider memory.** Each provider's API key, model, baseUrl, and last-tested model list are stored **separately**. Clicking another provider radio swaps the **form view** to that provider's saved config — so switching from DeepSeek to OpenAI doesn't overwrite your DeepSeek key. The provider header shows "N of 6 configured" at a glance; configured providers get a green ✓ badge, and the currently active one gets a blue ★.
+**Per-provider memory.** Each provider's API key, model, baseUrl, and last-tested model list are stored **separately**. Clicking another provider radio swaps the **form view** to that provider's saved config — so switching from DeepSeek to OpenAI doesn't overwrite your DeepSeek key. The provider header shows "N of 7 configured" at a glance; configured providers get a green ✓ badge, and the currently active one gets a blue ★.
 
-**How to make a provider active for grading:** click the provider's radio button (the form view swaps to that provider's saved API key + model), then click **💾 Save & set as active** — writes the form into the currently-selected provider's slot AND makes that provider active. The status line confirms which provider just became active.
+**How to make a provider active for grading:** click the provider's radio button (the form view swaps to that provider's saved API key + model), then click **💾 Save & set as active** — writes the form into the currently-selected provider's slot AND makes that provider active. The status line confirms which provider just became active. Once two or more providers are configured, the header **🤖 LLM** popover gives you one-click switching without re-opening Settings.
+
+**Streaming Check + Cancel.** Clicking **✓ Check** kicks off a streaming grade — the button itself transforms into **✗ Cancel** with a live `(Xs · N chars)` counter, and a dashed-bordered preview card appears in the answer box showing the raw response tail as it streams in. When the stream finishes, the header briefly reads **🧠 Parsing verdict…** before the parsed Got-right / Missed verdict replaces the preview. Click Cancel any time to abort — you get a `✗ Cancelled after Xs · N chars received` line, no half-graded state. Works on every provider including Ollama.
+
+**🪙 Token usage.** Once a grade lands, the verdict card includes a one-line breakdown: `🪙 anthropic · claude-opus-4-7 · in 1,247 + out 567 = 1,814 tokens`. The provider/model pair is pinned at grade-time so the line stays accurate later, even if you switch active providers via the 🤖 popover. Ollama (local) shows `🪙 Local model — no token accounting` instead.
 
 What gets sent on Check: `{ exercise question, reference solution, your answer }`. Sent to your chosen provider's endpoint over HTTPS. **Ollama runs on `localhost`** so nothing leaves your machine.
 
@@ -190,7 +208,13 @@ Same payload as Export/Import, but pushed to / pulled from a private GitHub Gist
 5. **⬆ Push to Gist** — uploads the current state. On first push, the new gist ID auto-fills the ID box.
 6. **⬇ Pull from Gist** — downloads from the gist, confirms a counts dialog, then replaces local state.
 
-> Push and Pull are **manual** — no auto-sync. Last-write-wins (no merge). API keys are not synced.
+**Auto-push (default ON).** Once both PAT and Gist ID are configured, the SPA debounces a push **30 seconds after your last sync-worthy edit** (toggling Done, adding a bookmark, saving an answer, getting a verdict, or any quiz state change). Five Done toggles within 10 s = one push, 30 s after the last toggle. You stop having to remember to Push before switching devices. UI preferences (theme, filters, tools sub-tab) do NOT trigger auto-sync. Opt out via the **Auto-push 30 s after changes** checkbox in Settings → Sync.
+
+**Pre-pull backup + Restore.** Before any Pull (or Backup-file Import) runs, the SPA snapshots your current state to `cka:sync:prepull-backup` so the import is reversible. If the Pull replaced something you didn't mean to lose, click **↩ Restore pre-pull backup** in Settings → Sync — the button only appears when a backup exists. One click → confirm → state reverts → page reloads → backup is consumed.
+
+**Conflict detection on Push.** Before uploading, the SPA fetches the gist's `updated_at` and compares it with your last-synced baseline. If the gist was modified elsewhere (another device pushed; you edited it on github.com) since your last sync, a confirm dialog warns you with both timestamps: **OK** = force-push (overwrites the remote changes), **Cancel** = stop so you can ⬇ Pull first to merge manually. First-ever push has no baseline so it just succeeds.
+
+**Tab-close safety net.** If you close the browser within the 30 s debounce window, a best-effort `keepalive:true` PATCH fires on `beforeunload` so your last burst of edits doesn't get lost.
 
 After your PAT is configured here, you can also Push / Pull / Test from the **☁ Sync** icon in the header without re-opening Settings.
 
@@ -211,7 +235,7 @@ Keys you'll see in DevTools:
 | `cka:quiz:active` | Auto-saved in-progress quiz (one slot) — auto-cleared on finish |
 | `cka:quiz:snapshots` | Named snapshots list (each is an independent saved quiz session) |
 | `cka:quiz:lastOrder` | Last-used quiz Order — `"random"` / `"sequential"` / `"tag"` / `"section"` (default `random`) |
-| `cka:tools:lastSubtab` | `"explain"` or `"kubectl"` — restored on revisit |
+| `cka:tools:lastSubtab` | `"explain"`, `"kubectl"`, or `"api-resources"` — restored on revisit |
 | `cka:tools:lastKind` | Last kind opened in Tools › Explain (e.g. `io.k8s.api.core.v1.Pod`) |
 | `cka:tools:lastPath` | Current drill path in Explain (e.g. `["spec","containers","resources"]`) |
 | `cka:tools:lastCmd` | Last command opened in Tools › kubectl -h (e.g. `"create deployment"`) |
@@ -224,6 +248,10 @@ Keys you'll see in DevTools:
 | `cka:llm:privacyAck` | Whether you dismissed the first-use privacy notice |
 | `cka:gist:token` | GitHub PAT (never exported, never synced) |
 | `cka:gist:id` | Gist ID used by Push / Pull |
+| `cka:sync:meta` | Per-device sync metadata — last push/pull/test timestamps, last error, last-synced gist `updated_at` (never round-trips through the gist) |
+| `cka:sync:prepull-backup` | Snapshot taken just before any Pull / Import so **↩ Restore pre-pull backup** can revert it |
+| `cka:sync:autoDisabled` | `true` if you unchecked the **Auto-push 30 s after changes** toggle in Settings → Sync |
+| `cka:sync:dirtyAt` | ISO timestamp of the last sync-worthy edit — cleared after a successful auto-push |
 
 Exercise IDs (e.g. `ca-1-005`) are sequence-based per section. Contributors follow an **append-only** rule documented in `CLAUDE.md` so adding new exercises doesn't shift IDs and break existing users' progress.
 
@@ -275,7 +303,7 @@ Shortcuts are ignored while typing in input fields.
 Yes. `localStorage` is independent of the site's static assets. As long as contributors follow the append-only ID rule (they do — it's documented in `CLAUDE.md`), every existing exercise keeps its ID.
 
 **Q. I switched browsers / devices — how do I get my progress back?**
-Two options: (a) **Export** → copy the JSON file across → **Import** in the new browser. (b) Set up Gist sync on both — **Push** from the old one, paste the gist ID into the new one, **Pull**.
+Easiest path: set up Gist sync on both browsers (PAT + same Gist ID). Auto-push 30 s after your last edit means the old browser stays current without you remembering to push; on the new browser you just click **⬇ Pull** once. If you accidentally pull the wrong way, the **↩ Restore pre-pull backup** button in Settings → Sync reverts it. Alternative: **Export** → copy the JSON file across → **Import** in the new browser.
 
 **Q. The LLM Test button hangs forever.**
 The grader has a 15s timeout — if it really hangs, the provider likely blocks browser-direct calls (Doubao is the usual suspect). Switch to a CORS-friendly provider (Anthropic / OpenAI / DeepSeek / Ollama).

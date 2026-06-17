@@ -49,7 +49,7 @@ Progress persists in `localStorage`. Press <kbd>?</kbd> in the webapp to see key
 
 The webapp can grade your answers automatically using an LLM as judge. Click ⚙️ in the header to configure:
 
-1. Pick a provider — **Anthropic**, **OpenAI**, **DeepSeek**, **Qwen (千问)**, **Doubao (豆包)**, or **Ollama** (local)
+1. Pick a provider — **Anthropic**, **OpenAI**, **DeepSeek**, **Qwen (千问)**, **Doubao (豆包)**, **GLM (智谱 BigModel)**, or **Ollama** (local)
 2. Paste your API key (skip for Ollama)
 3. Click **Test** — confirms the key works and populates the Model dropdown with the live model list from that provider
 4. Pick a model (or type a custom id); set "auto-mark Done when score ≥ N"

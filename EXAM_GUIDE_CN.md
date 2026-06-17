@@ -49,7 +49,7 @@
 
 webapp 支持用 LLM 自动批改你的答案。点击 header 里的 ⚙️ 配置：
 
-1. 选 provider — **Anthropic** / **OpenAI** / **DeepSeek** / **千问 Qwen** / **豆包 Doubao** / **Ollama**（本地）
+1. 选 provider — **Anthropic** / **OpenAI** / **DeepSeek** / **千问 Qwen** / **豆包 Doubao** / **智谱 GLM** / **Ollama**（本地）
 2. 填 API key（Ollama 不需要）
 3. 点 **Test** —— 验证 key 是否生效，并自动用该 provider 的真实模型列表填充 Model 下拉
 4. 选模型（也可手输自定义 id）；设置"score ≥ N 时自动标记 Done"
