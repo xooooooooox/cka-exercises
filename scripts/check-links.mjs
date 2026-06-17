@@ -28,11 +28,18 @@ if (!fs.existsSync(JSON_PATH)) {
 
 const data = JSON.parse(fs.readFileSync(JSON_PATH, 'utf8'));
 const urls = new Set();
+// Reverse index URL → [exerciseId, …]. The link-check workflow's auto-pr job
+// uses this to fan out one PR per unique broken URL, listing every affected
+// exercise in the PR body so the maintainer can apply the same fix to siblings.
+const urlToExercises = new Map();
 for (const dom of data.domains) {
   for (const sec of dom.sections) {
     for (const ex of sec.exercises) {
       for (const lnk of (ex.docsLinks || [])) {
-        if (lnk.url) urls.add(lnk.url);
+        if (!lnk.url) continue;
+        urls.add(lnk.url);
+        if (!urlToExercises.has(lnk.url)) urlToExercises.set(lnk.url, []);
+        urlToExercises.get(lnk.url).push(ex.id);
       }
     }
   }
@@ -122,6 +129,19 @@ if (failed.length) {
   for (const r of failed) {
     console.log(`  ${r.status || r.error}  ${r.url}`);
   }
+  // Structured JSON consumed by .github/workflows/link-check.yml:
+  //   - the link-check job pipes it through scripts/render-link-rot-summary.mjs
+  //     to populate $GITHUB_STEP_SUMMARY
+  //   - the auto-pr job feeds it into a matrix (one entry per unique URL) and
+  //     runs aider against the first referencing exercise
+  const out = failed.map(r => ({
+    url: r.url,
+    status: r.status || 0,
+    error: r.error || null,
+    attempts: r.attempts || 1,
+    exercises: urlToExercises.get(r.url) || [],
+  }));
+  fs.writeFileSync('/tmp/link-check-failures.json', JSON.stringify(out, null, 2));
   process.exit(1);
 }
 

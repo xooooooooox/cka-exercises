@@ -1,19 +1,333 @@
 name: Check kubernetes.io links
 
+# Cron runs `link-check` only → broken URLs land in $GITHUB_STEP_SUMMARY for
+# inline review on the Actions run page.
+# Manual dispatch with `mode: auto-pr` additionally fans out the `auto-pr` job:
+# one matrix entry per UNIQUE broken URL, runs aider against the first
+# referencing exercise, opens a draft PR. PR body lists other exercises citing
+# the same URL so the maintainer can replicate the fix.
+
 on:
   schedule:
     - cron: '0 9 * * 1'     # every Monday 09:00 UTC
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'After detecting broken links: summary-only (Step Summary) or auto-pr (draft PRs via aider).'
+        required: true
+        default: 'summary-only'
+        type: choice
+        options:
+          - summary-only
+          - auto-pr
+      provider:
+        description: 'LLM provider (auto-pr mode only).'
+        required: false
+        default: copilot
+        type: choice
+        options:
+          - copilot
+          - anthropic
+          - openai
+          - deepseek
+          - qwen
+          - doubao
+          - ollama
+      model:
+        description: 'Model id (blank = per-provider default).'
+        required: false
+        type: string
+
+permissions:
+  contents: write       # auto-pr mode commits + pushes a branch
+  pull-requests: write  # auto-pr mode opens draft PRs
+  issues: write         # auto-pr mode posts recovery comments if pr-create blocked
+  models: read          # copilot routing
 
 jobs:
   link-check:
     runs-on: ubuntu-latest
+    outputs:
+      has_failures: ${{ steps.linkcheck.outputs.has_failures }}
+      failures_json: ${{ steps.linkcheck.outputs.failures_json }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - name: Build exercises.json
         run: node scripts/build-exercises.mjs
       - name: Check links
-        run: node scripts/check-links.mjs
+        id: linkcheck
+        run: |
+          set +e
+          node scripts/check-links.mjs
+          rc=$?
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+          if [ -f /tmp/link-check-failures.json ]; then
+            echo "has_failures=1" >> "$GITHUB_OUTPUT"
+            # Compact one-liner for the auto-pr matrix's fromJson() call.
+            echo "failures_json=$(jq -c '.' /tmp/link-check-failures.json)" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      - name: Post failed-URLs table to Step Summary
+        if: steps.linkcheck.outputs.has_failures == '1'
+        run: node scripts/render-link-rot-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail if any hard failures remain
+        if: steps.linkcheck.outputs.exit_code != '0'
+        run: |
+          echo "Link-check reported failures — preserving red ❌ on this run."
+          exit 1
+
+  auto-pr:
+    needs: link-check
+    if: |
+      always() &&
+      needs.link-check.outputs.has_failures == '1' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.mode == 'auto-pr'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        # One entry per UNIQUE broken URL — check-links.mjs already dedupes.
+        entry: ${{ fromJson(needs.link-check.outputs.failures_json) }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BROKEN_URL: ${{ matrix.entry.url }}
+      BROKEN_STATUS: ${{ matrix.entry.status }}
+      EXERCISE_ID: ${{ matrix.entry.exercises[0] }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Resolve domain source file
+        run: |
+          set -euo pipefail
+          PREFIX="${EXERCISE_ID%%-*}"
+          case "$PREFIX" in
+            ca) echo "SOURCE_FILE=exercises/cluster-architecture.md" >> "$GITHUB_ENV";;
+            sc) echo "SOURCE_FILE=exercises/scheduling.md"           >> "$GITHUB_ENV";;
+            nw) echo "SOURCE_FILE=exercises/networking.md"           >> "$GITHUB_ENV";;
+            st) echo "SOURCE_FILE=exercises/storage.md"              >> "$GITHUB_ENV";;
+            ts) echo "SOURCE_FILE=exercises/troubleshooting.md"      >> "$GITHUB_ENV";;
+            *)  echo "Unknown exercise-id prefix: $PREFIX"; exit 1;;
+          esac
+
+      - name: Resolve provider routing
+        id: route
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY:  ${{ secrets.DEEPSEEK_API_KEY }}
+          QWEN_API_KEY:      ${{ secrets.QWEN_API_KEY }}
+          DOUBAO_API_KEY:    ${{ secrets.DOUBAO_API_KEY }}
+          PROVIDER:          ${{ inputs.provider }}
+          MODEL_INPUT:       ${{ inputs.model }}
+        run: |
+          set -eo pipefail
+          M=""; B=""; K=""; KENV=""
+          case "$PROVIDER" in
+            copilot)
+              M="openai/gpt-4o-mini"
+              B="https://models.github.ai/inference"
+              K="${{ github.token }}"
+              KENV="OPENAI_API_KEY";;
+            anthropic)
+              M="anthropic/claude-opus-4-7"
+              K="$ANTHROPIC_API_KEY"; KENV="ANTHROPIC_API_KEY";;
+            openai)
+              M="openai/gpt-4o"
+              K="$OPENAI_API_KEY"; KENV="OPENAI_API_KEY";;
+            deepseek)
+              M="deepseek/deepseek-chat"
+              K="$DEEPSEEK_API_KEY"; KENV="DEEPSEEK_API_KEY";;
+            qwen)
+              M="openai/qwen-max"
+              B="https://dashscope.aliyuncs.com/compatible-mode/v1"
+              K="$QWEN_API_KEY"; KENV="OPENAI_API_KEY";;
+            doubao)
+              M="openai/doubao-pro-32k"
+              B="https://ark.cn-beijing.volces.com/api/v3"
+              K="$DOUBAO_API_KEY"; KENV="OPENAI_API_KEY";;
+            ollama)
+              M="ollama/llama3.1"
+              B="http://localhost:11434"
+              K="dummy"; KENV="OPENAI_API_KEY";;
+          esac
+          [ -n "$MODEL_INPUT" ] && M="$MODEL_INPUT"
+          if [ -z "$K" ] && [ "$PROVIDER" != "ollama" ]; then
+            echo "Provider \`${PROVIDER}\` selected but its API key secret is missing."
+            exit 1
+          fi
+          echo "model=$M" >> "$GITHUB_OUTPUT"
+          echo "::add-mask::$K"
+          echo "${KENV}=$K" >> "$GITHUB_ENV"
+          if [ -n "$B" ]; then echo "OPENAI_API_BASE=$B" >> "$GITHUB_ENV"; fi
+
+      - name: Render aider prompt
+        run: node scripts/render-link-rot-prompt.mjs > /tmp/prompt.md
+
+      - name: Extract H3 snippet
+        run: |
+          set -eo pipefail
+          node scripts/answer-fix/h3-range.mjs \
+            --extract --source="$SOURCE_FILE" --id="$EXERCISE_ID" \
+            > /tmp/snippet.md
+          echo "Snippet: $(wc -l < /tmp/snippet.md) lines, $(wc -c < /tmp/snippet.md) bytes."
+          echo "::group::Snippet preview"
+          head -40 /tmp/snippet.md
+          echo "::endgroup::"
+
+      - name: Install aider
+        run: pipx install aider-chat
+
+      - name: Run aider
+        id: aider
+        run: |
+          set +e
+          aider \
+            --model "${{ steps.route.outputs.model }}" \
+            --message "$(cat /tmp/prompt.md)" \
+            --yes-always \
+            --no-auto-commits \
+            --no-stream \
+            --no-gitignore \
+            --map-tokens 0 \
+            --no-detect-urls \
+            /tmp/snippet.md \
+            > /tmp/aider.log 2>&1
+          RC=$?
+          echo "exit_code=$RC" >> "$GITHUB_OUTPUT"
+          set -e
+          {
+            echo "### Aider run — ${EXERCISE_ID} (${BROKEN_URL})"
+            echo
+            echo "- provider: \`${{ inputs.provider }}\`"
+            echo "- model: \`${{ steps.route.outputs.model }}\`"
+            echo "- exit code: \`$RC\`"
+            echo
+            echo '```'
+            tail -200 /tmp/aider.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          tail -80 /tmp/aider.log
+
+      - name: Upload aider log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aider-log-link-rot-${{ env.EXERCISE_ID }}
+          path: /tmp/aider.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Fail loudly if aider crashed or hit the model
+        run: |
+          if [ "${{ steps.aider.outputs.exit_code }}" != "0" ]; then
+            echo "Aider crashed with exit code ${{ steps.aider.outputs.exit_code }}."
+            exit 1
+          fi
+          if grep -qE "Request body too large|litellm\.APIError|APIError: OpenAIException|Rate limit" /tmp/aider.log; then
+            echo "Model rejected the request (token cap, rate limit, or auth)."
+            exit 1
+          fi
+
+      - name: Splice H3 snippet back
+        run: |
+          set -eo pipefail
+          node scripts/answer-fix/h3-range.mjs \
+            --splice --source="$SOURCE_FILE" --id="$EXERCISE_ID" \
+            --snippet=/tmp/snippet.md
+
+      - name: Bail if no changes
+        run: |
+          set -eo pipefail
+          if git diff --quiet; then
+            echo "Aider produced no edit — skipping PR for $EXERCISE_ID ($BROKEN_URL)."
+            echo "skip=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Bail if the edit is whitespace-only
+        if: env.skip != '1'
+        run: |
+          set -eo pipefail
+          if git diff --ignore-all-space --ignore-blank-lines --quiet; then
+            echo "Aider's only change was whitespace — likely unrelated. Reverting."
+            git checkout -- .
+            echo "skip=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Tighten file scope
+        if: env.skip != '1'
+        run: |
+          set -eo pipefail
+          CHANGED=$(git diff --name-only | sort -u)
+          EXPECTED="${SOURCE_FILE}"
+          if [ "$CHANGED" != "$EXPECTED" ]; then
+            echo "Editor touched files outside $EXPECTED:"
+            echo "$CHANGED"
+            git checkout -- .
+            exit 1
+          fi
+
+      - name: Lint + build (guardrail)
+        if: env.skip != '1'
+        run: |
+          node scripts/lint-exercises.mjs
+          node scripts/build-exercises.mjs
+
+      - name: Open draft PR
+        if: env.skip != '1'
+        env:
+          EXERCISES_JSON: ${{ toJson(matrix.entry.exercises) }}
+        run: |
+          set -eo pipefail
+          URL_HASH=$(printf '%s' "$BROKEN_URL" | shasum | cut -c1-7)
+          BRANCH="link-rot/${EXERCISE_ID}-${URL_HASH}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add exercises/
+          git commit -m "fix(corpus): link-rot — ${EXERCISE_ID} (HTTP ${BROKEN_STATUS})"
+          git push origin "$BRANCH" || git push --force-with-lease origin "$BRANCH"
+          # Build the "other affected exercises" list from the matrix entry's
+          # exercises[]. The PR only edits exercises[0]; the rest are listed so
+          # the maintainer can replicate the same URL fix on them as follow-up.
+          OTHERS=$(printf '%s' "$EXERCISES_JSON" | jq -r '[.[1:][] | "- `\(.)`"] | join("\n")')
+          if [ -z "$OTHERS" ]; then
+            OTHERS_BLOCK=$'\n_(no other exercises reference this URL)_\n'
+          else
+            OTHERS_BLOCK=$'\n'"$OTHERS"$'\n'
+          fi
+          BODY="🤖 Auto-drafted by the link-check workflow (mode=auto-pr, provider=${{ inputs.provider }}, model=${{ steps.route.outputs.model }})."$'\n\n'"**Broken URL:** \`${BROKEN_URL}\` (HTTP ${BROKEN_STATUS})"$'\n\n'"**Edited exercise:** \`${EXERCISE_ID}\` in \`${SOURCE_FILE}\`"$'\n\n'"**Other exercises citing the same URL** (maintainer: apply the same fix):"$'\n'"${OTHERS_BLOCK}"$'\n'"Maintainer review required: verify the replacement URL actually exists on kubernetes.io and matches the breadcrumb."$'\n\n'"<details><summary>Editor log</summary>"$'\n\n'"\`\`\`"$'\n'"$(tail -80 /tmp/aider.log)"$'\n'"\`\`\`"$'\n\n'"</details>"
+          if ! PR_URL=$(gh pr create --draft --base main --head "$BRANCH" \
+              --title "fix(corpus): link-rot — ${EXERCISE_ID} (HTTP ${BROKEN_STATUS})" \
+              --body "$BODY" 2>/tmp/pr-create.err); then
+            REPO="${{ github.repository }}"
+            if grep -q "not permitted to create or approve pull requests" /tmp/pr-create.err; then
+              echo "🚨 PR creation blocked by a repo policy. Enable **Settings → Actions → General → Workflow permissions → \"Allow GitHub Actions to create and approve pull requests\"**, then open the PR manually:"
+              echo "https://github.com/${REPO}/pull/new/${BRANCH}"
+            else
+              echo "🚨 gh pr create failed:"
+              cat /tmp/pr-create.err
+              echo
+              echo "Branch ${BRANCH} is pushed; open manually from https://github.com/${REPO}/pull/new/${BRANCH}"
+            fi
+            exit 1
+          fi
+          echo "Draft PR opened: $PR_URL"
