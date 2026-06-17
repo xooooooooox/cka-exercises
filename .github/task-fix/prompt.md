@@ -35,7 +35,13 @@ Apply a minimal surgical edit to `snippet.md` to fix the issue. Do nothing else.
 
 - `typo` or `typo-task` — Apply a small text correction inside the task body or the docs-block breadcrumb. Don't rewrite surrounding prose.
 
-- `other` — **Default to no edit.** Read **## Additional context** carefully. Only edit if the reporter clearly states an action verb (*add, remove, replace, fix, reorder, annotate as optional, …*) **AND** what to apply it to. If the context lists items without a clear action ("X is optional", "Y should be different"), emit no edit — the maintainer will triage. **Never make structural / whitespace-only changes** (trailing blank lines, indentation cleanup, etc.); they don't address the report and they corrupt the corpus.
+- `other` — **Default to no edit.** Read **## Additional context** carefully. Only edit if the reporter clearly states an action verb (*add, remove, replace, fix, reorder, annotate as optional, …*) **AND** what to apply it to.
+
+  **If the context lists MULTIPLE numbered or bulleted actions, apply ALL of them — do not stop after the first.** Treat each numbered item as a separate required edit; finish item 1, then look at item 2, then item 3, etc.
+
+  **When the reporter references code by description (not exact text), consult `snippet.md` to find the actual representation.** Multi-line forms are common — a YAML list item is typically two lines (`key:\n  - value`), a heredoc spans several lines, a backslash-continued shell command wraps. The reporter may write the target as a single compressed string; the source likely has it on multiple lines. Match the source's actual layout, not the prose.
+
+  If the context lists items without a clear action ("X is optional", "Y should be different"), emit no edit — the maintainer will triage. **Never make structural / whitespace-only changes** (trailing blank lines, indentation cleanup, etc.); they don't address the report and they corrupt the corpus.
 
 ## Issue body (verbatim — your single source of truth)
 

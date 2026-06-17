@@ -29,7 +29,18 @@ Apply a minimal surgical edit to `snippet.md` to fix the issue. Do nothing else.
 - `outdated-flag` — Replace the deprecated or wrong flag/syntax with the current one for the targeted k8s version. Don't introduce a new dependency.
 - `missing-step` — Add the smallest sufficient step to make the reference end-to-end correct. Keep style consistent with the surrounding solution.
 - `typo` — Fix the typo. Don't rewrite surrounding prose.
-- `other` — **Default to no edit.** Read the "Additional context" section carefully. Only edit if the reporter clearly states an action verb (*add, remove, replace, fix, reorder, annotate as optional, …*) **AND** what to apply it to. If the context lists items without a clear action ("X is optional", "Y should be different"), emit no edit — the maintainer will triage. **Never make structural / whitespace-only changes** (trailing blank lines, indentation cleanup, etc.); they don't address the report and they corrupt the corpus.
+- `other` — **Default to no edit.** Read the "Additional context" section carefully. Only edit if the reporter clearly states an action verb (*add, remove, replace, fix, reorder, annotate as optional, …*) **AND** what to apply it to.
+
+  **If the context lists MULTIPLE numbered or bulleted actions, apply ALL of them — do not stop after the first.** Treat each numbered item as a separate required edit; finish item 1, then look at item 2, then item 3, etc. Each one needs its own edit in `snippet.md`.
+
+  **When the reporter references code by description (not exact text), consult `snippet.md` to find the actual representation.** Multi-line forms are common — a YAML list item is typically two lines (`key:\n  - value`), a heredoc spans several lines, a backslash-continued shell command wraps. The reporter may write `remove "groups: - developers"` inline; the source has:
+  ```
+    groups:
+    - developers
+  ```
+  Your edit must match the source's actual layout, not the reporter's compressed prose. Don't give up on an action because the literal string doesn't appear — look for its multi-line form first.
+
+  If the context lists items without a clear action ("X is optional", "Y should be different"), emit no edit — the maintainer will triage. **Never make structural / whitespace-only changes** (trailing blank lines, indentation cleanup, etc.); they don't address the report and they corrupt the corpus.
 
 ## Issue body (verbatim — your single source of truth)
 
