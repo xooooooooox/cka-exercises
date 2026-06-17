@@ -1964,6 +1964,24 @@ body.answer-fullscreen-active { overflow: hidden; }
 }
 .backup-row button { white-space: nowrap; }
 #backup-status, #gist-status { font-size: 12px; }
+/* Auto-push toggle + Restore-backup button — wrapped in .backup-row so they
+   inherit spacing, but each gets its own visual rhythm. */
+.settings-inline-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.settings-inline-toggle input[type="checkbox"] { margin-top: 3px; }
+.settings-inline-toggle small { display: block; margin-top: 2px; }
+.sync-restore-row { margin-top: 4px; }
+#sync-restore-prepull[hidden] { display: none; }
+#sync-restore-prepull {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 
 /* Mobile tweaks */
 @media (max-width: 768px) {

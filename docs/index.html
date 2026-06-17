@@ -535,6 +535,15 @@
           <button id="gist-test" type="button" title="Verify the PAT works against the GitHub API">Test</button>
           <span id="gist-status" class="muted"></span>
         </div>
+        <div class="backup-row sync-auto-row">
+          <label class="settings-inline-toggle">
+            <input id="sync-auto-toggle" type="checkbox" checked>
+            <span>Auto-push 30s after changes <small class="muted">(recommended; works only when both PAT + Gist ID are set)</small></span>
+          </label>
+        </div>
+        <div class="backup-row sync-restore-row">
+          <button id="sync-restore-prepull" type="button" hidden title="Reverts the last Pull or Backup-file import using a local snapshot taken just before it ran.">↩ Restore pre-pull backup</button>
+        </div>
       </section>
     </div>
   </div>

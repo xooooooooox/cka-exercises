@@ -81,5 +81,44 @@
     };
   }
 
-  window.GistSync = { createGist, updateGist, readGist, testAuth, FILENAME };
+  // Lightweight metadata fetch for the conflict-detection pre-flight. GitHub's
+  // Gist API has no metadata-only endpoint — this is a full GET — but we only
+  // return `id` + `updated_at`, so the caller doesn't pay the JSON.parse cost
+  // for the file body it isn't using yet.
+  async function getGistMeta(token, gistId) {
+    const data = await callGitHub(`/gists/${encodeURIComponent(gistId)}`, token);
+    return { id: data.id, updated_at: data.updated_at };
+  }
+
+  // Best-effort flush on page-close via navigator.sendBeacon. Survives the
+  // teardown of the document context that an in-flight fetch wouldn't. No
+  // ack / retry / status — purely fire-and-forget. Returns true on enqueue.
+  function beaconPush(token, gistId, payload) {
+    if (!token || !gistId || !payload) return false;
+    if (!navigator.sendBeacon) return false;
+    // sendBeacon can't set Authorization headers directly — we have to wrap
+    // the request in a blob with the token baked into a custom header is not
+    // possible. Workaround: use the GitHub PATCH URL with a `token=...` query
+    // parameter ONLY if GitHub accepts it. It doesn't (Gist API requires
+    // headers). So we fall back to keepalive:true on fetch — same effect as
+    // a beacon for our purposes (survives unload, no response).
+    try {
+      fetch(`${API}/gists/${encodeURIComponent(gistId)}`, {
+        method: 'PATCH',
+        keepalive: true,
+        headers: {
+          'authorization': `Bearer ${token}`,
+          'accept': 'application/vnd.github+json',
+          'x-github-api-version': '2022-11-28',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          files: { [FILENAME]: { content: JSON.stringify(payload, null, 2) } },
+        }),
+      });
+      return true;
+    } catch { return false; }
+  }
+
+  window.GistSync = { createGist, updateGist, readGist, testAuth, getGistMeta, beaconPush, FILENAME };
 })();

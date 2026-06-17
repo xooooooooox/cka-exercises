@@ -60,7 +60,10 @@ const KEY = {
   filters: 'cka:filters',        // Browse-mode filter bar (persists across sessions + sync)
   gistToken: 'cka:gist:token',
   gistId: 'cka:gist:id',
-  syncMeta: 'cka:sync:meta',    // { lastPushAt, lastPullAt, lastTestAt, lastError? }
+  syncMeta: 'cka:sync:meta',          // { lastPushAt, lastPullAt, lastTestAt, lastError?, lastSyncedGistUpdatedAt? }
+  prePullBackup: 'cka:sync:prepull-backup', // { takenAt: ISO, payload: <collectExportable result> }
+  autoSyncDisabled: 'cka:sync:autoDisabled', // user opt-out for the 30s debounced auto-push
+  syncDirtyAt: 'cka:sync:dirtyAt',           // ISO — set on every sync-worthy mutation, cleared after successful push
 };
 
 // All providers we offer. Their slots get pre-created on first save so the
@@ -185,7 +188,7 @@ function clearLLMListeners() { LLM_LISTENERS.clear(); }
 let _quizFullscreenSticky = false;
 
 function getAnswer(exerciseId) { return storageGet(KEY.answerPrefix + exerciseId, null); }
-function setAnswer(exerciseId, payload) { storageSet(KEY.answerPrefix + exerciseId, payload); }
+function setAnswer(exerciseId, payload) { storageSet(KEY.answerPrefix + exerciseId, payload); markSyncDirty(); }
 
 // Browse-mode filter persistence. Set<string> fields serialise to arrays so the
 // payload survives JSON round-trips (JSON.stringify(new Set([...])) returns {}).
@@ -294,9 +297,11 @@ function isDone(id)     { return !!storageGet(KEY.done, {})[id]; }
 function isBookmark(id) { return !!storageGet(KEY.bookmark, {})[id]; }
 function setDone(id, v) {
   const m = storageGet(KEY.done, {}); if (v) m[id] = true; else delete m[id]; storageSet(KEY.done, m);
+  markSyncDirty();
 }
 function setBookmark(id, v) {
   const m = storageGet(KEY.bookmark, {}); if (v) m[id] = true; else delete m[id]; storageSet(KEY.bookmark, m);
+  markSyncDirty();
 }
 
 // ---------- Helpers ----------
@@ -900,6 +905,14 @@ function collectExportable() {
     // times after a reload (the gist's snapshot from the last push would
     // overwrite the local lastPullAt that _run() had just stamped).
     if (k === KEY.syncMeta) continue;
+    // Pre-pull backup is a per-device snapshot of state to recover from an
+    // accidental Pull. Round-tripping it through the gist would double the
+    // payload and confuse new devices on first pull.
+    if (k === KEY.prePullBackup) continue;
+    // Auto-sync local-only flags. The dirty-at flag is consumed by the
+    // current device's debouncer; the opt-out is per-device preference.
+    if (k === KEY.syncDirtyAt) continue;
+    if (k === KEY.autoSyncDisabled) continue;
     let val = storageGet(k, null);
     if (k === KEY.llmSettings && val && typeof val === 'object') {
       // v2 shape: scrub every provider's apiKey. v1 legacy: scrub the top-level
@@ -929,6 +942,9 @@ function importPayload(payload) {
     // preserves the fresh lastPullAt that _run('pull', …) stamped moments
     // before this import runs (see paired skip in collectExportable).
     if (k === KEY.syncMeta) continue;
+    if (k === KEY.prePullBackup) continue;
+    if (k === KEY.syncDirtyAt) continue;
+    if (k === KEY.autoSyncDisabled) continue;
     if (k === KEY.llmSettings && v && typeof v === 'object') {
       const existing = storageGet(k, {}) || {};
       // Preserve any apiKeys already present locally for providers whose slot
@@ -1006,6 +1022,7 @@ function installBackupHandlers() {
         '  + theme, last-quiz, docs-last-url settings\n\nContinue?'
       );
       if (!ok) { flash(''); return; }
+      backupBeforePull();
       importPayload(payload);
       flash('✓ Imported — reloading…', 0);
       setTimeout(() => location.reload(), 500);
@@ -1026,18 +1043,56 @@ function setGistId(v) { storageSet(KEY.gistId, v || null); }
 
 // Storage-driven helpers — reusable from Settings AND the header ☁ popover.
 // Each reads token / id from localStorage and (for Push) persists any newly created gist id.
+//
+// `lastSyncedGistUpdatedAt` is stamped on the success path of every push +
+// pull so the next push's pre-flight has a fresh baseline to compare against.
+// Lives in cka:sync:meta (same per-device key as lastPushAt/lastPullAt) so it
+// never round-trips through the gist itself (excluded by collectExportable +
+// importPayload — see commit a5738a7).
+function stampSyncedRemote(updatedAt) {
+  if (!updatedAt) return;
+  const m = storageGet(KEY.syncMeta, {}) || {};
+  m.lastSyncedGistUpdatedAt = updatedAt;
+  storageSet(KEY.syncMeta, m);
+}
+
 async function doGistPush() {
   if (!window.GistSync) throw new Error('sync.js failed to load');
   const token = getGistToken();
   if (!token) throw new Error('Need a GitHub PAT first');
-  const payload = collectExportable();
   let id = getGistId();
+  // Conflict pre-flight: only when we already have a remote AND a baseline.
+  // First-ever push (no baseline) skips this so it just works.
   if (id) {
-    await window.GistSync.updateGist(token, id, payload);
+    const baseline = (storageGet(KEY.syncMeta, {}) || {}).lastSyncedGistUpdatedAt;
+    if (baseline) {
+      try {
+        const remote = await window.GistSync.getGistMeta(token, id);
+        if (remote.updated_at && remote.updated_at > baseline) {
+          const ok = confirm(
+            `⚠ The gist was updated elsewhere ${humanTimeAgo(remote.updated_at)} ` +
+            `(after your last sync ${humanTimeAgo(baseline)}).\n\n` +
+            `OK = force-push (overwrites the remote changes).\n` +
+            `Cancel = stop, then ⬇ Pull first to merge manually.`
+          );
+          if (!ok) throw new Error('Push cancelled — remote is newer');
+        }
+      } catch (e) {
+        if (/cancelled/.test(e.message)) throw e;
+        // Pre-flight failed (network, auth, etc) — fall through to the real
+        // push which will surface the same error with the same UI.
+      }
+    }
+  }
+  const payload = collectExportable();
+  if (id) {
+    const res = await window.GistSync.updateGist(token, id, payload);
+    stampSyncedRemote(res?.updated_at);
   } else {
     const res = await window.GistSync.createGist(token, payload);
     id = res.id;
     setGistId(id);
+    stampSyncedRemote(res?.updated_at);
   }
   return id;
 }
@@ -1047,7 +1102,15 @@ async function doGistPull() {
   const token = getGistToken();
   const id = getGistId();
   if (!token || !id) throw new Error('Need both PAT and Gist ID');
-  return await window.GistSync.readGist(token, id);
+  const payload = await window.GistSync.readGist(token, id);
+  // Stamp baseline so a subsequent push's conflict pre-flight knows we just
+  // saw the remote at this revision. Cheap second GET to avoid duplicating
+  // updated_at parsing inside the truncation handler in readGist.
+  try {
+    const meta = await window.GistSync.getGistMeta(token, id);
+    stampSyncedRemote(meta?.updated_at);
+  } catch {} // baseline stamping is best-effort
+  return payload;
 }
 
 async function doGistTest() {
@@ -1121,6 +1184,69 @@ const Sync = (() => {
   };
 })();
 
+// ---------- Auto-sync (debounced 30s) ----------
+//
+// Fires Sync.runPush() ~30s after the last write to a "sync-worthy" key. UI
+// prefs (theme, filters, tools subtab) don't trigger auto-sync. Skips silently
+// when no gist is configured, when the user has opted out, when offline, or
+// when another sync op is in flight. On page-close, attempts a best-effort
+// flush via fetch(..., {keepalive:true}) so a fresh edit isn't lost.
+const AUTO_SYNC_DEBOUNCE_MS = 30_000;
+let _autoSyncTimer = null;
+
+function isAutoSyncEnabled() {
+  if (!window.GistSync) return false;
+  if (storageGet(KEY.autoSyncDisabled, false)) return false;
+  return !!(getGistToken() && getGistId());
+}
+
+function markSyncDirty() {
+  if (!isAutoSyncEnabled()) return;
+  storageSet(KEY.syncDirtyAt, new Date().toISOString());
+  scheduleAutoSync();
+}
+
+function scheduleAutoSync() {
+  if (_autoSyncTimer) clearTimeout(_autoSyncTimer);
+  _autoSyncTimer = setTimeout(runAutoSync, AUTO_SYNC_DEBOUNCE_MS);
+}
+
+async function runAutoSync() {
+  _autoSyncTimer = null;
+  if (!isAutoSyncEnabled()) return;
+  if (!navigator.onLine) {
+    window.addEventListener('online', scheduleAutoSync, { once: true });
+    return;
+  }
+  if (Sync.getState().inFlight) {
+    // Reschedule after the current op clears. Don't loop tightly.
+    scheduleAutoSync();
+    return;
+  }
+  try {
+    await Sync.runPush();
+    try { localStorage.removeItem(KEY.syncDirtyAt); } catch {}
+  } catch (e) {
+    // The Sync IIFE has already stamped lastError → the popover renders it.
+    // We don't auto-retry tightly; the next markSyncDirty() re-arms the timer.
+    console.warn('[auto-sync] push failed:', e.message);
+  }
+}
+
+function bootAutoSync() {
+  if (!isAutoSyncEnabled()) return;
+  // Replay a pending dirty flag from a previous session.
+  if (storageGet(KEY.syncDirtyAt, null)) scheduleAutoSync();
+  // Best-effort flush on page close. keepalive:true lets the request survive
+  // the document teardown that an inflight regular fetch wouldn't.
+  window.addEventListener('beforeunload', () => {
+    if (!_autoSyncTimer && !storageGet(KEY.syncDirtyAt, null)) return;
+    try {
+      window.GistSync.beaconPush?.(getGistToken(), getGistId(), collectExportable());
+    } catch {}
+  });
+}
+
 // Compact "2 min ago" / "just now" formatter used by the sync surfaces.
 function humanTimeAgo(iso) {
   if (!iso) return 'never';
@@ -1138,8 +1264,45 @@ function confirmPullOverwrite(payload) {
     'Pull will overwrite local state:\n' +
     `  ${c.done} exercises marked Done\n` +
     `  ${c.bookmark} bookmarks\n` +
-    `  ${c.answers} saved answers\nContinue?`
+    `  ${c.answers} saved answers\nContinue?\n\n` +
+    `(Your current local state is snapshotted to a pre-pull backup — you can Restore it from Settings → Sync.)`
   );
+}
+
+// Pre-pull backup — taken just before importPayload() overwrites localStorage.
+// Reuses collectExportable() so the format matches the gist exactly. Lives
+// under cka:sync:prepull-backup (skipped from gist round-trip — see export/import).
+function backupBeforePull() {
+  try {
+    storageSet(KEY.prePullBackup, {
+      takenAt: new Date().toISOString(),
+      payload: collectExportable(),
+    });
+  } catch (e) {
+    console.warn('[sync] pre-pull backup failed (continuing with pull):', e.message);
+  }
+}
+
+function getPrePullBackup()  { return storageGet(KEY.prePullBackup, null); }
+function clearPrePullBackup() { try { localStorage.removeItem(KEY.prePullBackup); } catch {} }
+
+function restoreFromPrePull() {
+  const backup = getPrePullBackup();
+  if (!backup || !backup.payload) {
+    alert('No pre-pull backup available.');
+    return;
+  }
+  if (!confirm(
+    `Restore your local state to the snapshot taken ${humanTimeAgo(backup.takenAt)}?\n\n` +
+    `This overwrites the data that the Pull replaced. (The page will reload.)`
+  )) return;
+  try {
+    importPayload(backup.payload);
+    clearPrePullBackup();
+    setTimeout(() => location.reload(), 300);
+  } catch (e) {
+    alert(`Restore failed: ${e.message}`);
+  }
 }
 
 function installGistHandlers() {
@@ -1184,6 +1347,32 @@ function installGistHandlers() {
   }
   Sync.subscribe(renderStatus);
 
+  // ↩ Restore pre-pull backup — shown only when a backup exists.
+  const restoreBtn = document.getElementById('sync-restore-prepull');
+  function refreshRestoreBtn() {
+    if (!restoreBtn) return;
+    const backup = getPrePullBackup();
+    if (!backup) { restoreBtn.hidden = true; return; }
+    restoreBtn.hidden = false;
+    restoreBtn.textContent = `↩ Restore pre-pull backup (taken ${humanTimeAgo(backup.takenAt)})`;
+  }
+  refreshRestoreBtn();
+  restoreBtn?.addEventListener('click', () => restoreFromPrePull());
+  // Refresh the label whenever a sync op completes (after a Pull, a new backup
+  // exists; after the user clicks Push the existing backup stays untouched).
+  Sync.subscribe(refreshRestoreBtn);
+
+  // Auto-sync toggle — checkbox is "Auto-push enabled?". Storage key is the
+  // INVERSE (cka:sync:autoDisabled) so the default value `null/false`
+  // corresponds to "enabled" without any migration.
+  const autoToggle = document.getElementById('sync-auto-toggle');
+  if (autoToggle) {
+    autoToggle.checked = !storageGet(KEY.autoSyncDisabled, false);
+    autoToggle.addEventListener('change', () => {
+      storageSet(KEY.autoSyncDisabled, !autoToggle.checked);
+    });
+  }
+
   if (!window.GistSync) return;
 
   pushBtn?.addEventListener('click', async () => {
@@ -1199,6 +1388,7 @@ function installGistHandlers() {
     try {
       const payload = await Sync.runPull();
       if (!confirmPullOverwrite(payload)) return;
+      backupBeforePull();
       importPayload(payload);
       setTimeout(() => location.reload(), 500);
     } catch {}
@@ -1309,6 +1499,7 @@ function installSyncMenu() {
     try {
       const payload = await Sync.runPull();
       if (!confirmPullOverwrite(payload)) return;
+      backupBeforePull();
       importPayload(payload);
       setTimeout(() => location.reload(), 500);
     } catch {}
@@ -3090,6 +3281,7 @@ function saveActiveQuiz() {
   try {
     storageSet(KEY.quizActive, serialiseQuiz(State.quiz));
     refreshQuizTabDot();
+    markSyncDirty();
   } catch (e) {
     // localStorage quota etc — silently drop. User-visible feedback would be noise.
   }
@@ -3098,6 +3290,7 @@ function saveActiveQuiz() {
 function clearActiveQuiz() {
   storageSet(KEY.quizActive, null);
   refreshQuizTabDot();
+  markSyncDirty();
 }
 
 function refreshQuizTabDot() {
@@ -3115,6 +3308,7 @@ function getSnapshots() {
 
 function setSnapshots(list) {
   storageSet(KEY.quizSnapshots, list);
+  markSyncDirty();
 }
 
 function relativeTime(ms) {
@@ -5199,6 +5393,10 @@ async function init() {
   // Header ☁ sync popover
   installSyncMenu();
   installSyncDotIndicator();
+
+  // Debounced auto-push 30s after the last sync-worthy edit. Replays a
+  // pending dirty flag from a previous session + hooks beforeunload.
+  bootAutoSync();
 
   // Header 🤖 LLM quick-switch popover
   installLlmMenu();
