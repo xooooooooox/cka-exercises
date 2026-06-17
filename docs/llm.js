@@ -78,6 +78,25 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
 
   // ---------- Provider adapters ----------
 
+  // Normalise provider-specific usage fields to a common shape:
+  //   { inputTokens, outputTokens, totalTokens }   (null when missing)
+  // Anthropic returns `usage.input_tokens` / `usage.output_tokens`.
+  // OpenAI / DeepSeek / Qwen / Doubao return `usage.prompt_tokens` /
+  // `usage.completion_tokens` / `usage.total_tokens`.
+  // Ollama omits usage altogether — caller passes a null-shape placeholder.
+  function pickUsage(data, provider) {
+    const u = (data && data.usage) || {};
+    if (provider === 'anthropic') {
+      const i = u.input_tokens ?? null;
+      const o = u.output_tokens ?? null;
+      return { inputTokens: i, outputTokens: o, totalTokens: (i != null && o != null) ? (i + o) : null };
+    }
+    const i = u.prompt_tokens ?? null;
+    const o = u.completion_tokens ?? null;
+    const t = u.total_tokens ?? ((i != null && o != null) ? (i + o) : null);
+    return { inputTokens: i, outputTokens: o, totalTokens: t };
+  }
+
   async function callAnthropic({ apiKey, baseUrl, model, system, user, chatPath }) {
     const res = await withTimeout(fetch(`${baseUrl}${chatPath}`, {
       method: 'POST',
@@ -96,12 +115,12 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
     }), 60000, 'Anthropic chat');
     if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await safeText(res)}`);
     const data = await res.json();
-    return data.content?.[0]?.text || '';
+    return { text: data.content?.[0]?.text || '', usage: pickUsage(data, 'anthropic') };
   }
 
   // Shared OpenAI-compatible chat completion (used by OpenAI, DeepSeek, Qwen, Doubao).
   // `withJsonMode` toggles response_format — only OpenAI is known to honor it reliably.
-  async function callOpenAICompat({ apiKey, baseUrl, model, system, user, chatPath, withJsonMode }) {
+  async function callOpenAICompat({ apiKey, baseUrl, model, system, user, chatPath, withJsonMode, provider }) {
     const body = {
       model,
       max_tokens: 1500,
@@ -121,7 +140,7 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
     }), 60000, 'chat completion');
     if (!res.ok) throw new Error(`${res.status}: ${await safeText(res)}`);
     const data = await res.json();
-    return data.choices?.[0]?.message?.content || '';
+    return { text: data.choices?.[0]?.message?.content || '', usage: pickUsage(data, provider || 'openai') };
   }
 
   async function callOllama({ baseUrl, model, system, user, chatPath }) {
@@ -140,7 +159,9 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
     }), 60000, 'Ollama chat');
     if (!res.ok) throw new Error(`Ollama ${res.status}: ${await safeText(res)}`);
     const data = await res.json();
-    return data.message?.content || '';
+    // Ollama doesn't return token usage — leave nulls so the UI can show a
+    // "Local model — no token accounting" fallback.
+    return { text: data.message?.content || '', usage: { inputTokens: null, outputTokens: null, totalTokens: null } };
   }
 
   async function safeText(res) {
@@ -206,18 +227,25 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
       chatPath: def.chatPath,
     };
 
-    let raw;
+    let result;
     switch (provider) {
-      case 'anthropic': raw = await callAnthropic(args); break;
-      case 'openai':    raw = await callOpenAICompat({ ...args, withJsonMode: true }); break;
-      case 'deepseek':
-      case 'qwen':
-      case 'doubao':    raw = await callOpenAICompat(args); break;
-      case 'ollama':    raw = await callOllama(args);    break;
+      case 'anthropic': result = await callAnthropic(args); break;
+      case 'openai':    result = await callOpenAICompat({ ...args, withJsonMode: true, provider: 'openai' }); break;
+      case 'deepseek':  result = await callOpenAICompat({ ...args, provider: 'deepseek' }); break;
+      case 'qwen':      result = await callOpenAICompat({ ...args, provider: 'qwen' });     break;
+      case 'doubao':    result = await callOpenAICompat({ ...args, provider: 'doubao' });   break;
+      case 'ollama':    result = await callOllama(args); break;
       default: throw new Error(`Unhandled provider: ${provider}`);
     }
 
-    return parseVerdict(raw);
+    const verdict = parseVerdict(result.text);
+    // Pin the provider/model used at grade-time on the verdict itself so
+    // retrospective display (e.g. after Gist pull) shows the right thing
+    // even when the active provider has since changed.
+    verdict.usage = result.usage || { inputTokens: null, outputTokens: null, totalTokens: null };
+    verdict.provider = provider;
+    verdict.model = model;
+    return verdict;
   }
 
   // Salvage a partial verdict from a response that was cut off (typically by

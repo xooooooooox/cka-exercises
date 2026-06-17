@@ -158,6 +158,26 @@ function setLLMSettings(s) {
   writeLLMConfig(v2);
 }
 
+// Tiny pub/sub so already-rendered widgets (the answer-box "Using X (Y)" hint,
+// the quick-switch popover) can react to an active-provider change without a
+// full renderBrowse(). renderBrowse() still runs on Save for sidebar/badge
+// refresh, but the emit makes the in-place hint update work in Quiz mode too
+// (where renderBrowse never reaches) and the quick-switch popover doesn't
+// need to trigger an expensive re-render at all.
+//
+// We don't track per-listener lifetimes; instead, callers that own a render
+// pass (renderBrowse, the quiz session re-render) clear LLM_LISTENERS at the
+// top of the pass and cards re-subscribe on mount. The Set is bounded by
+// O(visible-cards).
+const LLM_LISTENERS = new Set();
+function onLLMSettingsChange(fn) { LLM_LISTENERS.add(fn); return () => LLM_LISTENERS.delete(fn); }
+function emitLLMSettingsChange() {
+  for (const fn of LLM_LISTENERS) {
+    try { fn(); } catch (e) { console.error('LLM settings listener threw', e); }
+  }
+}
+function clearLLMListeners() { LLM_LISTENERS.clear(); }
+
 function getAnswer(exerciseId) { return storageGet(KEY.answerPrefix + exerciseId, null); }
 function setAnswer(exerciseId, payload) { storageSet(KEY.answerPrefix + exerciseId, payload); }
 
@@ -760,6 +780,9 @@ function installSettingsOverlay() {
     // "which provider just became active?"
     status.textContent = `✓ Saved — ${provider} is now active`;
     setTimeout(() => { status.textContent = ''; }, 1800);
+    // Notify already-rendered widgets so the "Using X (Y)" hint refreshes in
+    // place — works in Quiz mode where renderBrowse() never runs.
+    emitLLMSettingsChange();
     // Refresh the visible cards so the answer-box hint reflects the new provider/key state.
     if (State.mode === 'browse') renderBrowse();
   });
@@ -1290,6 +1313,106 @@ function installSyncMenu() {
   });
 }
 
+// ---------- Header 🤖 LLM quick-switch popover ----------
+//
+// Lists every CONFIGURED provider (has apiKey, or Ollama with a model/baseUrl
+// set). Click → flip v2.active → emit settings-change → in-place hint
+// refresh + popover re-render. The full ⚙️ Settings modal stays the single
+// place to edit keys / baseUrl / model — this popover only flips which slot
+// is active.
+function installLlmMenu() {
+  const toggle = document.getElementById('llm-toggle');
+  const menu = document.getElementById('llm-menu');
+  const currentLabel = document.getElementById('llm-menu-current');
+  const listEl = document.getElementById('llm-menu-list');
+  const statusEl = document.getElementById('llm-menu-status');
+  const settingsLink = document.getElementById('llm-menu-settings');
+  if (!toggle || !menu) return;
+
+  function isConfigured(provider, slot) {
+    if (!slot) return false;
+    return provider === 'ollama' ? !!(slot.model || slot.baseUrl) : !!slot.apiKey;
+  }
+
+  function defaultModel(provider) {
+    return (window.LLM && window.LLM.DEFAULTS && window.LLM.DEFAULTS[provider] && window.LLM.DEFAULTS[provider].model) || 'default';
+  }
+
+  function renderList() {
+    const cfg = readLLMConfig();
+    listEl.innerHTML = '';
+    const configured = ALL_PROVIDERS.filter(p => isConfigured(p, cfg.providers[p]));
+    if (!configured.length) {
+      listEl.appendChild(el('div', { class: 'muted llm-menu-empty' }, 'No providers configured yet — open Settings.'));
+      currentLabel.textContent = '(none)';
+      return;
+    }
+    for (const p of configured) {
+      const slot = cfg.providers[p];
+      const model = slot.model || defaultModel(p);
+      const isActive = cfg.active === p;
+      const row = el('button', {
+        type: 'button',
+        class: 'llm-menu-row' + (isActive ? ' active' : ''),
+        'data-provider': p,
+        role: 'menuitem',
+      },
+        el('span', { class: 'llm-menu-row-name' }, p),
+        el('span', { class: 'llm-menu-row-model muted' }, model),
+        el('span', { class: 'llm-menu-row-check' }, isActive ? '✓' : ''),
+      );
+      row.addEventListener('click', () => {
+        if (isActive) { closeMenu(); return; }
+        const v2 = readLLMConfig();
+        v2.active = p;
+        writeLLMConfig(v2);
+        emitLLMSettingsChange();
+        renderList();
+        statusEl.textContent = `✓ Now using ${p}`;
+        setTimeout(() => { statusEl.textContent = ''; }, 1800);
+      });
+      listEl.appendChild(row);
+    }
+    const activeSlot = cfg.providers[cfg.active];
+    if (activeSlot && isConfigured(cfg.active, activeSlot)) {
+      currentLabel.textContent = `${cfg.active} · ${activeSlot.model || defaultModel(cfg.active)}`;
+    } else {
+      currentLabel.textContent = '(not configured)';
+    }
+  }
+
+  function openMenu() {
+    renderList();
+    menu.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+  }
+  function closeMenu() {
+    menu.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+    statusEl.textContent = '';
+  }
+
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (menu.hidden) openMenu(); else closeMenu();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (menu.hidden) return;
+    if (menu.contains(e.target) || toggle.contains(e.target)) return;
+    closeMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !menu.hidden) closeMenu();
+  });
+
+  settingsLink?.addEventListener('click', (e) => {
+    e.preventDefault();
+    closeMenu();
+    document.getElementById('settings-toggle')?.click();
+  });
+}
+
 // Always-on dot on the ☁ toggle. Reflects in-flight / unread-error / recent-
 // success state so the user gets passive feedback without keeping the
 // popover open.
@@ -1680,6 +1803,10 @@ function renderAnswerBox(ex, opts = {}) {
     hint.textContent = `Using ${s.provider} (${s.model || (window.LLM?.DEFAULTS[s.provider]?.model || 'default')})`;
   }
   updateHint();
+  // Re-run on every active-provider change. The listener set is cleared at
+  // the top of each render pass (renderBrowse / quiz session re-render) so
+  // closures over removed DOM nodes don't leak.
+  onLLMSettingsChange(updateHint);
 
   checkBtn.addEventListener('click', async () => {
     const answer = ta.value.trim();
@@ -1764,6 +1891,17 @@ function renderVerdict(container, v, ex) {
       '⚠ Grader response was truncated. Score / verdict are reliable; details may be partial. Try a different model or a longer-output provider for a richer breakdown.'));
   }
   if (v.summary) body.appendChild(el('div', { class: 'verdict-summary' }, v.summary));
+  // Token usage line — pinned at grade-time so retrospective display (e.g.
+  // after a Gist pull, or after the user switches active provider) always
+  // shows what this particular grade actually consumed.
+  if (v.usage && v.usage.totalTokens != null) {
+    const u = v.usage;
+    body.appendChild(el('div', { class: 'verdict-usage muted' },
+      `🪙 ${v.provider || '?'} · ${v.model || '?'} · in ${u.inputTokens ?? '?'} + out ${u.outputTokens ?? '?'} = ${u.totalTokens} tokens`,
+    ));
+  } else if (v.provider === 'ollama') {
+    body.appendChild(el('div', { class: 'verdict-usage muted' }, '🪙 Local model — no token accounting'));
+  }
   if (v.passed && v.passed.length) {
     body.appendChild(el('div', { class: 'verdict-section-label' }, '✓ Got right'));
     const ul = el('ul', { class: 'verdict-list' });
@@ -2642,6 +2780,9 @@ function renderExerciseCard(ex, opts = {}) {
 }
 
 function renderBrowse() {
+  // Drop closures captured by previously-rendered answer-box hints. Each
+  // card re-subscribes on mount (see renderAnswerBox → onLLMSettingsChange).
+  clearLLMListeners();
   const visible = applyFilters();
   document.getElementById('filter-stats').textContent = `${visible.length} / ${State.allExercises.length} exercises`;
   renderSidebar(visible);
@@ -3047,6 +3188,9 @@ function renderQuizCard() {
   document.getElementById('quiz-progress-bar').value = (q.idx + 1) / q.ids.length;
 
   const card = document.getElementById('quiz-card');
+  // Drop hint-update closures captured by the previous quiz card before it's
+  // detached. The new card re-subscribes via renderAnswerBox.
+  clearLLMListeners();
   card.innerHTML = '';
   const solutionOpen = !q.solutionsHidden || q.revealed.has(ex.id);
   // In "Always visible" mode the inline toggle still lets you collapse for self-test.
@@ -4741,6 +4885,9 @@ async function init() {
   // Header ☁ sync popover
   installSyncMenu();
   installSyncDotIndicator();
+
+  // Header 🤖 LLM quick-switch popover
+  installLlmMenu();
 
   // Header 🔄 refresh + auto-detect "new content" banner
   installRefreshAffordances();

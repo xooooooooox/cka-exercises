@@ -54,6 +54,20 @@
           </div>
         </div>
       </div>
+      <div class="llm-menu-wrap">
+        <button id="llm-toggle" class="icon-btn" type="button" title="Switch active LLM provider" aria-label="Switch active LLM provider" aria-haspopup="true" aria-expanded="false">🤖</button>
+        <div id="llm-menu" class="sync-menu llm-menu" hidden role="menu" aria-label="LLM provider quick switch">
+          <div class="sync-menu-header">
+            <strong>Active LLM</strong>
+            <span id="llm-menu-current" class="muted"></span>
+          </div>
+          <div id="llm-menu-list" class="llm-menu-list"></div>
+          <div id="llm-menu-status" class="muted"></div>
+          <div class="sync-menu-foot muted">
+            <a href="#" id="llm-menu-settings" title="Open full LLM settings">Configure in Settings →</a>
+          </div>
+        </div>
+      </div>
       <button id="refresh-toggle" class="icon-btn" type="button" title="Reload the latest content from the server" aria-label="Reload">🔄</button>
       <button id="settings-toggle" class="icon-btn" type="button" title="LLM settings" aria-label="LLM settings">⚙️</button>
       <button id="help-toggle" class="icon-btn" type="button" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨️</button>

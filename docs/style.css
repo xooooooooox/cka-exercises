@@ -1794,6 +1794,40 @@ body.answer-fullscreen-active { overflow: hidden; }
 .sync-menu-foot { font-size: 11px; text-align: right; margin-top: 4px; }
 .sync-menu-foot a { color: var(--accent); text-decoration: none; }
 .sync-menu-foot a:hover { text-decoration: underline; }
+
+/* 🤖 LLM quick-switch popover — reuses .sync-menu chrome. */
+.llm-menu-wrap { position: relative; display: inline-block; }
+.llm-menu { min-width: 260px; }
+.llm-menu-list { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; }
+.llm-menu-empty { font-size: 12px; padding: 4px 2px; }
+.llm-menu-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.llm-menu-row:hover { background: var(--bg); border-color: var(--border); }
+.llm-menu-row.active { background: var(--bg); border-color: var(--accent); }
+.llm-menu-row-name { font-weight: 600; font-size: 13px; }
+.llm-menu-row-model { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.llm-menu-row-check { color: var(--success); font-weight: 700; min-width: 1em; text-align: right; }
+#llm-menu-status { font-size: 12px; min-height: 1.2em; margin: 4px 0; }
+
+/* Token-usage line under the verdict summary. */
+.verdict-usage {
+  font-size: 11px;
+  margin-top: 4px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+}
 .backup-help { font-size: 12px; margin: 4px 0 8px; line-height: 1.4; }
 .backup-help a { color: var(--link); }
 .backup-row {
