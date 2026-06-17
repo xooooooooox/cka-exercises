@@ -2886,6 +2886,66 @@ body.answer-fullscreen-active { overflow: hidden; }
   }
 }
 
+/* Mobile master-detail for Tools Explain + kubectl -h. The list and the
+   detail pane share too little vertical space on a phone — let them take
+   turns instead. When `.tools-detail-active` is on the panel, only the
+   detail renders; otherwise only the list. Same rule applies inside
+   the Tools drawer regardless of viewport width (drawer card is narrow).
+   api-resources never sets the class — its stacked-card layout below
+   `(max-width: 600px)` is independent. */
+@media (max-width: 600px) {
+  .tools-panel.tools-detail-active .tools-tree { display: none; }
+  .tools-panel:not(.tools-detail-active) .tools-detail { display: none; }
+  .tools-panel:not(.tools-detail-active) .tools-tree {
+    max-height: none;
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+}
+#view-tools.in-drawer .tools-panel.tools-detail-active .tools-tree { display: none; }
+#view-tools.in-drawer .tools-panel:not(.tools-detail-active) .tools-detail { display: none; }
+#view-tools.in-drawer .tools-panel:not(.tools-detail-active) .tools-tree {
+  max-height: none;
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+/* ← Back button prepended to detail panes in master-detail mode. Hidden
+   on desktop / wide viewports so the side-by-side experience is unchanged. */
+.tools-back-to-list { display: none; }
+@media (max-width: 600px) {
+  .tools-back-to-list {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 10px 0;
+    padding: 6px 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    color: var(--fg);
+  }
+  .tools-back-to-list:hover { background: var(--bg); }
+}
+#view-tools.in-drawer .tools-back-to-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px 0;
+  padding: 6px 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  color: var(--fg);
+}
+#view-tools.in-drawer .tools-back-to-list:hover { background: var(--bg); }
+
 @media (max-width: 480px) {
   #view-tools { padding: 12px 12px; }
   .tools-subtabs button { padding: 4px 8px; font-size: 13px; }

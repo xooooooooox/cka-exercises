@@ -4733,6 +4733,13 @@ function showToolsSubtab(name) {
   document.getElementById('tools-explain').hidden       = sub !== 'explain';
   document.getElementById('tools-kubectl').hidden       = sub !== 'kubectl';
   document.getElementById('tools-api-resources').hidden = sub !== 'api-resources';
+  // Each subtab opens in list-view (mobile master-detail). Item-click +
+  // renderXxxDetail re-set the class for the newly-active subtab if a
+  // selection exists.
+  ['tools-explain', 'tools-kubectl'].forEach(id =>
+    document.getElementById(id)?.classList.remove('tools-detail-active'));
+  if (sub === 'explain' && State.toolsExplain.kindRef) renderExplainDetail();
+  if (sub === 'kubectl' && State.toolsKubectl.cmdPath) renderKubectlDetail();
   if (sub === 'api-resources') renderApiResourcesTable();
 }
 
@@ -4890,7 +4897,29 @@ function makeExplainRow(entry, compact) {
     storageSet(KEY.toolsPath, entry.path);
     const q = document.getElementById('tools-explain-search')?.value || '';
     renderExplainKindList(q);
+    // On mobile / in-drawer this triggers the master-detail swap — list
+    // hides, detail fills the panel. No-op on desktop.
+    document.getElementById('tools-explain')?.classList.add('tools-detail-active');
     renderExplainDetail();
+  });
+  return btn;
+}
+
+// Small "← Back" button prepended to a Tools detail pane when in mobile or
+// in-drawer master-detail mode. Hidden by CSS on desktop. Clicking removes
+// the detail-active class on the parent panel and refocuses the search
+// input so the user can immediately type to find their next lookup.
+function backToToolsListButton(panelId) {
+  const btn = el('button', {
+    type: 'button',
+    class: 'tools-back-to-list',
+    title: 'Back to the list',
+  }, '← Back');
+  btn.addEventListener('click', () => {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    panel.classList.remove('tools-detail-active');
+    panel.querySelector('input[type="search"]')?.focus();
   });
   return btn;
 }
@@ -4987,6 +5016,11 @@ function renderExplainDetail() {
   detail.innerHTML = '';
   const { kindRef, path } = State.toolsExplain;
   if (!kindRef) return;
+  // Mobile / in-drawer: prepend a back button + ensure the detail-active
+  // class is set (covers the restored-from-localStorage cold-start path
+  // where the click handler never ran).
+  detail.appendChild(backToToolsListButton('tools-explain'));
+  document.getElementById('tools-explain')?.classList.add('tools-detail-active');
 
   // Walk the path from the root kind to the current node. Capture leafField
   // when we land on a primitive (no `ref`) so we can render its own detail
@@ -5094,6 +5128,8 @@ function renderKubectlCommandList(query = '') {
       State.toolsKubectl.cmdPath = c.path;
       storageSet(KEY.toolsCmd, c.path);
       renderKubectlCommandList(query);
+      // Mobile / in-drawer master-detail swap; no-op on desktop.
+      document.getElementById('tools-kubectl')?.classList.add('tools-detail-active');
       renderKubectlDetail();
     });
     list.appendChild(btn);
@@ -5111,6 +5147,9 @@ function renderKubectlDetail() {
     return;
   }
   detail.innerHTML = '';
+  // Mobile / in-drawer master-detail: back button + ensure detail-active.
+  detail.appendChild(backToToolsListButton('tools-kubectl'));
+  document.getElementById('tools-kubectl')?.classList.add('tools-detail-active');
   const heading = el('div', { class: 'kubectl-heading' });
   heading.appendChild(el('div', { class: 'kubectl-path' }, `$ kubectl ${cmd.path} -h`));
   if (cmd.summary) heading.appendChild(el('div', { class: 'kubectl-summary muted' }, cmd.summary));

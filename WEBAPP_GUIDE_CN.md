@@ -100,6 +100,7 @@
 
 - **📘 Explain** — 一个 `kubectl explain` 的 schema 浏览器。左侧挑一个 kind（Pod / Deployment / Service / …），右侧像 CLI 一样显示 `KIND / VERSION / DESCRIPTION / FIELDS`。点任何带 sub-schema 的字段可以下钻（`Pod → spec → containers → resources → limits`），breadcrumb 可以回上一层。搜索框支持按 kind 名或字段名搜索（输入 "affinity" 会同时命中 Pod、Deployment 等）。
 - **📋 kubectl -h** — **逐字**收录了 ~80 个 kubectl 子命令的 `kubectl <verb> -h` 输出（包括 `kubectl create deployment`、`kubectl set image`、`kubectl rollout undo` 等等），跟考试 shell 里看到的完全一致，monospace 渲染。顶部的 **📋 Copy** 按钮一键把 `kubectl <cmd>` 复制到剪贴板。
+- **手机（≤600 px）+ 抽屉内**：📘 Explain 和 📋 kubectl -h 采用 master-detail 流 —— 先看到全宽的列表，点某一项后详情会占满整个面板，顶部出现 `← Back` 按钮。点 Back 回到列表（焦点会跳回搜索框）。桌面端的并排布局不受影响。
 - **📑 api-resources** — `kubectl api-resources -o wide` 风格的查表，收录 40 个 CKA 相关 kind。表头：**NAME**（plural）/ **SHORTNAMES** / **APIVERSION** / **NAMESPACED** / **KIND** / **VERBS**。过滤框接受任意列的纯文本匹配（如 `hpa`、`rbac`、`ingress`），还支持三种前缀语法：`namespaced:true|false`（cluster-scoped 还是 namespaced）、`verb:<动词>`（如 `verb:patch`）、`group:<组>`（如 `group:apps` 缩小到 Deployment / DaemonSet / ReplicaSet / StatefulSet）。点任意一行可直接跳进 📘 Explain 看该 kind 的完整 schema —— api-resources 当索引，Explain 当详情，跟 CLI 里这两个命令的关系一样。手机上（≤600px）表格自动折叠成卡片，避免横向滚动。
 
 **版本下拉。** Tools 子标签栏里有个 `Version` 下拉，可以切换 kubernetes minor 版本 — 默认 **v1.35**（当前 CKA 考试目标）。Bundle 同时打包**最新两个稳定 minor + 始终包含 v1.35**：当前是 v1.35 + v1.34；k8s v1.36 发布后自动滚动到 v1.36 + v1.35。选择通过 `cka:tools:version` 持久化。每个版本的 bundle 在首次选中时才懒加载。
