@@ -1813,7 +1813,17 @@ function renderAnswerBox(ex, opts = {}) {
   // closures over removed DOM nodes don't leak.
   onLLMSettingsChange(updateHint);
 
+  // Per-answer-box in-flight state. When non-null, the SAME checkBtn click
+  // cancels instead of re-firing — so the button doubles as Cancel without
+  // having to swap event listeners. Branch lives at the top of the handler.
+  let inFlight = null;
+
   checkBtn.addEventListener('click', async () => {
+    if (inFlight) {
+      inFlight.controller.abort();
+      return;
+    }
+
     const answer = getText().trim();
     if (!answer) { hint.textContent = '⚠ Type an answer first'; return; }
 
@@ -1826,17 +1836,46 @@ function renderAnswerBox(ex, opts = {}) {
       storageSet(KEY.privacyAck, true);
     }
 
-    checkBtn.disabled = true;
-    checkBtn.textContent = '⏳ Calling LLM…';
+    const controller = new AbortController();
+    const startedAt = Date.now();
+    let charsSeen = 0;
+    inFlight = { controller };
+
+    const updateBtn = () => {
+      const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
+      checkBtn.textContent = charsSeen > 0
+        ? `✗ Cancel (${secs}s · ${charsSeen.toLocaleString()} chars)`
+        : `✗ Cancel (${secs}s · waiting…)`;
+    };
+    updateBtn();
+    const tick = setInterval(updateBtn, 250);
+
     verdictSlot.innerHTML = '';
+    // Live preview — last ~400 chars of raw incoming response, scrolled to
+    // the bottom. Wiped + replaced by the rendered verdict on success.
+    const preview = el('pre', { class: 'verdict-streaming-preview', 'aria-live': 'polite' }, '');
+    verdictSlot.appendChild(preview);
+
+    // Overall ceiling, independent of any per-fetch timeout. The streaming
+    // adapters drop the 60s wrap because reads legitimately take longer; this
+    // 120s cap is the long-stop. User can Cancel earlier.
+    const ceiling = setTimeout(() => controller.abort(), 120000);
+
     try {
       const v = await window.LLM.grade({
         task: ex.task || '',
         solution: ex.solution || '',
         answer,
         settings,
+        signal: controller.signal,
+        onProgress: (_delta, total) => {
+          charsSeen = total.length;
+          preview.textContent = total.slice(-400);
+          preview.scrollTop = preview.scrollHeight;
+        },
       });
-      // Persist
+      // Persist + render the parsed verdict (replacing the live preview).
+      verdictSlot.innerHTML = '';
       const existing = getAnswer(ex.id) || {};
       setAnswer(ex.id, Object.assign(existing, { text: getText(), verdict: v }));
       renderVerdict(verdictSlot, v, ex);
@@ -1857,12 +1896,22 @@ function renderAnswerBox(ex, opts = {}) {
         State.quiz.status.set(ex.id, v.correct ? 'got' : (v.verdict === 'partial' ? 'partial' : 'missed'));
       }
     } catch (e) {
-      verdictSlot.appendChild(el('div', { class: 'verdict verdict-error' },
-        el('strong', {}, '✗ LLM call failed'),
-        el('pre', { class: 'verdict-error-detail' }, e.message || String(e)),
-      ));
+      verdictSlot.innerHTML = '';
+      const aborted = e && (e.name === 'AbortError' || /aborted/i.test(e.message || ''));
+      if (aborted) {
+        const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
+        verdictSlot.appendChild(el('div', { class: 'verdict-cancelled muted' },
+          `✗ Cancelled after ${secs}s · ${charsSeen.toLocaleString()} chars received`));
+      } else {
+        verdictSlot.appendChild(el('div', { class: 'verdict verdict-error' },
+          el('strong', {}, '✗ LLM call failed'),
+          el('pre', { class: 'verdict-error-detail' }, e.message || String(e)),
+        ));
+      }
     } finally {
-      checkBtn.disabled = false;
+      clearInterval(tick);
+      clearTimeout(ceiling);
+      inFlight = null;
       checkBtn.textContent = '✓ Check';
     }
   });

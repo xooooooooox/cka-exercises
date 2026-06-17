@@ -1828,6 +1828,31 @@ body.answer-fullscreen-active { overflow: hidden; }
   margin-top: 4px;
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
 }
+
+/* Live preview of the streaming grader response while it's mid-flight.
+   Replaced by the parsed verdict the moment the stream completes. */
+.verdict-streaming-preview {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  max-height: 100px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  opacity: 0.75;
+  margin-top: 4px;
+}
+
+.verdict-cancelled {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
 .backup-help { font-size: 12px; margin: 4px 0 8px; line-height: 1.4; }
 .backup-help a { color: var(--link); }
 .backup-row {

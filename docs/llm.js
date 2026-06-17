@@ -97,8 +97,74 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
     return { inputTokens: i, outputTokens: o, totalTokens: t };
   }
 
-  async function callAnthropic({ apiKey, baseUrl, model, system, user, chatPath }) {
-    const res = await withTimeout(fetch(`${baseUrl}${chatPath}`, {
+  function safeJSON(s) { try { return JSON.parse(s); } catch { return null; } }
+
+  // Shared SSE reader. Consumes `data: …` frames from a streaming HTTP response
+  // and hands the payload string to `onData`. Splits on \n, strips the prefix,
+  // skips empty/keep-alive lines. Anthropic-style `event: …` lines are
+  // ignored — the JSON payload on the following `data:` line is self-describing.
+  async function readSSE(res, onData) {
+    if (!res.body) throw new Error('Streaming response had no body');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, nl).replace(/\r$/, '');
+          buf = buf.slice(nl + 1);
+          if (line.startsWith('data: ')) onData(line.slice(6).trim());
+          else if (line.startsWith('data:')) onData(line.slice(5).trim());
+          // `event: ...`, comments (`:`), and blank lines: skipped
+        }
+      }
+      buf += decoder.decode();
+      if (buf.startsWith('data: ')) onData(buf.slice(6).trim());
+    } finally {
+      try { reader.releaseLock(); } catch {}
+    }
+  }
+
+  // Ollama's chat stream is NDJSON, not SSE — one JSON object per line.
+  async function readNDJSON(res, onEvent) {
+    if (!res.body) throw new Error('Streaming response had no body');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf('\n')) >= 0) {
+          const line = buf.slice(0, nl).trim();
+          buf = buf.slice(nl + 1);
+          if (!line) continue;
+          const evt = safeJSON(line);
+          if (evt) onEvent(evt);
+        }
+      }
+      const tail = buf.trim();
+      if (tail) {
+        const evt = safeJSON(tail);
+        if (evt) onEvent(evt);
+      }
+    } finally {
+      try { reader.releaseLock(); } catch {}
+    }
+  }
+
+  // Streaming wrappers do NOT pass through withTimeout — stream reads can
+  // legitimately exceed the 60s wall we use for non-streaming calls. The
+  // caller is expected to enforce an overall ceiling via AbortController.
+
+  async function callAnthropic({ apiKey, baseUrl, model, system, user, chatPath, onProgress, signal }) {
+    const res = await fetch(`${baseUrl}${chatPath}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -110,58 +176,97 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
         model,
         max_tokens: 1500,
         system,
+        stream: true,
         messages: [{ role: 'user', content: user }],
       }),
-    }), 60000, 'Anthropic chat');
+      signal,
+    });
     if (!res.ok) throw new Error(`Anthropic ${res.status}: ${await safeText(res)}`);
-    const data = await res.json();
-    return { text: data.content?.[0]?.text || '', usage: pickUsage(data, 'anthropic') };
+    let text = '';
+    let inputTokens = null, outputTokens = null;
+    await readSSE(res, (data) => {
+      const evt = safeJSON(data);
+      if (!evt) return;
+      if (evt.type === 'content_block_delta' && evt.delta && evt.delta.type === 'text_delta') {
+        const t = evt.delta.text || '';
+        if (t) { text += t; onProgress && onProgress(t, text); }
+      } else if (evt.type === 'message_start') {
+        inputTokens = evt.message?.usage?.input_tokens ?? inputTokens;
+      } else if (evt.type === 'message_delta') {
+        outputTokens = evt.usage?.output_tokens ?? outputTokens;
+      }
+    });
+    const totalTokens = (inputTokens != null && outputTokens != null) ? (inputTokens + outputTokens) : null;
+    return { text, usage: { inputTokens, outputTokens, totalTokens } };
   }
 
-  // Shared OpenAI-compatible chat completion (used by OpenAI, DeepSeek, Qwen, Doubao).
+  // Shared OpenAI-compatible streaming chat completion (used by OpenAI, DeepSeek, Qwen, Doubao).
   // `withJsonMode` toggles response_format — only OpenAI is known to honor it reliably.
-  async function callOpenAICompat({ apiKey, baseUrl, model, system, user, chatPath, withJsonMode, provider }) {
+  // OpenAI gets `stream_options: { include_usage: true }` to surface usage in the
+  // final frame; DeepSeek/Qwen/Doubao return usage in their last frame either way.
+  async function callOpenAICompat({ apiKey, baseUrl, model, system, user, chatPath, withJsonMode, provider, onProgress, signal }) {
     const body = {
       model,
       max_tokens: 1500,
+      stream: true,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
       ],
     };
+    if (provider === 'openai') body.stream_options = { include_usage: true };
     if (withJsonMode) body.response_format = { type: 'json_object' };
-    const res = await withTimeout(fetch(`${baseUrl}${chatPath}`, {
+    const res = await fetch(`${baseUrl}${chatPath}`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         'authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify(body),
-    }), 60000, 'chat completion');
+      signal,
+    });
     if (!res.ok) throw new Error(`${res.status}: ${await safeText(res)}`);
-    const data = await res.json();
-    return { text: data.choices?.[0]?.message?.content || '', usage: pickUsage(data, provider || 'openai') };
+    let text = '';
+    let usageRaw = null;
+    await readSSE(res, (data) => {
+      if (!data || data === '[DONE]') return;
+      const evt = safeJSON(data);
+      if (!evt) return;
+      const delta = evt.choices?.[0]?.delta?.content;
+      if (delta) { text += delta; onProgress && onProgress(delta, text); }
+      if (evt.usage) usageRaw = evt.usage;
+    });
+    return { text, usage: pickUsage({ usage: usageRaw }, provider || 'openai') };
   }
 
-  async function callOllama({ baseUrl, model, system, user, chatPath }) {
-    const res = await withTimeout(fetch(`${baseUrl}${chatPath}`, {
+  async function callOllama({ baseUrl, model, system, user, chatPath, onProgress, signal }) {
+    const res = await fetch(`${baseUrl}${chatPath}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         model,
-        stream: false,
+        stream: true,
         format: 'json',
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: user },
         ],
       }),
-    }), 60000, 'Ollama chat');
+      signal,
+    });
     if (!res.ok) throw new Error(`Ollama ${res.status}: ${await safeText(res)}`);
-    const data = await res.json();
-    // Ollama doesn't return token usage — leave nulls so the UI can show a
-    // "Local model — no token accounting" fallback.
-    return { text: data.message?.content || '', usage: { inputTokens: null, outputTokens: null, totalTokens: null } };
+    let text = '';
+    let promptEval = null, evalCount = null;
+    await readNDJSON(res, (evt) => {
+      const t = evt.message?.content || '';
+      if (t) { text += t; onProgress && onProgress(t, text); }
+      if (evt.done) {
+        promptEval = evt.prompt_eval_count ?? promptEval;
+        evalCount = evt.eval_count ?? evalCount;
+      }
+    });
+    const totalTokens = (promptEval != null && evalCount != null) ? (promptEval + evalCount) : null;
+    return { text, usage: { inputTokens: promptEval, outputTokens: evalCount, totalTokens } };
   }
 
   async function safeText(res) {
@@ -195,14 +300,16 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
    * Grade a student's answer using the configured LLM.
    *
    * @param {object} opts
-   *   @param {string} opts.task       The exercise task text (markdown)
-   *   @param {string} opts.solution   The canonical solution (markdown)
-   *   @param {string} opts.answer     The student's typed answer
-   *   @param {object} opts.settings   Settings record (provider/apiKey/model/baseUrl)
-   * @returns {Promise<object>}        Normalized verdict
+   *   @param {string}      opts.task        The exercise task text (markdown)
+   *   @param {string}      opts.solution    The canonical solution (markdown)
+   *   @param {string}      opts.answer      The student's typed answer
+   *   @param {object}      opts.settings    Settings record (provider/apiKey/model/baseUrl)
+   *   @param {AbortSignal} [opts.signal]    Cancel the in-flight stream
+   *   @param {function}    [opts.onProgress] (deltaText, totalSoFar) — fires per streamed chunk
+   * @returns {Promise<object>}              Normalized verdict
    */
   async function grade(opts) {
-    const { task, solution, answer, settings } = opts;
+    const { task, solution, answer, settings, signal, onProgress } = opts;
     if (!answer || !answer.trim()) {
       throw new Error('Empty answer — type something before grading.');
     }
@@ -225,6 +332,8 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
       system: SYSTEM_PROMPT,
       user: buildUserPrompt({ task, solution, answer }),
       chatPath: def.chatPath,
+      onProgress,
+      signal,
     };
 
     let result;
