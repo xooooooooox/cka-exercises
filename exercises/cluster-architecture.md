@@ -60,7 +60,7 @@ openssl genrsa -out sandra.key 2048
 openssl req -new -key sandra.key -subj "/CN=sandra" -out sandra.csr
 
 # store the file `sandra.csr` in an environment variable named "REQUEST"
-export REQUEST=$(cat sandra.csr | base64 -w 0)
+export REQUEST=$(cat sandra.csr | base64)
 
 # create the CSR as a Kubernetes resource
 cat <<EOF | kubectl apply -f -
@@ -69,8 +69,6 @@ kind: CertificateSigningRequest
 metadata:
   name: sandra
 spec:
-  groups:
-  - developers
   request: $REQUEST
   signerName: kubernetes.io/kube-apiserver-client
   usages:
