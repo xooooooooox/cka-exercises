@@ -2873,6 +2873,24 @@ body.answer-fullscreen-active { overflow: hidden; }
 }
 .kubectl-help code { background: none; padding: 0; }
 
+/* Wrap kubectl -h help text on phones + inside the Tools drawer. Desktop
+   keeps `white-space: pre` + `overflow-x: auto` for the terminal look; on a
+   narrow card horizontal scrolling is the wrong UX and lines get clipped at
+   the card's right edge because `min-width: 0` doesn't reliably propagate
+   through the in-drawer flex chain. pre-wrap preserves the leading
+   indentation + blank lines; word-break: break-word breaks long
+   `kubectl run hazelcast --image=…` lines so nothing escapes the container. */
+@media (max-width: 600px) {
+  .kubectl-help {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+#view-tools.in-drawer .kubectl-help {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 @media (max-width: 900px) {
   .tools-panel { grid-template-columns: 1fr; }
   .tools-tree, .tools-detail { min-width: 0; }
