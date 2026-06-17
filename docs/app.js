@@ -1561,12 +1561,19 @@ function loadCodeMirror() {
     // previous pin to view@6.26.3 + state@6.4.1 made language@6.12.3 attempt
     // to import `activateHover` from a stale view variant that didn't have it.
     const DEPS = 'deps=@codemirror/state@6.5.2,@codemirror/view@6.43.1&target=es2022';
-    const [view, state, basic, langYaml, commands] = await Promise.all([
+    const [view, state, basic, langYaml, commands, language, legacyShell] = await Promise.all([
       import(`https://esm.sh/@codemirror/view@6.43.1?${DEPS}`),
       import('https://esm.sh/@codemirror/state@6.5.2?target=es2022'),
       import(`https://esm.sh/codemirror@6.0.1?${DEPS}`),
       import(`https://esm.sh/@codemirror/lang-yaml@6.1.3?${DEPS}`),
       import(`https://esm.sh/@codemirror/commands@6.10.3?${DEPS}`),
+      // @codemirror/language exposes StreamLanguage — the bridge that lets the
+      // legacy CodeMirror 5 grammars run inside CM6. CKA answers are mostly
+      // bash (kubectl + openssl + heredocs); shell highlighting handles those
+      // tokens correctly and renders YAML-inside-heredoc as plain text, which
+      // beats the previous "everything is YAML" treatment.
+      import(`https://esm.sh/@codemirror/language@6.10.0?${DEPS}`),
+      import(`https://esm.sh/@codemirror/legacy-modes@6.4.0/mode/shell?${DEPS}`),
     ]);
     return {
       EditorView: view.EditorView,
@@ -1576,6 +1583,8 @@ function loadCodeMirror() {
       yaml: langYaml.yaml,
       keymap: view.keymap,
       indentWithTab: commands.indentWithTab,
+      StreamLanguage: language.StreamLanguage,
+      shell: legacyShell.shell,
     };
   })().catch(e => { _cmPromise = null; throw e; });
   return _cmPromise;
@@ -1719,10 +1728,16 @@ function renderAnswerBox(ex, opts = {}) {
     _cmReadyPromise = (async () => {
       try {
         const cm = await loadCodeMirror();
-        const { EditorView, EditorState, Prec, basicSetup, yaml, indentWithTab, keymap } = cm;
+        const { EditorView, EditorState, Prec, basicSetup, StreamLanguage, shell,
+                indentWithTab, keymap } = cm;
         const update = EditorView.updateListener.of(u => {
           if (u.docChanged) persistDebounced();
         });
+        // CKA answers are predominantly bash (kubectl + openssl + heredocs).
+        // Shell highlighting handles those tokens correctly; YAML inside a
+        // <<EOF heredoc renders as plain text, which beats the previous
+        // yaml()-only path that mis-highlighted bash flags / pipes / redirects.
+        const shellLang = StreamLanguage.define(shell);
         const state = EditorState.create({
           doc: ta.value,
           extensions: [
@@ -1731,7 +1746,7 @@ function renderAnswerBox(ex, opts = {}) {
             // which otherwise lets the key fall through to the browser's
             // focus-shift default.
             Prec.highest(keymap.of([indentWithTab])),
-            yaml(),
+            shellLang,
             EditorView.lineWrapping,
             EditorView.theme(CM_THEME, { dark: isDark() }),
             // Layout theme — the outer .answer-cm container sets the height
@@ -1841,20 +1856,25 @@ function renderAnswerBox(ex, opts = {}) {
     let charsSeen = 0;
     inFlight = { controller };
 
+    verdictSlot.innerHTML = '';
+    // Labelled streaming card. Header carries the live elapsed/chars label so
+    // the user always knows it's their request; body shows the raw response
+    // tail. Both head and body are replaced by the parsed verdict on success.
+    const head = el('div', { class: 'verdict-streaming-head' }, '📥 Streaming response · waiting…');
+    const body = el('pre', { class: 'verdict-streaming-body', 'aria-live': 'polite' }, '');
+    const card = el('div', { class: 'verdict-streaming' }, head, body);
+    verdictSlot.appendChild(card);
+
     const updateBtn = () => {
       const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
-      checkBtn.textContent = charsSeen > 0
-        ? `✗ Cancel (${secs}s · ${charsSeen.toLocaleString()} chars)`
-        : `✗ Cancel (${secs}s · waiting…)`;
+      const label = charsSeen > 0
+        ? `${secs}s · ${charsSeen.toLocaleString()} chars`
+        : `${secs}s · waiting…`;
+      checkBtn.textContent = `✗ Cancel (${label})`;
+      head.textContent = `📥 Streaming response · ${label}`;
     };
     updateBtn();
     const tick = setInterval(updateBtn, 250);
-
-    verdictSlot.innerHTML = '';
-    // Live preview — last ~400 chars of raw incoming response, scrolled to
-    // the bottom. Wiped + replaced by the rendered verdict on success.
-    const preview = el('pre', { class: 'verdict-streaming-preview', 'aria-live': 'polite' }, '');
-    verdictSlot.appendChild(preview);
 
     // Overall ceiling, independent of any per-fetch timeout. The streaming
     // adapters drop the 60s wrap because reads legitimately take longer; this
@@ -1870,11 +1890,15 @@ function renderAnswerBox(ex, opts = {}) {
         signal: controller.signal,
         onProgress: (_delta, total) => {
           charsSeen = total.length;
-          preview.textContent = total.slice(-400);
-          preview.scrollTop = preview.scrollHeight;
+          body.textContent = total.slice(-400);
+          body.scrollTop = body.scrollHeight;
         },
       });
-      // Persist + render the parsed verdict (replacing the live preview).
+      // Brief "Parsing verdict…" frame so the user perceives streaming →
+      // parsing → result, instead of streaming → magic-appear.
+      head.textContent = '🧠 Parsing verdict…';
+      await new Promise(r => setTimeout(r, 200));
+      // Persist + render the parsed verdict (replacing the streaming card).
       verdictSlot.innerHTML = '';
       const existing = getAnswer(ex.id) || {};
       setAnswer(ex.id, Object.assign(existing, { text: getText(), verdict: v }));
