@@ -2501,6 +2501,68 @@ body.answer-fullscreen-active { overflow: hidden; }
    defeats the user-agent default and makes both panels render at once. */
 .tools-panel[hidden] { display: none; }
 
+/* Single-column variant for the api-resources table — a flat lookup table
+   doesn't need the sidebar layout. */
+.tools-panel.tools-panel--table {
+  display: block;
+}
+.tools-panel.tools-panel--table[hidden] { display: none; }
+
+.tools-api-resources-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+  position: sticky;
+  top: 60px;
+  background: var(--bg);
+  padding: 6px 0;
+  z-index: 1;
+}
+.tools-api-resources-bar input[type="search"] {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+  background: var(--bg-elev);
+  color: var(--fg);
+}
+.tools-api-resources-wrap { overflow-x: auto; }
+.tools-api-resources-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.tools-api-resources-table th,
+.tools-api-resources-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.tools-api-resources-table th {
+  background: var(--bg-elev);
+  position: sticky;
+  top: 110px;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.tools-api-resources-table tbody tr { cursor: pointer; }
+.tools-api-resources-table tbody tr:hover { background: var(--bg-elev); }
+.tools-api-resources-table .api-resources-cell--ns-true  { color: var(--success); }
+.tools-api-resources-table .api-resources-cell--ns-false { color: var(--fg-muted); }
+.tools-api-resources-table .api-resources-cell--shortnames { font-weight: 600; }
+.tools-api-resources-table .api-resources-cell--verbs {
+  font-size: 11px;
+  color: var(--fg-muted);
+  word-break: break-word;
+}
+
 .tools-tree {
   position: sticky;
   top: 70px;

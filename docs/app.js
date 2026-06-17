@@ -4310,7 +4310,7 @@ async function renderToolsView() {
   renderKubectlCommandList();
 
   const lastTab = storageGet(KEY.toolsSubtab, 'explain');
-  State.toolsSubtab = (lastTab === 'kubectl') ? 'kubectl' : 'explain';
+  State.toolsSubtab = (lastTab === 'kubectl' || lastTab === 'api-resources') ? lastTab : 'explain';
   showToolsSubtab(State.toolsSubtab);
 
   const lastKind = storageGet(KEY.toolsKind, null);
@@ -4361,14 +4361,17 @@ async function switchToolsVersion(minor) {
   updateToolsMetaLine();
 }
 
+const TOOLS_SUBTABS = new Set(['explain', 'kubectl', 'api-resources']);
 function showToolsSubtab(name) {
-  const sub = (name === 'kubectl') ? 'kubectl' : 'explain';
+  const sub = TOOLS_SUBTABS.has(name) ? name : 'explain';
   State.toolsSubtab = sub;
   storageSet(KEY.toolsSubtab, sub);
   document.querySelectorAll('.tools-subtabs button[data-tools-tab]').forEach(b =>
     b.classList.toggle('active', b.dataset.toolsTab === sub));
-  document.getElementById('tools-explain').hidden = sub !== 'explain';
-  document.getElementById('tools-kubectl').hidden = sub !== 'kubectl';
+  document.getElementById('tools-explain').hidden       = sub !== 'explain';
+  document.getElementById('tools-kubectl').hidden       = sub !== 'kubectl';
+  document.getElementById('tools-api-resources').hidden = sub !== 'api-resources';
+  if (sub === 'api-resources') renderApiResourcesTable();
 }
 
 function installToolsHandlers() {
@@ -4393,6 +4396,60 @@ function installToolsHandlers() {
   document.getElementById('tools-kubectl-search')?.addEventListener('input', (e) => {
     renderKubectlCommandList(e.target.value.trim().toLowerCase());
   });
+  // 📑 api-resources filter — debounced so typing isn't laggy. Filter
+  // syntax: plain text matches any column; prefix tokens narrow further
+  // (namespaced:true|false, verb:<name>, group:<name>).
+  let _arDebounce = null;
+  document.getElementById('tools-api-resources-search')?.addEventListener('input', () => {
+    clearTimeout(_arDebounce);
+    _arDebounce = setTimeout(renderApiResourcesTable, 60);
+  });
+}
+
+// 📑 api-resources panel — flat lookup table mirroring `kubectl
+// api-resources -o wide`. Data comes from State.tools.apiResources (built
+// by scripts/build-kubectl-tools.mjs from INCLUDED_KINDS + OpenAPI GVK).
+function renderApiResourcesTable() {
+  const tbody   = document.querySelector('#tools-api-resources-table tbody');
+  const countEl = document.getElementById('tools-api-resources-count');
+  if (!tbody || !State.tools?.apiResources) return;
+  const q = (document.getElementById('tools-api-resources-search')?.value || '').trim().toLowerCase();
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const all = State.tools.apiResources;
+  const rows = all.filter(r => {
+    const hay = `${r.plural} ${r.kind} ${r.apiVersion} ${(r.shortNames || []).join(',')} ${(r.verbs || []).join(',')} ${r.group || ''}`.toLowerCase();
+    return tokens.every(t => {
+      if (t.startsWith('namespaced:')) return String(r.namespaced) === t.slice(11);
+      if (t.startsWith('verb:'))       return (r.verbs || []).includes(t.slice(5));
+      if (t.startsWith('group:'))      return (r.group || '').toLowerCase() === t.slice(6);
+      return hay.includes(t);
+    });
+  });
+  tbody.innerHTML = '';
+  for (const r of rows) {
+    const tr = el('tr', { 'data-kind': r.kind, title: `Click to open ${r.kind} in 📘 Explain` },
+      el('td', {}, r.plural),
+      el('td', { class: 'api-resources-cell--shortnames' }, (r.shortNames || []).join(', ') || '—'),
+      el('td', {}, r.apiVersion),
+      el('td', { class: r.namespaced ? 'api-resources-cell--ns-true' : 'api-resources-cell--ns-false' }, String(r.namespaced)),
+      el('td', {}, r.kind),
+      el('td', { class: 'api-resources-cell--verbs' }, (r.verbs || []).join(', ')),
+    );
+    tr.addEventListener('click', () => {
+      const root = State.tools.rootKinds?.find(rk => rk.name === r.kind);
+      if (!root) return;
+      State.toolsExplain = { kindRef: root.ref, path: [] };
+      storageSet(KEY.toolsKind, root.ref);
+      storageSet(KEY.toolsPath, []);
+      showToolsSubtab('explain');
+      renderExplainKindList(document.getElementById('tools-explain-search')?.value || '');
+      renderExplainDetail();
+    });
+    tbody.appendChild(tr);
+  }
+  if (countEl) {
+    countEl.textContent = rows.length === all.length ? `${all.length} resources` : `${rows.length} / ${all.length}`;
+  }
 }
 
 // --- Explain panel ---

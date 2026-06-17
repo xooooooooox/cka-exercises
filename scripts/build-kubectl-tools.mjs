@@ -41,55 +41,65 @@ const SPEC_URL = `https://raw.githubusercontent.com/kubernetes/kubernetes/${K8S_
 // shortNames mirrors the kubectl RESTMapper aliases (e.g. `po` for Pod). Used
 // by the SPA both to display the alias next to the kind name and to match
 // queries like `csr` or `pdb` against the right root kind.
+// `plural` + `namespaced` (+ `verbs` for outliers) feed the `apiResources`
+// projection emitted alongside `rootKinds`. Verbs default to the standard
+// 8-set when omitted (see STANDARD_VERBS below). Namespaced=false means
+// cluster-scoped.
 const INCLUDED_KINDS = [
-  // Workloads
-  { name: 'Pod',                     shortNames: ['po'],     defRef: 'io.k8s.api.core.v1.Pod' },
-  { name: 'Deployment',              shortNames: ['deploy'], defRef: 'io.k8s.api.apps.v1.Deployment' },
-  { name: 'ReplicaSet',              shortNames: ['rs'],     defRef: 'io.k8s.api.apps.v1.ReplicaSet' },
-  { name: 'StatefulSet',             shortNames: ['sts'],    defRef: 'io.k8s.api.apps.v1.StatefulSet' },
-  { name: 'DaemonSet',               shortNames: ['ds'],     defRef: 'io.k8s.api.apps.v1.DaemonSet' },
-  { name: 'Job',                     shortNames: [],         defRef: 'io.k8s.api.batch.v1.Job' },
-  { name: 'CronJob',                 shortNames: ['cj'],     defRef: 'io.k8s.api.batch.v1.CronJob' },
-  { name: 'ReplicationController',   shortNames: ['rc'],     defRef: 'io.k8s.api.core.v1.ReplicationController' },
+  // Workloads — all namespaced
+  { name: 'Pod',                     shortNames: ['po'],     plural: 'pods',                     namespaced: true,  defRef: 'io.k8s.api.core.v1.Pod' },
+  { name: 'Deployment',              shortNames: ['deploy'], plural: 'deployments',              namespaced: true,  defRef: 'io.k8s.api.apps.v1.Deployment' },
+  { name: 'ReplicaSet',              shortNames: ['rs'],     plural: 'replicasets',              namespaced: true,  defRef: 'io.k8s.api.apps.v1.ReplicaSet' },
+  { name: 'StatefulSet',             shortNames: ['sts'],    plural: 'statefulsets',             namespaced: true,  defRef: 'io.k8s.api.apps.v1.StatefulSet' },
+  { name: 'DaemonSet',               shortNames: ['ds'],     plural: 'daemonsets',               namespaced: true,  defRef: 'io.k8s.api.apps.v1.DaemonSet' },
+  { name: 'Job',                     shortNames: [],         plural: 'jobs',                     namespaced: true,  defRef: 'io.k8s.api.batch.v1.Job' },
+  { name: 'CronJob',                 shortNames: ['cj'],     plural: 'cronjobs',                 namespaced: true,  defRef: 'io.k8s.api.batch.v1.CronJob' },
+  { name: 'ReplicationController',   shortNames: ['rc'],     plural: 'replicationcontrollers',   namespaced: true,  defRef: 'io.k8s.api.core.v1.ReplicationController' },
   // Networking
-  { name: 'Service',                 shortNames: ['svc'],    defRef: 'io.k8s.api.core.v1.Service' },
-  { name: 'Endpoints',               shortNames: ['ep'],     defRef: 'io.k8s.api.core.v1.Endpoints' },
-  { name: 'EndpointSlice',           shortNames: [],         defRef: 'io.k8s.api.discovery.v1.EndpointSlice' },
-  { name: 'Ingress',                 shortNames: ['ing'],    defRef: 'io.k8s.api.networking.v1.Ingress' },
-  { name: 'IngressClass',            shortNames: [],         defRef: 'io.k8s.api.networking.v1.IngressClass' },
-  { name: 'NetworkPolicy',           shortNames: ['netpol'], defRef: 'io.k8s.api.networking.v1.NetworkPolicy' },
+  { name: 'Service',                 shortNames: ['svc'],    plural: 'services',                 namespaced: true,  defRef: 'io.k8s.api.core.v1.Service' },
+  { name: 'Endpoints',               shortNames: ['ep'],     plural: 'endpoints',                namespaced: true,  defRef: 'io.k8s.api.core.v1.Endpoints' },
+  { name: 'EndpointSlice',           shortNames: [],         plural: 'endpointslices',           namespaced: true,  defRef: 'io.k8s.api.discovery.v1.EndpointSlice' },
+  { name: 'Ingress',                 shortNames: ['ing'],    plural: 'ingresses',                namespaced: true,  defRef: 'io.k8s.api.networking.v1.Ingress' },
+  { name: 'IngressClass',            shortNames: [],         plural: 'ingressclasses',           namespaced: false, defRef: 'io.k8s.api.networking.v1.IngressClass' },
+  { name: 'NetworkPolicy',           shortNames: ['netpol'], plural: 'networkpolicies',          namespaced: true,  defRef: 'io.k8s.api.networking.v1.NetworkPolicy' },
   // Storage
-  { name: 'PersistentVolume',        shortNames: ['pv'],     defRef: 'io.k8s.api.core.v1.PersistentVolume' },
-  { name: 'PersistentVolumeClaim',   shortNames: ['pvc'],    defRef: 'io.k8s.api.core.v1.PersistentVolumeClaim' },
-  { name: 'StorageClass',            shortNames: ['sc'],     defRef: 'io.k8s.api.storage.v1.StorageClass' },
-  { name: 'CSIDriver',               shortNames: [],         defRef: 'io.k8s.api.storage.v1.CSIDriver' },
-  { name: 'VolumeAttachment',        shortNames: [],         defRef: 'io.k8s.api.storage.v1.VolumeAttachment' },
-  // Config
-  { name: 'ConfigMap',               shortNames: ['cm'],     defRef: 'io.k8s.api.core.v1.ConfigMap' },
-  { name: 'Secret',                  shortNames: [],         defRef: 'io.k8s.api.core.v1.Secret' },
-  { name: 'ResourceQuota',           shortNames: ['quota'],  defRef: 'io.k8s.api.core.v1.ResourceQuota' },
-  { name: 'LimitRange',              shortNames: ['limits'], defRef: 'io.k8s.api.core.v1.LimitRange' },
+  { name: 'PersistentVolume',        shortNames: ['pv'],     plural: 'persistentvolumes',        namespaced: false, defRef: 'io.k8s.api.core.v1.PersistentVolume' },
+  { name: 'PersistentVolumeClaim',   shortNames: ['pvc'],    plural: 'persistentvolumeclaims',   namespaced: true,  defRef: 'io.k8s.api.core.v1.PersistentVolumeClaim' },
+  { name: 'StorageClass',            shortNames: ['sc'],     plural: 'storageclasses',           namespaced: false, defRef: 'io.k8s.api.storage.v1.StorageClass' },
+  { name: 'CSIDriver',               shortNames: [],         plural: 'csidrivers',               namespaced: false, defRef: 'io.k8s.api.storage.v1.CSIDriver' },
+  { name: 'VolumeAttachment',        shortNames: [],         plural: 'volumeattachments',        namespaced: false, defRef: 'io.k8s.api.storage.v1.VolumeAttachment' },
+  // Config — all namespaced
+  { name: 'ConfigMap',               shortNames: ['cm'],     plural: 'configmaps',               namespaced: true,  defRef: 'io.k8s.api.core.v1.ConfigMap' },
+  { name: 'Secret',                  shortNames: [],         plural: 'secrets',                  namespaced: true,  defRef: 'io.k8s.api.core.v1.Secret' },
+  { name: 'ResourceQuota',           shortNames: ['quota'],  plural: 'resourcequotas',           namespaced: true,  defRef: 'io.k8s.api.core.v1.ResourceQuota' },
+  { name: 'LimitRange',              shortNames: ['limits'], plural: 'limitranges',              namespaced: true,  defRef: 'io.k8s.api.core.v1.LimitRange' },
   // RBAC
-  { name: 'ServiceAccount',          shortNames: ['sa'],     defRef: 'io.k8s.api.core.v1.ServiceAccount' },
-  { name: 'Role',                    shortNames: [],         defRef: 'io.k8s.api.rbac.v1.Role' },
-  { name: 'RoleBinding',             shortNames: [],         defRef: 'io.k8s.api.rbac.v1.RoleBinding' },
-  { name: 'ClusterRole',             shortNames: [],         defRef: 'io.k8s.api.rbac.v1.ClusterRole' },
-  { name: 'ClusterRoleBinding',      shortNames: [],         defRef: 'io.k8s.api.rbac.v1.ClusterRoleBinding' },
-  // Cluster
-  { name: 'Node',                    shortNames: ['no'],     defRef: 'io.k8s.api.core.v1.Node' },
-  { name: 'Namespace',               shortNames: ['ns'],     defRef: 'io.k8s.api.core.v1.Namespace' },
-  { name: 'Event',                   shortNames: ['ev'],     defRef: 'io.k8s.api.core.v1.Event' },
-  { name: 'PriorityClass',           shortNames: ['pc'],     defRef: 'io.k8s.api.scheduling.v1.PriorityClass' },
-  { name: 'HorizontalPodAutoscaler', shortNames: ['hpa'],    defRef: 'io.k8s.api.autoscaling.v2.HorizontalPodAutoscaler' },
-  { name: 'CustomResourceDefinition',shortNames: ['crd'],    defRef: 'io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1.CustomResourceDefinition' },
-  // Security / Cert / Admission / Coordination — newly added for CKA coverage
-  { name: 'CertificateSigningRequest',      shortNames: ['csr'], defRef: 'io.k8s.api.certificates.v1.CertificateSigningRequest' },
-  { name: 'PodDisruptionBudget',            shortNames: ['pdb'], defRef: 'io.k8s.api.policy.v1.PodDisruptionBudget' },
-  { name: 'Lease',                          shortNames: [],      defRef: 'io.k8s.api.coordination.v1.Lease' },
-  { name: 'MutatingWebhookConfiguration',   shortNames: [],      defRef: 'io.k8s.api.admissionregistration.v1.MutatingWebhookConfiguration' },
-  { name: 'ValidatingWebhookConfiguration', shortNames: [],      defRef: 'io.k8s.api.admissionregistration.v1.ValidatingWebhookConfiguration' },
-  { name: 'RuntimeClass',                   shortNames: [],      defRef: 'io.k8s.api.node.v1.RuntimeClass' },
+  { name: 'ServiceAccount',          shortNames: ['sa'],     plural: 'serviceaccounts',          namespaced: true,  defRef: 'io.k8s.api.core.v1.ServiceAccount' },
+  { name: 'Role',                    shortNames: [],         plural: 'roles',                    namespaced: true,  defRef: 'io.k8s.api.rbac.v1.Role' },
+  { name: 'RoleBinding',             shortNames: [],         plural: 'rolebindings',             namespaced: true,  defRef: 'io.k8s.api.rbac.v1.RoleBinding' },
+  { name: 'ClusterRole',             shortNames: [],         plural: 'clusterroles',             namespaced: false, defRef: 'io.k8s.api.rbac.v1.ClusterRole' },
+  { name: 'ClusterRoleBinding',      shortNames: [],         plural: 'clusterrolebindings',      namespaced: false, defRef: 'io.k8s.api.rbac.v1.ClusterRoleBinding' },
+  // Cluster — mostly cluster-scoped
+  { name: 'Node',                    shortNames: ['no'],     plural: 'nodes',                    namespaced: false, defRef: 'io.k8s.api.core.v1.Node',
+                                                              verbs: ['create','delete','deletecollection','get','list','patch','update','watch','proxy'] },
+  { name: 'Namespace',               shortNames: ['ns'],     plural: 'namespaces',               namespaced: false, defRef: 'io.k8s.api.core.v1.Namespace' },
+  { name: 'Event',                   shortNames: ['ev'],     plural: 'events',                   namespaced: true,  defRef: 'io.k8s.api.core.v1.Event' },
+  { name: 'PriorityClass',           shortNames: ['pc'],     plural: 'priorityclasses',          namespaced: false, defRef: 'io.k8s.api.scheduling.v1.PriorityClass' },
+  { name: 'HorizontalPodAutoscaler', shortNames: ['hpa'],    plural: 'horizontalpodautoscalers', namespaced: true,  defRef: 'io.k8s.api.autoscaling.v2.HorizontalPodAutoscaler' },
+  { name: 'CustomResourceDefinition',shortNames: ['crd'],    plural: 'customresourcedefinitions',namespaced: false, defRef: 'io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1.CustomResourceDefinition' },
+  // Security / Cert / Admission / Coordination
+  { name: 'CertificateSigningRequest',      shortNames: ['csr'], plural: 'certificatesigningrequests',     namespaced: false, defRef: 'io.k8s.api.certificates.v1.CertificateSigningRequest' },
+  { name: 'PodDisruptionBudget',            shortNames: ['pdb'], plural: 'poddisruptionbudgets',           namespaced: true,  defRef: 'io.k8s.api.policy.v1.PodDisruptionBudget' },
+  { name: 'Lease',                          shortNames: [],      plural: 'leases',                         namespaced: true,  defRef: 'io.k8s.api.coordination.v1.Lease' },
+  { name: 'MutatingWebhookConfiguration',   shortNames: [],      plural: 'mutatingwebhookconfigurations',  namespaced: false, defRef: 'io.k8s.api.admissionregistration.v1.MutatingWebhookConfiguration' },
+  { name: 'ValidatingWebhookConfiguration', shortNames: [],      plural: 'validatingwebhookconfigurations',namespaced: false, defRef: 'io.k8s.api.admissionregistration.v1.ValidatingWebhookConfiguration' },
+  { name: 'RuntimeClass',                   shortNames: [],      plural: 'runtimeclasses',                 namespaced: false, defRef: 'io.k8s.api.node.v1.RuntimeClass' },
 ];
+
+// Default `kubectl api-resources -o wide` VERBS column for the vast majority
+// of resources. Outliers (Node has `proxy`; subresource-only kinds) override
+// via the `verbs` field on their INCLUDED_KINDS entry.
+const STANDARD_VERBS = ['create','delete','deletecollection','get','list','patch','update','watch'];
 
 function fetchJson(url) {
   return new Promise((resolve, reject) => {
@@ -223,6 +233,27 @@ async function main() {
     };
   });
 
+  // `kubectl api-resources -o wide` projection — same source-of-truth
+  // (INCLUDED_KINDS) plus the OpenAPI's GVK extension so apiVersion is
+  // authoritative. Surfaced in the SPA's Tools tab as a flat lookup table.
+  const apiResources = INCLUDED_KINDS.map(({ name, defRef, shortNames, plural, namespaced, verbs }) => {
+    const def = defs[defRef];
+    const gvk = def?.['x-kubernetes-group-version-kind']?.[0] || {};
+    const group = gvk.group || '';
+    const version = gvk.version || '';
+    const apiVersion = group ? `${group}/${version}` : version;
+    return {
+      kind:       name,
+      plural:     plural,
+      shortNames: shortNames || [],
+      namespaced: !!namespaced,
+      group,
+      version,
+      apiVersion,
+      verbs:      verbs || STANDARD_VERBS,
+    };
+  }).sort((a, b) => a.kind.localeCompare(b.kind));
+
   // Merge in kubectl help
   let kubectlBlock = null;
   if (fs.existsSync(KUBECTL_HELP_FILE)) {
@@ -237,6 +268,7 @@ async function main() {
     k8sVersion: K8S_RELEASE,
     generatedAt: new Date().toISOString(),
     rootKinds,
+    apiResources,
     definitions: compacted,
     kubectl: kubectlBlock,
   };

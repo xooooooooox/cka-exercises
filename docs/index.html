@@ -300,6 +300,7 @@
     <nav class="tools-subtabs" role="tablist">
       <button data-tools-tab="explain" class="active" type="button" title="Browse the kubernetes API schema (kubectl explain)">📘 Explain</button>
       <button data-tools-tab="kubectl" type="button" title="Look up the verbatim kubectl &lt;cmd&gt; -h output">📋 kubectl -h</button>
+      <button data-tools-tab="api-resources" type="button" title="Lookup table of kubectl api-resources (kind, plural, shortnames, namespaced, apiVersion, verbs)">📑 api-resources</button>
       <label class="tools-version-picker" title="Pick the k8s minor — default v1.35 (CKA target)">
         Version
         <select id="tools-version-select" aria-label="Select kubernetes version"></select>
@@ -325,6 +326,28 @@
       <article id="tools-kubectl-detail" class="tools-detail">
         <p class="muted">Pick a kubectl command on the left to see the same <code>kubectl &lt;cmd&gt; -h</code> output you'd get in the exam terminal.</p>
       </article>
+    </section>
+
+    <section id="tools-api-resources" class="tools-panel tools-panel--table" hidden>
+      <div class="tools-api-resources-bar">
+        <input id="tools-api-resources-search" type="search" placeholder="🔎 Filter (e.g. hpa, ingress, rbac, namespaced:false, verb:patch, group:apps)" autocomplete="off">
+        <span id="tools-api-resources-count" class="muted"></span>
+      </div>
+      <div class="tools-api-resources-wrap">
+        <table id="tools-api-resources-table" class="tools-api-resources-table">
+          <thead>
+            <tr>
+              <th>NAME</th>
+              <th>SHORTNAMES</th>
+              <th>APIVERSION</th>
+              <th>NAMESPACED</th>
+              <th>KIND</th>
+              <th>VERBS</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </section>
   </div>
 
