@@ -31,6 +31,7 @@ on:
           - deepseek
           - qwen
           - doubao
+          - glm
           - ollama
       model:
         description: 'Model id (blank = per-provider default).'
@@ -172,6 +173,7 @@ jobs:
           DEEPSEEK_API_KEY:  ${{ secrets.DEEPSEEK_API_KEY }}
           QWEN_API_KEY:      ${{ secrets.QWEN_API_KEY }}
           DOUBAO_API_KEY:    ${{ secrets.DOUBAO_API_KEY }}
+          GLM_API_KEY:       ${{ secrets.GLM_API_KEY }}
           PROVIDER:          ${{ inputs.provider }}
           MODEL_INPUT:       ${{ inputs.model }}
         run: |
@@ -203,6 +205,10 @@ jobs:
               M="openai/doubao-pro-32k"
               B="https://ark.cn-beijing.volces.com/api/v3"
               K="$DOUBAO_API_KEY"; KENV="OPENAI_API_KEY";;
+            glm)
+              M="openai/glm-4-plus"
+              B="https://open.bigmodel.cn/api/paas/v4"
+              K="$GLM_API_KEY"; KENV="OPENAI_API_KEY";;
             ollama)
               M="ollama/llama3.1"
               B="http://localhost:11434"

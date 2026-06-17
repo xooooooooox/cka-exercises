@@ -1148,6 +1148,25 @@ kbd {
   outline: none;
 }
 .answer-box.answer-fullscreen .answer-task-btn { display: inline-block; }
+/* Same hidden-until-fullscreen pattern for the 💡 Solution drawer trigger. */
+.answer-solution-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 2px 8px;
+  font-size: 14px; line-height: 1;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.answer-solution-btn:hover,
+.answer-solution-btn:focus-visible {
+  background: var(--bg-elev);
+  color: var(--fg);
+  border-color: var(--border);
+  outline: none;
+}
+.answer-box.answer-fullscreen .answer-solution-btn { display: inline-block; }
 .answer-textarea {
   width: 100%;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -1326,13 +1345,15 @@ body.answer-fullscreen-active { overflow: hidden; }
     align-items: flex-end;
     padding: 0;
   }
-  #tools-drawer-overlay .tools-drawer-card,
-  #task-drawer-overlay  .tools-drawer-card {
+  #tools-drawer-overlay    .tools-drawer-card,
+  #task-drawer-overlay     .tools-drawer-card,
+  #solution-drawer-overlay .tools-drawer-card {
     max-height: 92vh;
     border-radius: var(--radius) var(--radius) 0 0;
     width: 100%;
   }
-  #task-drawer-overlay { align-items: flex-end; padding: 0; }
+  #task-drawer-overlay     { align-items: flex-end; padding: 0; }
+  #solution-drawer-overlay { align-items: flex-end; padding: 0; }
 }
 /* Task drawer body — reuses .tools-drawer-card sizing; only the host
    content needs comfortable reading layout. */
@@ -1351,6 +1372,26 @@ body.answer-fullscreen-active { overflow: hidden; }
   border-radius: var(--radius);
 }
 #task-drawer-overlay .task-drawer-task { font-size: 14px; }
+
+/* Solution drawer — same shape as the task drawer; opens above fullscreen
+   so the reference solution is reachable from the maximised editor. */
+#solution-drawer-overlay { z-index: 1010; }
+#solution-drawer-overlay #solution-drawer-host {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 16px 16px;
+  line-height: 1.55;
+}
+#solution-drawer-overlay .solution-drawer-locked {
+  padding: 16px;
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 13px;
+}
+#solution-drawer-overlay .solution-drawer-locked button {
+  margin-top: 12px;
+}
 .answer-actions {
   display: flex; align-items: center; gap: 8px;
   margin-top: 8px; flex-wrap: wrap;

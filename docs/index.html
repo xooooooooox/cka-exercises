@@ -398,6 +398,7 @@
           <label class="provider-card"><input type="radio" name="llm-provider" value="deepseek"> <span>DeepSeek</span><small>cheapest cloud</small><span class="provider-badge"></span></label>
           <label class="provider-card"><input type="radio" name="llm-provider" value="qwen"> <span>Qwen</span><small>Alibaba DashScope</small><span class="provider-badge"></span></label>
           <label class="provider-card"><input type="radio" name="llm-provider" value="doubao"> <span>Doubao</span><small>ByteDance Ark</small><span class="provider-badge"></span></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="glm"> <span>GLM</span><small>Zhipu BigModel</small><span class="provider-badge"></span></label>
           <label class="provider-card"><input type="radio" name="llm-provider" value="ollama"> <span>Ollama</span><small>local · free</small><span class="provider-badge"></span></label>
         </div>
       </div>
@@ -503,6 +504,19 @@
         <button id="task-drawer-close" type="button" class="overlay-close" aria-label="Close">✕</button>
       </header>
       <div id="task-drawer-host"></div>
+    </div>
+  </div>
+
+  <!-- Solution drawer: surfaces the reference solution over a fullscreen
+       answer editor (mirrors the task drawer). Respects the quiz's reveal
+       contract when invoked mid-quiz with `solutionsHidden`. -->
+  <div id="solution-drawer-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="solution-drawer-title">
+    <div class="overlay-card tools-drawer-card">
+      <header>
+        <h2 id="solution-drawer-title">💡 Solution</h2>
+        <button id="solution-drawer-close" type="button" class="overlay-close" aria-label="Close">✕</button>
+      </header>
+      <div id="solution-drawer-host"></div>
     </div>
   </div>
 

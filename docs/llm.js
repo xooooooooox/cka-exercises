@@ -68,6 +68,13 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
       chatPath: '/v3/chat/completions',
       modelsPath: '/v3/models',
     },
+    // 智谱 GLM — Zhipu BigModel (OpenAI-compatible, /v4 path)
+    glm: {
+      baseUrl: 'https://open.bigmodel.cn/api/paas',
+      model: 'glm-4-plus',
+      chatPath: '/v4/chat/completions',
+      modelsPath: '/v4/models',
+    },
     ollama: {
       baseUrl: 'http://localhost:11434',
       model: 'llama3.1:8b',
@@ -343,6 +350,7 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
       case 'deepseek':  result = await callOpenAICompat({ ...args, provider: 'deepseek' }); break;
       case 'qwen':      result = await callOpenAICompat({ ...args, provider: 'qwen' });     break;
       case 'doubao':    result = await callOpenAICompat({ ...args, provider: 'doubao' });   break;
+      case 'glm':       result = await callOpenAICompat({ ...args, provider: 'glm' });      break;
       case 'ollama':    result = await callOllama(args); break;
       default: throw new Error(`Unhandled provider: ${provider}`);
     }
@@ -455,11 +463,12 @@ Reply with exactly this JSON shape — keep "summary" to ONE sentence and at mos
           const data = await res.json();
           return (data.data || []).map(m => m.id);
         }
-        // OpenAI-compatible providers (uses /v1/models or /v3/models)
+        // OpenAI-compatible providers (uses /v1/models or /v3/models or /v4/models)
         case 'openai':
         case 'deepseek':
         case 'qwen':
-        case 'doubao': {
+        case 'doubao':
+        case 'glm': {
           if (!apiKey) throw new Error(`${provider} API key required`);
           const res = await withTimeout(fetch(`${base}${def.modelsPath}`, {
             headers: { 'authorization': `Bearer ${apiKey}` },

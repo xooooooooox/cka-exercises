@@ -65,7 +65,7 @@ const KEY = {
 
 // All providers we offer. Their slots get pre-created on first save so the
 // Settings UI can show per-provider configured-state hints.
-const ALL_PROVIDERS = ['anthropic', 'openai', 'deepseek', 'qwen', 'doubao', 'ollama'];
+const ALL_PROVIDERS = ['anthropic', 'openai', 'deepseek', 'qwen', 'doubao', 'glm', 'ollama'];
 const LLM_DEFAULT_SETTINGS = {
   // Flat shape kept for downstream call sites (renderAnswerBox, LLM.check, …).
   provider: 'anthropic',
@@ -561,6 +561,7 @@ const MODEL_FALLBACK = {
   deepseek:  ['deepseek-chat', 'deepseek-reasoner'],
   qwen:      ['qwen-plus', 'qwen-max', 'qwen-turbo', 'qwen3-max', 'qwen3-coder-plus'],
   doubao:    ['doubao-1-5-pro-256k', 'doubao-1-5-pro-32k', 'doubao-pro-256k'],
+  glm:       ['glm-4-plus', 'glm-4-flash', 'glm-4-air', 'glm-4-0520', 'glm-4-flashx'],
   ollama:    ['llama3.1:8b', 'qwen2.5:7b', 'mistral:7b'],
 };
 
@@ -1688,6 +1689,16 @@ function renderAnswerBox(ex, opts = {}) {
   }, '📝');
   labelRow.appendChild(taskBtn);
   taskBtn.addEventListener('click', () => { openTaskDrawer(ex); });
+  // Same hidden-until-fullscreen pattern — surfaces the reference solution
+  // (which would otherwise be covered by the fullscreen answer-box).
+  const solBtn = el('button', {
+    type: 'button',
+    class: 'answer-solution-btn',
+    title: 'Show the reference solution without closing fullscreen',
+    'aria-label': 'Open solution drawer',
+  }, '💡');
+  labelRow.appendChild(solBtn);
+  solBtn.addEventListener('click', () => { openSolutionDrawer(ex); });
   box.appendChild(labelRow);
 
   const ta = el('textarea', {
@@ -1980,11 +1991,20 @@ function renderAnswerBox(ex, opts = {}) {
       });
       return btn;
     };
+    // Reveal needs special handling: clicking the real #quiz-reveal marks
+    // q.revealed.add(ex.id) and re-renders the card, but the solution lands
+    // BELOW the fullscreen overlay where the user can't see it. So we also
+    // pop the solution drawer (z-index 1010 > fullscreen's 1000).
+    const revealProxy = el('button', { type: 'button' }, '👁 Reveal');
+    revealProxy.addEventListener('click', () => {
+      document.getElementById('quiz-reveal')?.click();
+      openSolutionDrawer(ex);
+    });
     const quizbar = el('div', { class: 'answer-fullscreen-quizbar' },
       proxy('quiz-nav-toggle', '📋 Questions'),
       proxy('quiz-prev',       '← Prev'),
       proxy('quiz-flag',       '🚩 Flag'),
-      proxy('quiz-reveal',     '👁 Reveal'),
+      revealProxy,
       el('span', { class: 'qbar-spacer' }),
       proxy('quiz-grade-got',  '✓ Got it',  'grade-got'),
       proxy('quiz-grade-miss', '✗ Missed',  'grade-miss'),
@@ -2064,8 +2084,9 @@ let _toolsOriginalNext = null;
 
 async function openToolsDrawer() {
   if (_toolsDrawerOpen) return;
-  // At most one drawer at a time — opening Tools dismisses the Task drawer first.
-  if (_taskDrawerOpen) closeTaskDrawer();
+  // At most one drawer at a time.
+  if (_taskDrawerOpen)     closeTaskDrawer();
+  if (_solutionDrawerOpen) closeSolutionDrawer();
   const overlay = document.getElementById('tools-drawer-overlay');
   const host    = document.getElementById('tools-drawer-host');
   const view    = document.getElementById('view-tools');
@@ -2123,8 +2144,9 @@ let _taskDrawerOpen = false;
 
 function openTaskDrawer(ex) {
   if (_taskDrawerOpen) return;
-  // At most one drawer at a time — opening Task dismisses the Tools drawer first.
-  if (_toolsDrawerOpen) closeToolsDrawer();
+  // At most one drawer at a time.
+  if (_toolsDrawerOpen)    closeToolsDrawer();
+  if (_solutionDrawerOpen) closeSolutionDrawer();
   const overlay = document.getElementById('task-drawer-overlay');
   const host    = document.getElementById('task-drawer-host');
   const title   = document.getElementById('task-drawer-title');
@@ -2179,6 +2201,78 @@ function _onTaskDrawerEsc(e) {
   if (e.key !== 'Escape') return;
   e.stopPropagation();
   closeTaskDrawer();
+}
+
+// ---------- Solution drawer (mirrors the Task drawer) ----------
+//
+// The inline solution `<div class="exercise-solution">` lives BELOW the
+// answer-box in the card DOM. When the answer-box enters fullscreen
+// (z-index 1000) the solution gets covered. This drawer at z-index 1010
+// (see #solution-drawer-overlay rule) surfaces the rendered solution
+// above the fullscreen overlay. Reveal in the quiz-mode quizbar also
+// opens this drawer so 👁 Reveal actually shows the solution.
+
+let _solutionDrawerOpen = false;
+
+function openSolutionDrawer(ex) {
+  if (_solutionDrawerOpen) return;
+  if (_toolsDrawerOpen) closeToolsDrawer();
+  if (_taskDrawerOpen)  closeTaskDrawer();
+  const overlay = document.getElementById('solution-drawer-overlay');
+  const host    = document.getElementById('solution-drawer-host');
+  const title   = document.getElementById('solution-drawer-title');
+  if (!overlay || !host || !title) return;
+
+  const display = ex.displayTitle || ex.fullTitle || ex.title || 'Solution';
+  title.textContent = `💡 ${display} — ${ex.id}`;
+  host.innerHTML = '';
+
+  // Respect the quiz's reveal contract: pre-reveal in hidden-solutions mode,
+  // show a Reveal-first placeholder instead of leaking the answer.
+  const q = State.quiz;
+  const isQuizHidden = State.mode === 'quiz' && q && q.solutionsHidden
+                       && !q.revealed.has(ex.id);
+  if (isQuizHidden) {
+    const wrap = el('div', { class: 'solution-drawer-locked' });
+    wrap.appendChild(el('p', {}, '👁 Solution is hidden by this quiz session.'));
+    const revealBtn = el('button', { type: 'button', class: 'primary' }, '👁 Reveal & show');
+    revealBtn.addEventListener('click', () => {
+      document.getElementById('quiz-reveal')?.click();
+      closeSolutionDrawer();
+      // Re-open after the reveal-driven renderQuizCard finishes.
+      setTimeout(() => {
+        const fresh = State.byId.get(ex.id);
+        if (fresh) openSolutionDrawer(fresh);
+      }, 50);
+    });
+    wrap.appendChild(revealBtn);
+    host.appendChild(wrap);
+  } else if (ex.solution) {
+    const sol = el('div', { class: 'exercise-solution', html: renderMarkdown(ex.solution) });
+    host.appendChild(sol);
+    attachCopyButtons(sol);
+  } else {
+    host.appendChild(el('p', { class: 'solution-drawer-locked' }, 'No reference solution recorded for this exercise.'));
+  }
+
+  overlay.hidden = false;
+  _solutionDrawerOpen = true;
+  document.addEventListener('keydown', _onSolutionDrawerEsc, true);
+  document.getElementById('solution-drawer-close').onclick = closeSolutionDrawer;
+  overlay.onclick = (e) => { if (e.target === overlay) closeSolutionDrawer(); };
+}
+
+function closeSolutionDrawer() {
+  if (!_solutionDrawerOpen) return;
+  document.getElementById('solution-drawer-overlay').hidden = true;
+  _solutionDrawerOpen = false;
+  document.removeEventListener('keydown', _onSolutionDrawerEsc, true);
+}
+
+function _onSolutionDrawerEsc(e) {
+  if (e.key !== 'Escape') return;
+  e.stopPropagation();
+  closeSolutionDrawer();
 }
 
 // ---------- Report a reference-solution problem ----------
