@@ -1845,9 +1845,29 @@ body.answer-fullscreen-active { overflow: hidden; }
 }
 .sync-dot--ok    { background: var(--success); }
 .sync-dot--error { background: var(--danger); }
+/* Auto-sync timer is armed — slow accent pulse. Distinct from --in-flight
+   (faster + scaled) so the user can read "pending" vs "actually pushing". */
+.sync-dot--pending {
+  background: var(--accent);
+  animation: sync-dot-arm 2s ease-in-out infinite;
+  opacity: 0.7;
+}
 @keyframes sync-dot-pulse {
   0%, 100% { opacity: 0.4; transform: scale(0.85); }
   50%      { opacity: 1;   transform: scale(1.1); }
+}
+@keyframes sync-dot-arm {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.9; }
+}
+/* Diagnostic top line in the ☁ popover — always-visible state line that
+   tells you exactly why auto-push is firing or not. */
+.sync-diag-line {
+  font-size: 11.5px;
+  color: var(--fg-muted);
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: 4px;
+  margin-bottom: 4px;
 }
 .sync-menu {
   position: absolute; right: 0; top: calc(100% + 6px);

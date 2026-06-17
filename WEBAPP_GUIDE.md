@@ -216,6 +216,22 @@ Same payload as Export/Import, but pushed to / pulled from a private GitHub Gist
 
 **Tab-close safety net.** If you close the browser within the 30 s debounce window, a best-effort `keepalive:true` PATCH fires on `beforeunload` so your last burst of edits doesn't get lost.
 
+**Background-tab safety net.** Browsers throttle `setTimeout` aggressively in background tabs (Chrome ≈ 1/minute, Safari even less). To keep auto-sync reliable, a `visibilitychange` handler fires immediately when the tab returns to the foreground if a pending edit is already past its 30 s window. Net: you'll never lose a sync just because you switched to a different tab during the debounce.
+
+**How to confirm auto-sync is working.** Open the ☁ popover any time — the top line shows the current auto-sync state explicitly:
+
+| Top-line text | Meaning |
+|---|---|
+| `🔄 Auto-push: on · idle` | Configured + ready, no pending edit |
+| `🔄 Auto-push: on · next push in ~22s` | Timer armed (live countdown, ticks each second) |
+| `🔄 Auto-pushing… (3.2s)` | Currently uploading |
+| `🔄 Auto-push: off — enable in Settings → Sync` | You unchecked the toggle |
+| `⚙️ Auto-push: needs a Gist ID — run a manual ⬆ Push first` | PAT set but no Gist ID yet; one manual Push fixes it |
+| `⚙️ Auto-push: needs a GitHub PAT` | No PAT configured |
+| `⚠ Auto-push failed (X min ago): <message>` | Last auto-push errored; see Settings → Sync for full state |
+
+The `⬆ Last push` line also gets an `(auto)` tag when the most recent push was from auto-sync (vs a manual click). The ☁ status dot pulses accent while the timer is armed, blue while pushing, green for ~30s after success, red for an unread error.
+
 After your PAT is configured here, you can also Push / Pull / Test from the **☁ Sync** icon in the header without re-opening Settings.
 
 ---

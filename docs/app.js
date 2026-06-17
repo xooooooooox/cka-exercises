@@ -1139,15 +1139,20 @@ const Sync = (() => {
     return () => subs.delete(fn);
   }
 
-  async function _run(op, doFn) {
+  async function _run(op, doFn, opts) {
     if (inFlight) throw new Error(`A ${inFlight.op} is already in progress`);
-    inFlight = { op, startedAt: new Date().toISOString() };
+    const origin = (opts && opts.origin === 'auto') ? 'auto' : 'manual';
+    inFlight = { op, origin, startedAt: new Date().toISOString() };
     notify();
     try {
       const r = await doFn();
       const meta = loadMeta();
       const key = `last${op[0].toUpperCase()}${op.slice(1)}At`;
       meta[key] = new Date().toISOString();
+      // Track the origin so the popover can distinguish auto vs manual on
+      // the "Last push" line. Only meaningful for push (pull / test stay
+      // manual-only today).
+      if (op === 'push') meta.lastPushOrigin = origin;
       meta.lastError = null;
       saveMeta(meta);
       inFlight = null;
@@ -1157,6 +1162,7 @@ const Sync = (() => {
       const meta = loadMeta();
       meta.lastError = {
         op,
+        origin,
         message: e.message || String(e),
         at: new Date().toISOString(),
         seen: false,
@@ -1178,7 +1184,7 @@ const Sync = (() => {
 
   return {
     getState, subscribe, notify, acknowledgeError,
-    runPush: () => _run('push', doGistPush),
+    runPush: (opts) => _run('push', doGistPush, opts),
     runPull: () => _run('pull', doGistPull),
     runTest: () => _run('test', doGistTest),
   };
@@ -1194,14 +1200,70 @@ const Sync = (() => {
 const AUTO_SYNC_DEBOUNCE_MS = 30_000;
 let _autoSyncTimer = null;
 
+// Tiny pub/sub for auto-sync state transitions. The ☁ status dot + the
+// popover diagnostic line both subscribe so they can show "pending" /
+// "armed (next push in 22s)" without polling.
+const AUTO_SYNC_LISTENERS = new Set();
+function onAutoSyncStateChange(fn) { AUTO_SYNC_LISTENERS.add(fn); return () => AUTO_SYNC_LISTENERS.delete(fn); }
+function notifyAutoSyncState() {
+  for (const fn of AUTO_SYNC_LISTENERS) {
+    try { fn(); } catch (e) { console.error('auto-sync listener threw', e); }
+  }
+}
+
 function isAutoSyncEnabled() {
   if (!window.GistSync) return false;
   if (storageGet(KEY.autoSyncDisabled, false)) return false;
   return !!(getGistToken() && getGistId());
 }
 
+// Diagnostic snapshot of why auto-sync is in its current state. Powers the
+// popover top line so the user can SEE without DevTools why a push isn't
+// firing. `dirtyAt` is the ISO of the last edit that armed the timer; the
+// renderer derives "next push in Xs" from `AUTO_SYNC_DEBOUNCE_MS - elapsed`.
+function getAutoSyncStatus() {
+  const hasPat = !!getGistToken();
+  const hasId  = !!getGistId();
+  const optedOut = !!storageGet(KEY.autoSyncDisabled, false);
+  const dirtyAt  = storageGet(KEY.syncDirtyAt, null);
+  const meta     = storageGet(KEY.syncMeta, {}) || {};
+  const lastError = meta.lastError && meta.lastError.op === 'push' ? meta.lastError : null;
+  let reasonDisabled = null;
+  if (!window.GistSync) reasonDisabled = 'syncjs-missing';
+  else if (!hasPat) reasonDisabled = 'no-pat';
+  else if (!hasId)  reasonDisabled = 'no-gist-id';
+  else if (optedOut) reasonDisabled = 'opted-out';
+  return {
+    enabled: reasonDisabled == null,
+    reasonDisabled,
+    armed: _autoSyncTimer != null,
+    dirtyAt,
+    lastPushOrigin: meta.lastPushOrigin || null,
+    lastError,
+  };
+}
+
+// One-shot DevTools breadcrumb so a user wondering "why isn't auto-sync
+// firing?" has SOMETHING to find without going to the Settings tab. Only
+// fires once per session to avoid log spam on every edit.
+let _autoSyncSkipLogged = false;
+function _logAutoSyncSkipOnce() {
+  if (_autoSyncSkipLogged) return;
+  _autoSyncSkipLogged = true;
+  const s = getAutoSyncStatus();
+  const why = s.reasonDisabled === 'syncjs-missing' ? 'sync.js failed to load'
+            : s.reasonDisabled === 'opted-out'      ? 'user opted out via Settings → Sync'
+            : s.reasonDisabled === 'no-pat'         ? 'GitHub PAT missing'
+            : s.reasonDisabled === 'no-gist-id'     ? 'Gist ID missing — run a manual ⬆ Push first to create one'
+            : 'unknown';
+  console.info('[auto-sync] dirty edit ignored — auto-sync disabled:', why);
+}
+
 function markSyncDirty() {
-  if (!isAutoSyncEnabled()) return;
+  if (!isAutoSyncEnabled()) {
+    _logAutoSyncSkipOnce();
+    return;
+  }
   storageSet(KEY.syncDirtyAt, new Date().toISOString());
   scheduleAutoSync();
 }
@@ -1209,6 +1271,7 @@ function markSyncDirty() {
 function scheduleAutoSync() {
   if (_autoSyncTimer) clearTimeout(_autoSyncTimer);
   _autoSyncTimer = setTimeout(runAutoSync, AUTO_SYNC_DEBOUNCE_MS);
+  notifyAutoSyncState();
 }
 
 async function runAutoSync() {
@@ -1224,26 +1287,48 @@ async function runAutoSync() {
     return;
   }
   try {
-    await Sync.runPush();
+    await Sync.runPush({ origin: 'auto' });
     try { localStorage.removeItem(KEY.syncDirtyAt); } catch {}
   } catch (e) {
     // The Sync IIFE has already stamped lastError → the popover renders it.
     // We don't auto-retry tightly; the next markSyncDirty() re-arms the timer.
     console.warn('[auto-sync] push failed:', e.message);
+  } finally {
+    notifyAutoSyncState();
   }
 }
 
 function bootAutoSync() {
-  if (!isAutoSyncEnabled()) return;
   // Replay a pending dirty flag from a previous session.
-  if (storageGet(KEY.syncDirtyAt, null)) scheduleAutoSync();
+  if (isAutoSyncEnabled() && storageGet(KEY.syncDirtyAt, null)) scheduleAutoSync();
+
   // Best-effort flush on page close. keepalive:true lets the request survive
   // the document teardown that an inflight regular fetch wouldn't.
   window.addEventListener('beforeunload', () => {
+    if (!isAutoSyncEnabled()) return;
     if (!_autoSyncTimer && !storageGet(KEY.syncDirtyAt, null)) return;
     try {
       window.GistSync.beaconPush?.(getGistToken(), getGistId(), collectExportable());
     } catch {}
+  });
+
+  // Background-tab safety net. Chrome throttles setTimeout in background
+  // tabs to as little as 1/minute, so a 30s debounce can sleep arbitrarily
+  // long. When the tab returns to foreground, flush immediately if the
+  // dirty flag is already past its window, otherwise schedule the remainder.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (!isAutoSyncEnabled()) return;
+    const dirtyIso = storageGet(KEY.syncDirtyAt, null);
+    if (!dirtyIso) return;
+    const elapsed = Date.now() - Date.parse(dirtyIso);
+    if (_autoSyncTimer) { clearTimeout(_autoSyncTimer); _autoSyncTimer = null; }
+    if (elapsed >= AUTO_SYNC_DEBOUNCE_MS) {
+      runAutoSync();
+    } else {
+      _autoSyncTimer = setTimeout(runAutoSync, AUTO_SYNC_DEBOUNCE_MS - elapsed);
+      notifyAutoSyncState();
+    }
   });
 }
 
@@ -1335,7 +1420,10 @@ function installGistHandlers() {
     if (meta.lastError) {
       lines.push(`✗ Last ${meta.lastError.op} failed (${humanTimeAgo(meta.lastError.at)}): ${meta.lastError.message}`);
     }
-    if (meta.lastPushAt) lines.push(`⬆ Last push: ${humanTimeAgo(meta.lastPushAt)}`);
+    if (meta.lastPushAt) {
+      const tag = meta.lastPushOrigin === 'auto' ? ' (auto)' : '';
+      lines.push(`⬆ Last push${tag}: ${humanTimeAgo(meta.lastPushAt)}`);
+    }
     if (meta.lastPullAt) lines.push(`⬇ Last pull: ${humanTimeAgo(meta.lastPullAt)}`);
     if (meta.lastTestAt) lines.push(`✓ Last test: ${humanTimeAgo(meta.lastTestAt)}`);
     status.replaceChildren();
@@ -1370,6 +1458,16 @@ function installGistHandlers() {
     autoToggle.checked = !storageGet(KEY.autoSyncDisabled, false);
     autoToggle.addEventListener('change', () => {
       storageSet(KEY.autoSyncDisabled, !autoToggle.checked);
+      // Re-arm the timer when the user opts BACK in and there's a pending
+      // dirty flag from before; tear down the timer when they opt out.
+      _autoSyncSkipLogged = false;  // reset the once-only DevTools breadcrumb
+      if (!autoToggle.checked && _autoSyncTimer) {
+        clearTimeout(_autoSyncTimer);
+        _autoSyncTimer = null;
+      } else if (autoToggle.checked && isAutoSyncEnabled() && storageGet(KEY.syncDirtyAt, null)) {
+        scheduleAutoSync();
+      }
+      notifyAutoSyncState();
     });
   }
 
@@ -1430,25 +1528,40 @@ function installSyncMenu() {
     pullBtn.disabled = !hasToken || !id || !!inFlight;
     testBtn.disabled = !hasToken || !!inFlight;
 
-    // Status block — in-flight wins; then errors; then "last X" history.
     status.replaceChildren();
+
+    // Always-rendered diagnostic top line — answers "is auto-sync working?"
+    const diagLine = renderAutoSyncDiagLine(inFlight);
+    if (diagLine) status.appendChild(diagLine);
+
     if (!hasToken) {
-      status.textContent = 'Configure a GitHub PAT in Settings first';
+      const d = document.createElement('div');
+      d.textContent = 'Configure a GitHub PAT in Settings first';
+      status.appendChild(d);
       return;
     }
     if (inFlight) {
-      status.textContent = `⏳ ${inFlight.op[0].toUpperCase()}${inFlight.op.slice(1)}ing…`;
+      // Diagnostic line already covered the auto/manual flavour; show a brief
+      // op label below for symmetry with the existing "Last X" surfaces.
+      const d = document.createElement('div');
+      d.textContent = `⏳ ${inFlight.op[0].toUpperCase()}${inFlight.op.slice(1)}ing…`;
+      status.appendChild(d);
       return;
     }
     const lines = [];
     if (meta.lastError) {
       lines.push(`✗ Last ${meta.lastError.op} failed (${humanTimeAgo(meta.lastError.at)}): ${meta.lastError.message}`);
     }
-    if (meta.lastPushAt) lines.push(`⬆ Last push: ${humanTimeAgo(meta.lastPushAt)}`);
+    if (meta.lastPushAt) {
+      const tag = meta.lastPushOrigin === 'auto' ? ' (auto)' : '';
+      lines.push(`⬆ Last push${tag}: ${humanTimeAgo(meta.lastPushAt)}`);
+    }
     if (meta.lastPullAt) lines.push(`⬇ Last pull: ${humanTimeAgo(meta.lastPullAt)}`);
     if (meta.lastTestAt) lines.push(`✓ Last test: ${humanTimeAgo(meta.lastTestAt)}`);
-    if (!lines.length) {
-      status.textContent = 'Ready';
+    if (!lines.length && !diagLine) {
+      const d = document.createElement('div');
+      d.textContent = 'Ready';
+      status.appendChild(d);
       return;
     }
     for (const l of lines) {
@@ -1458,10 +1571,48 @@ function installSyncMenu() {
     }
   }
 
+  function renderAutoSyncDiagLine(inFlight) {
+    const s = getAutoSyncStatus();
+    let text;
+    if (s.reasonDisabled === 'syncjs-missing') {
+      text = '⚠ Auto-push unavailable — sync.js failed to load';
+    } else if (s.reasonDisabled === 'no-pat') {
+      text = '⚙️ Auto-push: needs a GitHub PAT — set in Settings → Sync';
+    } else if (s.reasonDisabled === 'no-gist-id') {
+      text = '⚙️ Auto-push: needs a Gist ID — run a manual ⬆ Push first to create one';
+    } else if (s.reasonDisabled === 'opted-out') {
+      text = '🔄 Auto-push: off — enable in Settings → Sync';
+    } else if (inFlight && inFlight.op === 'push' && inFlight.origin === 'auto') {
+      const secs = ((Date.now() - Date.parse(inFlight.startedAt)) / 1000).toFixed(1);
+      text = `🔄 Auto-pushing… (${secs}s)`;
+    } else if (s.armed && s.dirtyAt) {
+      const remaining = Math.max(0, AUTO_SYNC_DEBOUNCE_MS - (Date.now() - Date.parse(s.dirtyAt)));
+      const secs = Math.ceil(remaining / 1000);
+      text = secs > 0
+        ? `🔄 Auto-push: on · next push in ~${secs}s`
+        : '🔄 Auto-push: about to fire…';
+    } else {
+      text = '🔄 Auto-push: on · idle';
+    }
+    const d = document.createElement('div');
+    d.textContent = text;
+    d.className = 'sync-diag-line';
+    return d;
+  }
+
   let unsubscribe = null;
+  let unsubscribeAuto = null;
+  let tickInterval = null;
+  function rerenderFromCurrent() { renderStatus(Sync.getState()); }
   function openMenu() {
     renderHeader();
     unsubscribe = Sync.subscribe(renderStatus);
+    // Also subscribe to auto-sync state transitions so the diagnostic line
+    // refreshes immediately when the timer arms/disarms (not just at the
+    // 1s tick).
+    unsubscribeAuto = onAutoSyncStateChange(rerenderFromCurrent);
+    // Tick the countdown each second while the popover is open.
+    tickInterval = setInterval(rerenderFromCurrent, 1000);
     menu.hidden = false;
     toggle.setAttribute('aria-expanded', 'true');
     // The user is now looking at the error — clear the "unread" flag so the
@@ -1470,6 +1621,8 @@ function installSyncMenu() {
   }
   function closeMenu() {
     if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+    if (unsubscribeAuto) { unsubscribeAuto(); unsubscribeAuto = null; }
+    if (tickInterval) { clearInterval(tickInterval); tickInterval = null; }
     menu.hidden = true;
     toggle.setAttribute('aria-expanded', 'false');
   }
@@ -1628,7 +1781,11 @@ function installSyncDotIndicator() {
   if (!dot) return;
   let fadeTimer = null;
 
-  function render({ inFlight, meta }) {
+  function render(stateMaybe) {
+    // Called by Sync.subscribe with {inFlight, meta} AND by
+    // onAutoSyncStateChange() with no args — re-read fresh state in the
+    // second case so both paths share one renderer.
+    const { inFlight, meta } = stateMaybe || Sync.getState();
     if (fadeTimer) { clearTimeout(fadeTimer); fadeTimer = null; }
     dot.className = 'sync-dot';
     if (inFlight) {
@@ -1638,6 +1795,14 @@ function installSyncDotIndicator() {
     }
     if (meta.lastError && !meta.lastError.seen) {
       dot.classList.add('sync-dot--error');
+      dot.hidden = false;
+      return;
+    }
+    // Pending state — the 30s debounce timer is armed waiting to auto-push.
+    // Loses to in-flight + error (handled above) but wins over the "ok"
+    // green-window so the user sees the right "next thing happening" cue.
+    if (_autoSyncTimer != null) {
+      dot.classList.add('sync-dot--pending');
       dot.hidden = false;
       return;
     }
@@ -1661,6 +1826,9 @@ function installSyncDotIndicator() {
     dot.hidden = true;
   }
   Sync.subscribe(render);
+  // Also re-render on every auto-sync state transition so the pending dot
+  // appears the instant the user makes an edit.
+  onAutoSyncStateChange(() => render());
 }
 
 // ---------- Header 🔄 refresh + update-available banner ----------
