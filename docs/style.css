@@ -2563,6 +2563,81 @@ body.answer-fullscreen-active { overflow: hidden; }
   word-break: break-word;
 }
 
+/* 📑 api-resources mobile layout — stacked cards instead of a horizontally-
+   scrolling six-column table. The standard responsive-table pattern: hide the
+   thead, turn each <tr> into a card, prefix each <td> with its column name
+   via attr(data-label). 600px chosen so iPad-mini portrait (744px) keeps the
+   table layout while iPhones (≤402px logical) and small tablets get the
+   cards. */
+@media (max-width: 600px) {
+  .tools-api-resources-bar {
+    position: static;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 4px 0 8px;
+  }
+  .tools-api-resources-wrap { overflow-x: visible; }
+  .tools-api-resources-table thead { display: none; }
+  .tools-api-resources-table,
+  .tools-api-resources-table tbody,
+  .tools-api-resources-table tr,
+  .tools-api-resources-table td {
+    display: block;
+    width: auto;
+  }
+  .tools-api-resources-table tr {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px 12px;
+    margin-bottom: 10px;
+    background: var(--bg-elev);
+    cursor: pointer;
+  }
+  .tools-api-resources-table td {
+    border: none;
+    padding: 2px 0;
+    position: relative;
+    padding-left: 96px;
+    min-height: 1.4em;
+    word-break: break-word;
+  }
+  .tools-api-resources-table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 88px;
+    font-weight: 600;
+    color: var(--fg-muted);
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  /* VERBS — longest field, gets a full-width row beneath the others. */
+  .tools-api-resources-table .api-resources-cell--verbs {
+    padding-top: 6px;
+    margin-top: 4px;
+    border-top: 1px dashed var(--border);
+    padding-left: 0;
+    font-size: 11px;
+  }
+  .tools-api-resources-table .api-resources-cell--verbs::before {
+    position: static;
+    display: block;
+    margin-bottom: 2px;
+    width: auto;
+  }
+  /* iOS Safari ignores :hover — explicit tap-affordance cue. */
+  .tools-api-resources-table tr::after {
+    content: '👉 tap to open in 📘 Explain';
+    display: block;
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--fg-muted);
+    text-align: right;
+  }
+}
+
 .tools-tree {
   position: sticky;
   top: 70px;
@@ -2781,6 +2856,9 @@ body.answer-fullscreen-active { overflow: hidden; }
   #tools-meta { display: none; }
   .kubectl-help { font-size: 11.5px; padding: 10px 12px; }
   .explain-header { font-size: 12px; padding: 8px 10px; }
+  /* 📑 api-resources filter bar — tighter for phone widths. */
+  .tools-api-resources-bar input[type="search"] { font-size: 13px; padding: 5px 8px; }
+  #tools-api-resources-count { font-size: 11px; }
 }
 
 /* ============================================================ */

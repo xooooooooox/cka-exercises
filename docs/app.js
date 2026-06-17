@@ -4427,13 +4427,16 @@ function renderApiResourcesTable() {
   });
   tbody.innerHTML = '';
   for (const r of rows) {
+    // data-label attrs power the mobile stacked-card layout — CSS ::before
+    // pseudo-elements read attr(data-label) so each cell shows its column
+    // name inline at narrow viewports without a separate <thead>.
     const tr = el('tr', { 'data-kind': r.kind, title: `Click to open ${r.kind} in 📘 Explain` },
-      el('td', {}, r.plural),
-      el('td', { class: 'api-resources-cell--shortnames' }, (r.shortNames || []).join(', ') || '—'),
-      el('td', {}, r.apiVersion),
-      el('td', { class: r.namespaced ? 'api-resources-cell--ns-true' : 'api-resources-cell--ns-false' }, String(r.namespaced)),
-      el('td', {}, r.kind),
-      el('td', { class: 'api-resources-cell--verbs' }, (r.verbs || []).join(', ')),
+      el('td', { 'data-label': 'NAME' }, r.plural),
+      el('td', { 'data-label': 'SHORTNAMES', class: 'api-resources-cell--shortnames' }, (r.shortNames || []).join(', ') || '—'),
+      el('td', { 'data-label': 'APIVERSION' }, r.apiVersion),
+      el('td', { 'data-label': 'NAMESPACED', class: r.namespaced ? 'api-resources-cell--ns-true' : 'api-resources-cell--ns-false' }, String(r.namespaced)),
+      el('td', { 'data-label': 'KIND' }, r.kind),
+      el('td', { 'data-label': 'VERBS', class: 'api-resources-cell--verbs' }, (r.verbs || []).join(', ')),
     );
     tr.addEventListener('click', () => {
       const root = State.tools.rootKinds?.find(rk => rk.name === r.kind);
