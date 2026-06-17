@@ -1191,6 +1191,38 @@ kbd {
 }
 body.answer-fullscreen-active { overflow: hidden; }
 
+/* Quiz-only control strip rendered inside the answer-box. Hidden until the
+   user maximises the editor; surfaces Prev/Next/Got/Missed/Flag/Reveal +
+   the question navigator so the user keeps full quiz control while editing
+   long YAML / kubectl answers without exiting fullscreen. */
+.answer-fullscreen-quizbar { display: none; }
+.answer-box.answer-fullscreen .answer-fullscreen-quizbar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 0 4px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  align-items: center;
+}
+.answer-fullscreen-quizbar button {
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  color: var(--fg);
+  cursor: pointer;
+}
+.answer-fullscreen-quizbar button:hover { background: var(--bg); }
+.answer-fullscreen-quizbar button.grade-got {
+  border-color: var(--success); color: var(--success); font-weight: 600;
+}
+.answer-fullscreen-quizbar button.grade-miss {
+  border-color: var(--danger);  color: var(--danger);  font-weight: 600;
+}
+.answer-fullscreen-quizbar .qbar-spacer { flex: 1; min-width: 8px; }
+
 /* Tools drawer — slides above the fullscreen answer overlay (z-index 1000)
    so the user can pull up kubectl explain / kubectl -h without exiting
    fullscreen. The card on small screens is a bottom sheet that fills 92vh. */

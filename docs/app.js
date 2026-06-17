@@ -178,6 +178,12 @@ function emitLLMSettingsChange() {
 }
 function clearLLMListeners() { LLM_LISTENERS.clear(); }
 
+// True while the user is in quiz-mode fullscreen. renderQuizCard rebuilds the
+// answer-box from scratch on every Prev/Next/Skip/Got/Missed, which would drop
+// the .answer-fullscreen class — we re-apply it post-render so navigation
+// doesn't kick the user out of fullscreen.
+let _quizFullscreenSticky = false;
+
 function getAnswer(exerciseId) { return storageGet(KEY.answerPrefix + exerciseId, null); }
 function setAnswer(exerciseId, payload) { storageSet(KEY.answerPrefix + exerciseId, payload); }
 
@@ -1807,6 +1813,9 @@ function renderAnswerBox(ex, opts = {}) {
     } else {
       document.body.classList.remove('answer-fullscreen-active');
     }
+    // Track intent so Prev/Next/etc. don't dump the user out of fullscreen
+    // when renderQuizCard rebuilds the answer-box (quiz mode only).
+    _quizFullscreenSticky = onNow && !!opts.fromQuiz;
   });
 
   const actions = el('div', { class: 'answer-actions' });
@@ -1957,6 +1966,33 @@ function renderAnswerBox(ex, opts = {}) {
     setAnswer(ex.id, { text: '', verdict: null });
     updateHint();
   });
+
+  // Quiz-only: in-overlay control strip so Prev/Next/Got/Missed/Flag/Reveal
+  // and the 📋 question navigator are reachable without exiting fullscreen.
+  // The strip is hidden by CSS unless .answer-box.answer-fullscreen.
+  // Buttons are thin proxies that .click() the real quiz controls so we don't
+  // duplicate state — the real handlers in installQuizControls do the work.
+  if (opts.fromQuiz) {
+    const proxy = (id, label, extraClass) => {
+      const btn = el('button', { type: 'button', class: extraClass || '' }, label);
+      btn.addEventListener('click', () => {
+        document.getElementById(id)?.click();
+      });
+      return btn;
+    };
+    const quizbar = el('div', { class: 'answer-fullscreen-quizbar' },
+      proxy('quiz-nav-toggle', '📋 Questions'),
+      proxy('quiz-prev',       '← Prev'),
+      proxy('quiz-flag',       '🚩 Flag'),
+      proxy('quiz-reveal',     '👁 Reveal'),
+      el('span', { class: 'qbar-spacer' }),
+      proxy('quiz-grade-got',  '✓ Got it',  'grade-got'),
+      proxy('quiz-grade-miss', '✗ Missed',  'grade-miss'),
+      proxy('quiz-skip',       '↷ Skip'),
+      proxy('quiz-next',       'Next →'),
+    );
+    box.appendChild(quizbar);
+  }
 
   return box;
 }
@@ -2868,7 +2904,35 @@ function renderExerciseCard(ex, opts = {}) {
   return card;
 }
 
+// Signature of the inputs that actually change the rendered card list.
+// When unchanged across mode switches, we can skip the expensive ~271-card
+// re-render entirely (the previous main DOM is still in place; setMode just
+// re-shows the hidden view).
+let _browseSignature = null;
+function filterSignature() {
+  const f = State.filters || {};
+  return JSON.stringify({
+    d: f.domains ? [...f.domains].sort() : [],
+    t: f.tags    ? [...f.tags].sort()    : [],
+    s: f.search || '',
+    b: !!f.onlyBookmarks,
+    u: !!f.onlyUndone,
+    r: !!f.revealSolutions,
+    // If a build pulls in new exercises (extremely rare at runtime, but
+    // happens via the 🔄 refresh path) the count changes → invalidate.
+    n: State.allExercises ? State.allExercises.length : 0,
+  });
+}
+
 function renderBrowse() {
+  const sig = filterSignature();
+  const main = document.getElementById('main');
+  // Skip if the cached DOM is still in place AND the filter inputs haven't
+  // moved since the last successful render. Worst case (Quiz → Browse with
+  // identical filters): pure no-op, ~instant.
+  if (_browseSignature === sig && main && main.children.length > 0) {
+    return;
+  }
   // Drop closures captured by previously-rendered answer-box hints. Each
   // card re-subscribes on mount (see renderAnswerBox → onLLMSettingsChange).
   clearLLMListeners();
@@ -2876,10 +2940,10 @@ function renderBrowse() {
   document.getElementById('filter-stats').textContent = `${visible.length} / ${State.allExercises.length} exercises`;
   renderSidebar(visible);
   renderSidebarProgress();
-  const main = document.getElementById('main');
   main.innerHTML = '';
   if (visible.length === 0) {
     main.appendChild(el('div', { class: 'empty-state' }, 'No exercises match the current filters.'));
+    _browseSignature = sig;
     return;
   }
   // Group by domain for headings
@@ -2897,6 +2961,7 @@ function renderBrowse() {
     }
     main.appendChild(renderExerciseCard(ex, { openSolution: State.filters.revealSolutions }));
   }
+  _browseSignature = sig;
 }
 
 // ---------- Quiz mode ----------
@@ -3287,6 +3352,21 @@ function renderQuizCard() {
   // hide the inline toggle until the user has clicked Reveal (then it becomes a collapse button).
   const showInlineToggle = !q.solutionsHidden || q.revealed.has(ex.id);
   card.appendChild(renderExerciseCard(ex, { openSolution: solutionOpen, inlineToggle: showInlineToggle, fromQuiz: true }));
+
+  // Re-apply fullscreen if the user was in it before this nav. Cheap CM reuse
+  // via upgradeToCodeMirror's cached promise; the editor re-focuses cleanly.
+  if (_quizFullscreenSticky) {
+    const box = card.querySelector('.answer-box');
+    if (box) {
+      box.classList.add('answer-fullscreen');
+      document.body.classList.add('answer-fullscreen-active');
+      const expandBtn = box.querySelector('.answer-expand');
+      if (expandBtn) {
+        expandBtn.textContent = '✕';
+        expandBtn.title = 'Exit fullscreen (Esc)';
+      }
+    }
+  }
 
   const flagBtn = document.getElementById('quiz-flag');
   flagBtn.textContent = q.flagged.has(ex.id) ? '🚩 Flagged' : '🚩 Flag';
