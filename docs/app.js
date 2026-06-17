@@ -1682,6 +1682,11 @@ function renderAnswerBox(ex, opts = {}) {
   // to whichever is active.
   let cmView = null;
   let _cmReadyPromise = null;
+  // Invariant: after `ta.replaceWith(cmView.dom)` (inside upgradeToCodeMirror),
+  // `ta` is a detached <textarea> whose `.value` is frozen at upgrade-time.
+  // ALWAYS read live answer text via getText() and clear via setText('') —
+  // never `ta.value` / `ta.value = ''`, or Check will re-grade the upgrade-time
+  // snapshot and Reset will leave CodeMirror untouched.
   const getText = () => cmView ? cmView.state.doc.toString() : ta.value;
   const setText = (v) => {
     if (cmView) {
@@ -1809,7 +1814,7 @@ function renderAnswerBox(ex, opts = {}) {
   onLLMSettingsChange(updateHint);
 
   checkBtn.addEventListener('click', async () => {
-    const answer = ta.value.trim();
+    const answer = getText().trim();
     if (!answer) { hint.textContent = '⚠ Type an answer first'; return; }
 
     // First-use privacy gate (unless using Ollama, which stays local)
@@ -1833,7 +1838,7 @@ function renderAnswerBox(ex, opts = {}) {
       });
       // Persist
       const existing = getAnswer(ex.id) || {};
-      setAnswer(ex.id, Object.assign(existing, { text: ta.value, verdict: v }));
+      setAnswer(ex.id, Object.assign(existing, { text: getText(), verdict: v }));
       renderVerdict(verdictSlot, v, ex);
 
       // Auto-Done if user has a threshold set
@@ -1863,7 +1868,7 @@ function renderAnswerBox(ex, opts = {}) {
   });
 
   resetBtn.addEventListener('click', () => {
-    ta.value = '';
+    setText('');
     verdictSlot.innerHTML = '';
     setAnswer(ex.id, { text: '', verdict: null });
     updateHint();
