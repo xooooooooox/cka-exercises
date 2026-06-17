@@ -1560,27 +1560,31 @@ function loadCodeMirror() {
     // basicSetup, language, etc.) can find their expected exports. The
     // previous pin to view@6.26.3 + state@6.4.1 made language@6.12.3 attempt
     // to import `activateHover` from a stale view variant that didn't have it.
-    // `@codemirror/language` must be in the deps list too — basicSetup
-    // (codemirror@6.0.1) imports `defaultHighlightStyle` + `syntaxHighlighting`
-    // from `@codemirror/language@^6.0.0`, while we import StreamLanguage from
-    // `@codemirror/language@6.10.0`. Without the deps pin, esm.sh serves two
-    // distinct module URLs → two `@lezer/highlight` instances → instanceof
-    // checks on tag identity fail silently → StreamLanguage tokens never get
-    // styled (the "monochrome answer editor" bug).
-    const DEPS = 'deps=@codemirror/state@6.5.2,@codemirror/view@6.43.1,@codemirror/language@6.10.0&target=es2022';
-    const [view, state, basic, langYaml, commands, language, legacyShell] = await Promise.all([
+    // IMPORTANT — past failed attempts to add bash highlighting (DO NOT repeat
+    // without solving the underlying issue first):
+    //   1. Adding `@codemirror/language` or `@lezer/highlight` to this DEPS
+    //      cascade. esm.sh re-bakes transitive packages and silently breaks
+    //      basicSetup's extension array — net effect was monochrome editor
+    //      with NO line numbers either (commit ca19cc9).
+    //   2. Adding `syntaxHighlighting(defaultHighlightStyle, {fallback:true})`
+    //      as a parallel extension to compensate. Doesn't help if basicSetup
+    //      itself was broken upstream.
+    //   3. Switching the language extension from yaml() to
+    //      StreamLanguage.define(shell) without (1)+(2). Mounts cleanly but
+    //      tokens never get styled — the two `@lezer/highlight` instances
+    //      (one transitive from basicSetup, one from our explicit import)
+    //      fail `instanceof` checks on tag identity (commit e085d9f).
+    // The right path for bash highlighting needs a different architecture —
+    // browser <script type="importmap"> in index.html so every @codemirror/*
+    // specifier resolves to one canonical URL, OR self-host a pre-bundled CM
+    // build under docs/vendor/. Tracked as a separate follow-up.
+    const DEPS = 'deps=@codemirror/state@6.5.2,@codemirror/view@6.43.1&target=es2022';
+    const [view, state, basic, langYaml, commands] = await Promise.all([
       import(`https://esm.sh/@codemirror/view@6.43.1?${DEPS}`),
       import('https://esm.sh/@codemirror/state@6.5.2?target=es2022'),
       import(`https://esm.sh/codemirror@6.0.1?${DEPS}`),
       import(`https://esm.sh/@codemirror/lang-yaml@6.1.3?${DEPS}`),
       import(`https://esm.sh/@codemirror/commands@6.10.3?${DEPS}`),
-      // @codemirror/language exposes StreamLanguage — the bridge that lets the
-      // legacy CodeMirror 5 grammars run inside CM6. CKA answers are mostly
-      // bash (kubectl + openssl + heredocs); shell highlighting handles those
-      // tokens correctly and renders YAML-inside-heredoc as plain text, which
-      // beats the previous "everything is YAML" treatment.
-      import(`https://esm.sh/@codemirror/language@6.10.0?${DEPS}`),
-      import(`https://esm.sh/@codemirror/legacy-modes@6.4.0/mode/shell?${DEPS}`),
     ]);
     return {
       EditorView: view.EditorView,
@@ -1590,14 +1594,6 @@ function loadCodeMirror() {
       yaml: langYaml.yaml,
       keymap: view.keymap,
       indentWithTab: commands.indentWithTab,
-      StreamLanguage: language.StreamLanguage,
-      shell: legacyShell.shell,
-      // Belt-and-suspenders: explicit highlight extension using the SAME
-      // language module as StreamLanguage. Even if some transitive import
-      // path slips past the deps rewrite, our editor still gets a working
-      // highlight style attached.
-      syntaxHighlighting: language.syntaxHighlighting,
-      defaultHighlightStyle: language.defaultHighlightStyle,
     };
   })().catch(e => { _cmPromise = null; throw e; });
   return _cmPromise;
@@ -1741,17 +1737,10 @@ function renderAnswerBox(ex, opts = {}) {
     _cmReadyPromise = (async () => {
       try {
         const cm = await loadCodeMirror();
-        const { EditorView, EditorState, Prec, basicSetup, StreamLanguage, shell,
-                syntaxHighlighting, defaultHighlightStyle,
-                indentWithTab, keymap } = cm;
+        const { EditorView, EditorState, Prec, basicSetup, yaml, indentWithTab, keymap } = cm;
         const update = EditorView.updateListener.of(u => {
           if (u.docChanged) persistDebounced();
         });
-        // CKA answers are predominantly bash (kubectl + openssl + heredocs).
-        // Shell highlighting handles those tokens correctly; YAML inside a
-        // <<EOF heredoc renders as plain text, which beats the previous
-        // yaml()-only path that mis-highlighted bash flags / pipes / redirects.
-        const shellLang = StreamLanguage.define(shell);
         const state = EditorState.create({
           doc: ta.value,
           extensions: [
@@ -1760,13 +1749,10 @@ function renderAnswerBox(ex, opts = {}) {
             // which otherwise lets the key fall through to the browser's
             // focus-shift default.
             Prec.highest(keymap.of([indentWithTab])),
-            shellLang,
-            // Explicit highlight style from OUR @codemirror/language module —
-            // guarantees the tags emitted by StreamLanguage get a matching
-            // style, regardless of any version skew with basicSetup's bundled
-            // default. fallback:true means we only paint tags basicSetup's
-            // built-in didn't already cover.
-            syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+            // Language extension is `yaml()` — the corpus is heavy on YAML
+            // manifests so this is the least-wrong default. Bash highlighting
+            // is a known gap; see the cautionary comment in loadCodeMirror().
+            yaml(),
             EditorView.lineWrapping,
             EditorView.theme(CM_THEME, { dark: isDark() }),
             // Layout theme — the outer .answer-cm container sets the height
