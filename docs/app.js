@@ -1560,7 +1560,14 @@ function loadCodeMirror() {
     // basicSetup, language, etc.) can find their expected exports. The
     // previous pin to view@6.26.3 + state@6.4.1 made language@6.12.3 attempt
     // to import `activateHover` from a stale view variant that didn't have it.
-    const DEPS = 'deps=@codemirror/state@6.5.2,@codemirror/view@6.43.1&target=es2022';
+    // `@codemirror/language` must be in the deps list too — basicSetup
+    // (codemirror@6.0.1) imports `defaultHighlightStyle` + `syntaxHighlighting`
+    // from `@codemirror/language@^6.0.0`, while we import StreamLanguage from
+    // `@codemirror/language@6.10.0`. Without the deps pin, esm.sh serves two
+    // distinct module URLs → two `@lezer/highlight` instances → instanceof
+    // checks on tag identity fail silently → StreamLanguage tokens never get
+    // styled (the "monochrome answer editor" bug).
+    const DEPS = 'deps=@codemirror/state@6.5.2,@codemirror/view@6.43.1,@codemirror/language@6.10.0&target=es2022';
     const [view, state, basic, langYaml, commands, language, legacyShell] = await Promise.all([
       import(`https://esm.sh/@codemirror/view@6.43.1?${DEPS}`),
       import('https://esm.sh/@codemirror/state@6.5.2?target=es2022'),
@@ -1585,6 +1592,12 @@ function loadCodeMirror() {
       indentWithTab: commands.indentWithTab,
       StreamLanguage: language.StreamLanguage,
       shell: legacyShell.shell,
+      // Belt-and-suspenders: explicit highlight extension using the SAME
+      // language module as StreamLanguage. Even if some transitive import
+      // path slips past the deps rewrite, our editor still gets a working
+      // highlight style attached.
+      syntaxHighlighting: language.syntaxHighlighting,
+      defaultHighlightStyle: language.defaultHighlightStyle,
     };
   })().catch(e => { _cmPromise = null; throw e; });
   return _cmPromise;
@@ -1729,6 +1742,7 @@ function renderAnswerBox(ex, opts = {}) {
       try {
         const cm = await loadCodeMirror();
         const { EditorView, EditorState, Prec, basicSetup, StreamLanguage, shell,
+                syntaxHighlighting, defaultHighlightStyle,
                 indentWithTab, keymap } = cm;
         const update = EditorView.updateListener.of(u => {
           if (u.docChanged) persistDebounced();
@@ -1747,6 +1761,12 @@ function renderAnswerBox(ex, opts = {}) {
             // focus-shift default.
             Prec.highest(keymap.of([indentWithTab])),
             shellLang,
+            // Explicit highlight style from OUR @codemirror/language module —
+            // guarantees the tags emitted by StreamLanguage get a matching
+            // style, regardless of any version skew with basicSetup's bundled
+            // default. fallback:true means we only paint tags basicSetup's
+            // built-in didn't already cover.
+            syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
             EditorView.lineWrapping,
             EditorView.theme(CM_THEME, { dark: isDark() }),
             // Layout theme — the outer .answer-cm container sets the height
@@ -1864,6 +1884,11 @@ function renderAnswerBox(ex, opts = {}) {
     const body = el('pre', { class: 'verdict-streaming-body', 'aria-live': 'polite' }, '');
     const card = el('div', { class: 'verdict-streaming' }, head, body);
     verdictSlot.appendChild(card);
+    // In fullscreen mode (or any short viewport — e.g. DevTools open at the
+    // bottom) the verdict slot sits below the editor + button row and lands
+    // off-screen. `block: 'nearest'` only scrolls if the card isn't already
+    // visible, so this is a no-op in the normal case.
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     const updateBtn = () => {
       const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
