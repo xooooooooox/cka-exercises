@@ -2003,6 +2003,90 @@ body.answer-fullscreen-active { overflow: hidden; }
   color: var(--accent);
 }
 
+/* ---------- Settings → 🐛 Issues queue panel ---------- */
+.issues-queue-empty { margin: 8px 0 0 0; }
+.issues-queue-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.issues-queue-item {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: var(--bg-elev);
+}
+.issues-queue-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.issues-queue-tag {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: var(--bg);
+  flex: 0 0 auto;
+}
+.issues-queue-tag-task     { border-color: var(--accent); color: var(--accent); }
+.issues-queue-tag-solution { border-color: #d73a4a;       color: #d73a4a; }
+.issues-queue-title {
+  font-weight: 600;
+  word-break: break-word;
+}
+.issues-queue-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.issues-queue-preview {
+  margin-top: 4px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.issues-queue-item-actions {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.issues-queue-item-actions button,
+.issues-queue-item-actions .issues-queue-open {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+.issues-queue-item-actions button:disabled,
+.issues-queue-item-actions .issues-queue-open.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.issues-queue-actions { margin-top: 8px; }
+.issues-queue-actions button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
 /* Mobile tweaks */
 @media (max-width: 768px) {
   .provider-grid { grid-template-columns: 1fr; }

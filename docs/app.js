@@ -265,10 +265,12 @@ function setFixDraft(id, payload) {
   // free-text was entered.
   const empty = !payload
     || (!payload.additional && (!payload.type || payload.type === 'other'));
+  const k = KEY.fixDraftPrefix + id;
   if (empty) {
-    try { localStorage.removeItem(KEY.fixDraftPrefix + id); } catch {}
+    try { localStorage.removeItem(k); } catch {}
   } else {
-    storageSet(KEY.fixDraftPrefix + id, payload);
+    storageSet(k, { ...payload, savedAt: new Date().toISOString() });
+    stampSingleton(k);
   }
 }
 function getTaskFixDraft(id) { return storageGet(KEY.taskFixDraftPrefix + id, null); }
@@ -277,10 +279,12 @@ function setTaskFixDraft(id, payload) {
     || (!payload.additional && !payload.suggestedUrl
         && (payload.existingLinkIdx == null || payload.existingLinkIdx === '')
         && (!payload.type || payload.type === 'other'));
+  const k = KEY.taskFixDraftPrefix + id;
   if (empty) {
-    try { localStorage.removeItem(KEY.taskFixDraftPrefix + id); } catch {}
+    try { localStorage.removeItem(k); } catch {}
   } else {
-    storageSet(KEY.taskFixDraftPrefix + id, payload);
+    storageSet(k, { ...payload, savedAt: new Date().toISOString() });
+    stampSingleton(k);
   }
 }
 function allFixDrafts() {
@@ -292,6 +296,31 @@ function allFixDrafts() {
     }
   }
   return out;
+}
+
+// Flat list of every queued issue draft (answer-fix + task-fix), each entry
+// tagged with its mode so the queue UI can route Edit / Open correctly.
+function collectAllIssueDrafts() {
+  const items = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k) continue;
+    let mode = null, exId = null;
+    if (k.startsWith(KEY.fixDraftPrefix)) {
+      mode = 'solution'; exId = k.slice(KEY.fixDraftPrefix.length);
+    } else if (k.startsWith(KEY.taskFixDraftPrefix)) {
+      mode = 'task'; exId = k.slice(KEY.taskFixDraftPrefix.length);
+    } else {
+      continue;
+    }
+    let draft = null;
+    try { draft = JSON.parse(localStorage.getItem(k)); } catch {}
+    if (!draft) continue;
+    items.push({ key: k, mode, exId, draft });
+  }
+  // Newest first so the user sees what they just queued at the top.
+  items.sort((a, b) => (b.draft.savedAt || '').localeCompare(a.draft.savedAt || ''));
+  return items;
 }
 function storageGet(k, fallback) {
   try { const v = localStorage.getItem(k); return v == null ? fallback : JSON.parse(v); }
@@ -753,10 +782,11 @@ function installSettingsOverlay() {
   const settingsSubtabs = overlay.querySelectorAll('.settings-subtabs button[data-settings-tab]');
   const settingsPanels  = overlay.querySelectorAll('.settings-tab-panel');
   function showSettingsTab(name) {
-    const target = (['grading', 'backup', 'sync'].includes(name)) ? name : 'grading';
+    const target = (['grading', 'backup', 'sync', 'issues'].includes(name)) ? name : 'grading';
     settingsPanels.forEach(p => { p.hidden = (p.dataset.settingsTab !== target); });
     settingsSubtabs.forEach(b => { b.classList.toggle('active', b.dataset.settingsTab === target); });
     storageSet(KEY.settingsTab, target);
+    if (target === 'issues') renderIssuesQueue();
   }
   settingsSubtabs.forEach(b => {
     b.addEventListener('click', () => showSettingsTab(b.dataset.settingsTab));
@@ -766,6 +796,9 @@ function installSettingsOverlay() {
     loadIntoForm();
     showSettingsTab(storageGet(KEY.settingsTab, 'grading'));
     overlay.hidden = false;
+    // Always refresh the count badge so the Issues tab pip stays accurate
+    // even when the user is looking at another tab.
+    refreshIssuesQueueCount();
   }
   function shut() { overlay.hidden = true; status.textContent = ''; }
 
@@ -3414,6 +3447,11 @@ function openFixReportModal(ex, ctx = {}) {
     includeCtxBox.removeEventListener('change', syncHref);
     suggestedUrl?.removeEventListener('input', syncHref);
     existingLinkPick?.removeEventListener('change', syncHref);
+    // If the Issues queue tab is currently open, re-render so an edit /
+    // save / removal made from the modal shows immediately.
+    refreshIssuesQueueCount();
+    const issuesPanel = document.querySelector('.settings-tab-panel[data-settings-tab="issues"]');
+    if (issuesPanel && !issuesPanel.hidden) renderIssuesQueue();
   };
 
   const onEsc = (e) => { if (e.key === 'Escape') cleanup(); };
@@ -3432,11 +3470,12 @@ function openFixReportModal(ex, ctx = {}) {
 
   const persistDraft = (d) => (mode === 'task' ? setTaskFixDraft(ex.id, d) : setFixDraft(ex.id, d));
 
+  saveBtn.title = 'Save this report to the queue (Settings → 🐛 Issues). Open it on GitHub whenever you\'re ready.';
   saveBtn.onclick = () => {
     const d = collect();
     persistDraft(d);
     statusEl.textContent = (d.type !== 'other' || d.additional)
-      ? '✓ Draft saved locally.'
+      ? '✓ Saved to queue — see all queued reports in Settings → 🐛 Issues.'
       : '✓ Draft cleared.';
   };
 
@@ -3476,6 +3515,156 @@ function openFixReportModal(ex, ctx = {}) {
       .catch(() => {});
     statusEl.textContent = '✓ Body auto-copied to clipboard. Opening GitHub — paste it into the description. (Use 📋 Copy title for the title.)';
   };
+}
+
+// ---------- Issue queue (Settings → 🐛 Issues) ----------
+//
+// A flat read-only view over every cka:fix-draft:* + cka:task-fix-draft:*
+// entry. The user fills out the fix-report modal, clicks 💾 Save draft —
+// which lands here — and later batch-opens the GitHub issue forms when
+// they're ready. Edit / Open / Remove are per-item; Open all walks the
+// list and window.open()'s each with a small interval to avoid the popup
+// blocker hammering all at once.
+
+function refreshIssuesQueueCount() {
+  const badge = document.getElementById('settings-issues-count');
+  if (!badge) return;
+  const n = collectAllIssueDrafts().length;
+  badge.textContent = n > 0 ? `(${n})` : '';
+}
+
+function renderIssuesQueue() {
+  const listEl  = document.getElementById('issues-queue-list');
+  const emptyEl = document.getElementById('issues-queue-empty');
+  const actsEl  = document.getElementById('issues-queue-actions');
+  if (!listEl || !emptyEl || !actsEl) return;
+
+  refreshIssuesQueueCount();
+  const items = collectAllIssueDrafts();
+
+  if (!items.length) {
+    listEl.hidden = true;
+    listEl.innerHTML = '';
+    actsEl.hidden = true;
+    emptyEl.hidden = false;
+    return;
+  }
+  emptyEl.hidden = true;
+  listEl.hidden = false;
+  actsEl.hidden = false;
+
+  const byIdMap = (State.byId || {});
+
+  listEl.innerHTML = '';
+  for (const item of items) {
+    const ex = byIdMap[item.exId] || null;
+    const modeLabel = item.mode === 'task' ? 'task-fix' : 'answer-fix';
+    const t = getReportType(item.draft.type, item.mode);
+    const titleText = ex ? ex.displayTitle : `(exercise no longer in corpus: ${item.exId})`;
+    const domain    = ex ? (ex.domain || '') : '';
+    const kindLabel = t?.label || item.draft.type || '—';
+    const savedRel  = item.draft.savedAt ? humanTimeAgo(item.draft.savedAt) : 'just now';
+
+    const li = document.createElement('li');
+    li.className = 'issues-queue-item';
+    li.dataset.mode = item.mode;
+    li.dataset.exId = item.exId;
+
+    const head = document.createElement('div');
+    head.className = 'issues-queue-item-head';
+    const tag = document.createElement('span');
+    tag.className = `issues-queue-tag issues-queue-tag-${item.mode}`;
+    tag.textContent = modeLabel;
+    const title = document.createElement('span');
+    title.className = 'issues-queue-title';
+    title.textContent = titleText;
+    head.appendChild(tag);
+    head.appendChild(title);
+    li.appendChild(head);
+
+    const meta = document.createElement('div');
+    meta.className = 'issues-queue-meta';
+    meta.textContent = [kindLabel, domain && `· ${domain}`, `· queued ${savedRel}`].filter(Boolean).join(' ');
+    li.appendChild(meta);
+
+    if (item.draft.additional) {
+      const preview = document.createElement('div');
+      preview.className = 'issues-queue-preview muted';
+      const snippet = String(item.draft.additional).trim().replace(/\s+/g, ' ').slice(0, 140);
+      preview.textContent = snippet.length === 140 ? snippet + '…' : snippet;
+      li.appendChild(preview);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'issues-queue-item-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.textContent = '✏ Edit';
+    editBtn.title = 'Reopen the report modal with this draft loaded';
+    editBtn.disabled = !ex;
+    editBtn.addEventListener('click', () => {
+      if (!ex) return;
+      // Close the Settings overlay so the modal isn't visually buried — it
+      // would still render on top (position:fixed), but the user expects to
+      // see only the modal while editing.
+      const settingsOverlay = document.getElementById('settings-overlay');
+      if (settingsOverlay) settingsOverlay.hidden = true;
+      openFixReportModal(ex, item.mode === 'task' ? { mode: 'task' } : {});
+    });
+
+    const openBtn = document.createElement('a');
+    openBtn.className = 'issues-queue-open';
+    openBtn.target = '_blank';
+    openBtn.rel = 'noopener';
+    openBtn.textContent = '🚀 Open';
+    openBtn.title = 'Open this report on github.com/issues/new in a new tab';
+    if (ex) openBtn.href = buildIssueUrl(ex, item.draft, item.mode);
+    else { openBtn.removeAttribute('href'); openBtn.classList.add('disabled'); }
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.textContent = '🗑 Remove';
+    removeBtn.title = 'Delete this draft from the queue (does NOT close any GitHub issue)';
+    removeBtn.addEventListener('click', () => {
+      if (!confirm(`Remove this queued report?\n\n${titleText}`)) return;
+      try { localStorage.removeItem(item.key); } catch {}
+      // The corresponding sync keymeta entry stays — that's fine, it just
+      // means a future merge from another device that still has this draft
+      // would re-adopt it. The user can remove it on the other device too.
+      renderIssuesQueue();
+      markSyncDirty();
+    });
+
+    actions.appendChild(editBtn);
+    actions.appendChild(openBtn);
+    actions.appendChild(removeBtn);
+    li.appendChild(actions);
+
+    listEl.appendChild(li);
+  }
+}
+
+// Bulk-open every queued report. Spread the window.open() calls over time
+// so popup blockers (which typically allow the first one but throttle a
+// rapid burst) cooperate.
+function installIssuesQueueOpenAll() {
+  const btn = document.getElementById('issues-open-all');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const items = collectAllIssueDrafts();
+    const byIdMap = (State.byId || {});
+    const openable = items.filter(it => byIdMap[it.exId]);
+    if (!openable.length) return;
+    if (openable.length > 3 && !confirm(
+      `Open ${openable.length} GitHub issue tabs?\n\n` +
+      `Your browser may ask you to allow popups the first time.`
+    )) return;
+    openable.forEach((it, idx) => {
+      const url = buildIssueUrl(byIdMap[it.exId], it.draft, it.mode);
+      setTimeout(() => { try { window.open(url, '_blank', 'noopener'); } catch {} }, idx * 150);
+    });
+  });
 }
 
 function openPrivacyDialog(provider) {
@@ -5897,6 +6086,9 @@ async function init() {
   // Debounced auto-push 30s after the last sync-worthy edit. Replays a
   // pending dirty flag from a previous session + hooks beforeunload.
   bootAutoSync();
+
+  // Settings → 🐛 Issues — bulk-open all queued reports.
+  installIssuesQueueOpenAll();
 
   // Header 🤖 LLM quick-switch popover
   installLlmMenu();

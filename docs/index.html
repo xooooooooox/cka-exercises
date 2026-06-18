@@ -444,6 +444,7 @@
         <button data-settings-tab="grading" type="button" class="active" title="LLM provider config used by the Check button">🤖 LLM <span id="settings-grading-count" class="muted"></span></button>
         <button data-settings-tab="backup"  type="button" title="Export / import your local progress as JSON">💾 Backup</button>
         <button data-settings-tab="sync"    type="button" title="Push / pull your progress via a private GitHub Gist">☁ Sync</button>
+        <button data-settings-tab="issues"  type="button" title="Saved issue reports — batch-open them on GitHub when you're ready">🐛 Issues <span id="settings-issues-count" class="muted"></span></button>
       </nav>
 
       <section data-settings-tab="grading" class="settings-tab-panel">
@@ -543,6 +544,15 @@
         </div>
         <div class="backup-row sync-restore-row">
           <button id="sync-restore-prepull" type="button" hidden title="Reverts the last Pull or Backup-file import using a local snapshot taken just before it ran.">↩ Restore pre-pull backup</button>
+        </div>
+      </section>
+
+      <section data-settings-tab="issues" class="settings-tab-panel" hidden>
+        <p class="muted">When you find a problem with a task or answer, click 🐛 on the exercise and pick <b>💾 Save draft</b> instead of opening GitHub immediately. Queued reports live here — review them whenever you're ready to batch-create issues.</p>
+        <div id="issues-queue-empty" class="muted issues-queue-empty">No saved reports yet. Use the 🐛 button on any exercise to draft one without opening GitHub.</div>
+        <ul id="issues-queue-list" class="issues-queue-list" hidden></ul>
+        <div class="issues-queue-actions" id="issues-queue-actions" hidden>
+          <button id="issues-open-all" type="button" title="Open every queued report on github.com/issues/new in a new tab each. The browser may ask to allow popups the first time.">🚀 Open all on GitHub</button>
         </div>
       </section>
     </div>
