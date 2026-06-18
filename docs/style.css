@@ -3341,20 +3341,24 @@ body.answer-fullscreen-active { overflow: hidden; }
 }
 .nodes-detail .nodes-file-path { font-weight: 600; }
 .nodes-detail .nodes-file-copy { margin-left: auto; }
-.nodes-detail pre.nodes-file-body {
+.nodes-detail .nodes-file-body {
   margin: 0;
   padding: 14px 16px;
   background: var(--bg-code);
   border-radius: var(--radius);
   overflow-x: auto;
-  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12.5px;
   line-height: 1.5;
 }
-.nodes-detail pre.nodes-file-body code {
-  background: none;
-  padding: 0;
-}
+/* Per-line wrapper introduced for in-file filter (line-level show/hide).
+   pre-wrap preserves leading whitespace + the original indentation; long
+   lines wrap inside the wrapper rather than forcing a horizontal scroll. */
+.nodes-file-line { white-space: pre-wrap; word-break: break-word; }
+
+/* ← Back button — only visible in mobile master-detail mode. Same pattern as
+   Tools' .tools-back-to-list. */
+.nodes-back-to-tree { display: none; }
 
 @media (max-width: 900px) {
   .nodes-panel { grid-template-columns: 1fr; }
@@ -3367,11 +3371,32 @@ body.answer-fullscreen-active { overflow: hidden; }
   }
 }
 
+/* Mobile master-detail: clicking a file collapses the tree, expanding detail
+   to fill the viewport. The ← Back button restores the tree-only view.
+   Desktop / tablet (>600px) still shows tree + detail side by side. */
+@media (max-width: 600px) {
+  #view-nodes.nodes-detail-active .nodes-tree-pane { display: none; }
+  #view-nodes:not(.nodes-detail-active) .nodes-detail { display: none; }
+  .nodes-back-to-tree {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 10px 0;
+    padding: 6px 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    color: var(--fg);
+  }
+}
+
 @media (max-width: 480px) {
   #view-nodes { padding: 12px; }
   .nodes-subtabs button[data-nodes-role] { padding: 4px 8px; font-size: 13px; }
   #nodes-meta { display: none; }
-  .nodes-detail pre.nodes-file-body { font-size: 11.5px; padding: 10px 12px; }
+  .nodes-detail .nodes-file-body { font-size: 11.5px; padding: 10px 12px; }
 }
 
 /* ============================================================ */

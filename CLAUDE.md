@@ -204,6 +204,23 @@ State management is in module-scope `State` object; no framework. Persistence vi
 - **Solutions** are wrapped in `<details><summary>show</summary><p>…</p></details>`. Multiple `<details>` blocks per exercise (rare) are allowed.
 - **External links** (helm.sh, gateway-api.sigs.k8s.io, containerd docs) live under the synthetic `External` bucket in the Docs tree.
 
+## Changelog discipline
+
+Every change to this repository — **webapp code (`docs/`), exercise content (`exercises/`), documentation (`README*.md`, `WEBAPP_GUIDE*.md`, `EXAM_GUIDE*.md`, `CHANGELOG.md`, `CLAUDE.md`, this file), and tooling (`scripts/`, `.github/`)** — MUST add an entry under `## [Unreleased]` in `CHANGELOG.md` in the same commit that makes the change.
+
+Categories:
+
+- **Added** — new features, new exercises, new docs sections
+- **Changed** — behavior or wording changes that aren't bug fixes
+- **Fixed** — bug fixes
+- **Removed** — deleted features, deprecated docs
+
+Each entry references the commit hash in parens (`[abc1234]`) so the changelog stays traceable to git history. Reasoning, root-cause analysis, and migration notes belong in the commit message body; the changelog entry stays single-line and user-visible.
+
+When the user asks for a code / doc / exercise change WITHOUT mentioning the changelog, add the entry yourself — same commit. Do NOT wait to be reminded.
+
+Exception: pure cosmetic noise (typo in this file's own commit message, fixing a CHANGELOG entry typo within its own commit) doesn't need a changelog entry.
+
 ## Common Tasks
 
 ### Adding a new exercise

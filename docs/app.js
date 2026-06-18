@@ -6219,6 +6219,7 @@ function findNodesFile(tree, targetPath) {
 
 function renderNodesFile(filePath) {
   const detail = document.getElementById('nodes-detail');
+  const view = document.getElementById('view-nodes');
   if (!detail) return;
   const file = findNodesFile(getNodesActiveTree(), filePath);
   if (!file) {
@@ -6227,6 +6228,22 @@ function renderNodesFile(filePath) {
     return;
   }
   detail.innerHTML = '';
+  // Mobile master-detail: clicking a file shifts the view into detail-only.
+  view?.classList.add('nodes-detail-active');
+
+  // ← Back button — only shown on mobile via CSS. Restores the tree-only view
+  // and refocuses the tree search input (mirror of Tools' tools-back-to-list).
+  const backBtn = el('button', {
+    type: 'button',
+    class: 'nodes-back-to-tree',
+    title: 'Back to the file tree',
+  }, '← Back');
+  backBtn.addEventListener('click', () => {
+    view?.classList.remove('nodes-detail-active');
+    document.getElementById('nodes-search')?.focus();
+  });
+  detail.appendChild(backBtn);
+
   const head = el('div', { class: 'nodes-file-head' },
     el('span', { class: 'nodes-file-path' }, filePath),
   );
@@ -6240,9 +6257,35 @@ function renderNodesFile(filePath) {
   });
   head.appendChild(copyBtn);
   detail.appendChild(head);
-  const pre = el('pre', { class: 'nodes-file-body' });
-  pre.appendChild(el('code', {}, file.content || ''));
-  detail.appendChild(pre);
+
+  // In-file filter: grep within the open file by line. Useful for finding a
+  // specific flag in a kube-apiserver static pod manifest etc. Mirrors the
+  // Tools detail filter pattern. Copy still copies the full file (unfiltered).
+  const filterInput = el('input', {
+    type: 'search',
+    class: 'tools-detail-filter',
+    placeholder: '🔎 Filter lines (e.g. --etcd-servers, audit-log)',
+    autocomplete: 'off',
+  });
+  detail.appendChild(filterInput);
+
+  // Render file content as per-line wrappers so the filter can show/hide
+  // individual lines while preserving indentation + monospace layout.
+  const body = el('div', { class: 'nodes-file-body' });
+  const lineNodes = [];
+  const lines = (file.content || '').split('\n');
+  for (const raw of lines) {
+    const line = el('div', { class: 'nodes-file-line' }, raw || ' ');
+    line.dataset.search = raw.toLowerCase();
+    body.appendChild(line);
+    lineNodes.push(line);
+  }
+  detail.appendChild(body);
+
+  filterInput.addEventListener('input', () => {
+    const q = filterInput.value.trim().toLowerCase();
+    for (const ln of lineNodes) ln.style.display = (!q || ln.dataset.search.includes(q)) ? '' : 'none';
+  });
 }
 
 function switchNodesRole(role) {
@@ -6251,6 +6294,8 @@ function switchNodesRole(role) {
   storageSet(KEY.nodesRole, r);
   document.querySelectorAll('.nodes-subtabs button[data-nodes-role]').forEach(b =>
     b.classList.toggle('active', b.dataset.nodesRole === r));
+  // Role switch resets to tree-view on mobile so the user re-picks a file.
+  document.getElementById('view-nodes')?.classList.remove('nodes-detail-active');
   renderNodesTree(document.getElementById('nodes-search')?.value || '');
   // Try to restore last file in the new role's tree; otherwise show empty hint
   const lastPath = storageGet(KEY.nodesPath, null);
