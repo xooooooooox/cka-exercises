@@ -40,6 +40,7 @@ Each entry references the commit hash in parens for traceability to git history.
 - kubectl -h help text overflowing the right edge of the Tools drawer card on phones. ([da57e8f])
 
 ### Removed
+- Stale "What's new" callout block at the top of WEBAPP_GUIDE.md and WEBAPP_GUIDE_CN.md. Feature announcements belong in CHANGELOG.md (readable in Help mode → 📜 Changelog), not duplicated in the usage guide. Replaced with a one-line pointer to Help → 📜 Changelog. (this commit)
 - 🚀 Push now button from ☁ Sync popover. ([319b51b])
 - Test button from ☁ Sync popover (still available in Settings → Sync). ([c19a99f])
 - Settings → 🐛 Issues sub-tab. ([319b51b])

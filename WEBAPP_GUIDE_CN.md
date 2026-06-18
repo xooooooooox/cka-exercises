@@ -6,15 +6,7 @@
 
 > **一句话总结。** 顶部切换模式，Browse 学习、Quiz 限时刷题、Docs 学官方文档树。所有操作都存在浏览器 `localStorage` 里 — 不会有任何数据出本机，除非你点 **Test / Check**（发给你选的 LLM provider）或 **Push / Pull**（发到你自己的 private GitHub Gist）。
 
-> **本次更新亮点。**
-> - **📜 Help 里直接看 Changelog。** Help 模式新增 `📜 Changelog` 标签，跟 `📖 Webapp Guide` / `🎯 Study Index` 并列 —— 全部上线变更带 commit 哈希，不必去翻 git log。
-> - **Grader tolerance。** 题面没指定的 `metadata.name` / namespace / label / replica 数 等学生自选不再扣分；reference solution 里的 `kubectl get` / `describe` / `logs` 等 verify 步骤不再视为"必须出现"。
-> - **🐞 Quick Flag + header 🐛 队列。** 一键标记"这题有问题，之后再细写"，并能指定 scope（Solution / Task / Both）。Header 🐛 popover 显示全部队列，准备好时批量去 GitHub 开 issue。
-> - **流式批改。** 点 ✓ Check 实时看到响应流入，可随时取消，结束后 verdict 卡片底部多一行 🪙 token 使用量。
-> - **🤖 LLM 快速切换。** Header ☁ Sync 旁边的图标 — 已配置的 provider 之间一键切换，不必打开 Settings。
-> - **自动同步 with per-key 合并。** 配置 Gist 后，最后一次编辑 30 秒后自动 Push。多设备并发编辑会被无损合并 —— Done / Bookmark 取并集；答案按 `savedAt` 取新；tombstone 让取消 Done 也跨设备传播。不再有冲突弹窗。
-> - **Tools 新增 📑 api-resources + 详情内过滤。** Tools 第三个子标签；Explain + kubectl -h 详情面板都加了 in-detail filter，可在选中的 kind / command 内 grep。
-> - **Quiz 全屏控件 + drawer。** 答题编辑器最大化后底栏保留 Prev / Next / Got / Missed / Skip / Flag / Reveal / 📋 Questions / 🛠 Tools / 📝 Task / 💡 Solution / 🐞 Flag / ☁ Sync —— 全程无需退出全屏。
+> 想看最近改了什么？打开 **❓ Help → 📜 Changelog**（按 commit 记录）。本指南只描述 webapp 当前状态，不记录历史。
 
 ---
 

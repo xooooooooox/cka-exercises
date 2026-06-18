@@ -6,15 +6,7 @@ A guided tour of the static SPA at <https://xooooooooox.github.io/cka-exercises/
 
 > **TL;DR.** Pick a mode at the top. Browse to study, Quiz to drill under time pressure, Docs to learn the kubernetes.io tree. Everything you do is saved in your browser's `localStorage` — nothing leaves your machine unless you click **Test / Check** (sends to your chosen LLM provider) or **Push / Pull** (sends to your private GitHub Gist).
 
-> **What's new.**
-> - **📜 Changelog in Help.** The Help mode now has a `📜 Changelog` pill alongside `📖 Webapp Guide` / `🎯 Study Index` — every shipped change with commit hashes, no need to dig through git log.
-> - **Grader tolerance.** The LLM grader no longer marks you down for picking a different `metadata.name` / namespace / label / replica count than the reference, as long as the task didn't specify it. Verify-step omissions (`kubectl get` / `describe` / `logs`) are also fine unless the task explicitly asks to verify.
-> - **🐞 Quick Flag + header 🐛 issue queue.** One-click mark "this exercise has a problem, write up later" — with a scope picker (Solution / Task / Both). Header 🐛 popover shows your queue; batch-open on GitHub when you're ready.
-> - **Streaming grader.** Click ✓ Check and watch the response stream in live with a Cancel button + elapsed-time + char-count display, ending with a 🪙 token-usage line on the verdict.
-> - **🤖 LLM quick-switch.** Header popover next to ☁ Sync — one click to switch between configured providers without opening Settings.
-> - **Auto-sync with per-key merge.** Configure a Gist and edits auto-push 30 s after you stop changing things. Concurrent edits across devices are merged losslessly — Done / Bookmark unions, answers take-newer by savedAt, tombstones propagate un-marks. No more conflict modals.
-> - **📑 api-resources in Tools + in-detail filter.** New third Tools sub-tab; Explain + kubectl -h panels also gain an in-detail filter to grep within a chosen kind / command.
-> - **Fullscreen quiz controls + drawers.** Maximise the answer editor and Prev / Next / Got / Missed / Skip / Flag / Reveal / 📋 Questions / 🛠 Tools / 📝 Task / 💡 Solution / 🐞 Flag / ☁ Sync are all reachable without exiting fullscreen.
+> Looking for what's changed recently? Open **❓ Help → 📜 Changelog** for the running record (commit-by-commit). This guide describes the current state of the app, not its history.
 
 ---
 
