@@ -98,8 +98,8 @@
 
 三个工具，对标考试时在终端里最常用的三个动作 — 离线打包进 SPA，第一次打开后离线可用。
 
-- **📘 Explain** — 一个 `kubectl explain` 的 schema 浏览器。左侧挑一个 kind（Pod / Deployment / Service / …），右侧像 CLI 一样显示 `KIND / VERSION / DESCRIPTION / FIELDS`。点任何带 sub-schema 的字段可以下钻（`Pod → spec → containers → resources → limits`），breadcrumb 可以回上一层。搜索框支持按 kind 名或字段名搜索（输入 "affinity" 会同时命中 Pod、Deployment 等）。
-- **📋 kubectl -h** — **逐字**收录了 ~80 个 kubectl 子命令的 `kubectl <verb> -h` 输出（包括 `kubectl create deployment`、`kubectl set image`、`kubectl rollout undo` 等等），跟考试 shell 里看到的完全一致，monospace 渲染。顶部的 **📋 Copy** 按钮一键把 `kubectl <cmd>` 复制到剪贴板。
+- **📘 Explain** — 一个 `kubectl explain` 的 schema 浏览器。左侧挑一个 kind（Pod / Deployment / Service / …），右侧像 CLI 一样显示 `KIND / VERSION / DESCRIPTION / FIELDS`。点任何带 sub-schema 的字段可以下钻（`Pod → spec → containers → resources → limits`），breadcrumb 可以回上一层。搜索框支持按 kind 名或字段名搜索（输入 "affinity" 会同时命中 Pod、Deployment 等）。**详情内过滤**：进入某个 kind 后，详情面板顶部还有一个过滤框，可以在字段列表里再次缩小范围 —— 比如在 `Pod.spec` 里输 `tolerat` 就能把几十个字段直接收敛到 `tolerations`。手机端尤其有用，省了大量滚动。
+- **📋 kubectl -h** — **逐字**收录了 ~80 个 kubectl 子命令的 `kubectl <verb> -h` 输出（包括 `kubectl create deployment`、`kubectl set image`、`kubectl rollout undo` 等等），跟考试 shell 里看到的完全一致，monospace 渲染。顶部的 **📋 Copy** 按钮一键把 `kubectl <cmd>` 复制到剪贴板。**详情内过滤**：详情面板顶部也有过滤框，按行隐藏不匹配的内容 —— 输 `--image`、`hostNetwork` 等就能直接定位到目标行。
 - **手机（≤600 px）+ 抽屉内**：📘 Explain 和 📋 kubectl -h 采用 master-detail 流 —— 先看到全宽的列表，点某一项后详情会占满整个面板，顶部出现 `← Back` 按钮。点 Back 回到列表（焦点会跳回搜索框）。桌面端的并排布局不受影响。
 - **📑 api-resources** — `kubectl api-resources -o wide` 风格的查表，收录 40 个 CKA 相关 kind。表头：**NAME**（plural）/ **SHORTNAMES** / **APIVERSION** / **NAMESPACED** / **KIND** / **VERBS**。过滤框接受任意列的纯文本匹配（如 `hpa`、`rbac`、`ingress`），还支持三种前缀语法：`namespaced:true|false`（cluster-scoped 还是 namespaced）、`verb:<动词>`（如 `verb:patch`）、`group:<组>`（如 `group:apps` 缩小到 Deployment / DaemonSet / ReplicaSet / StatefulSet）。点任意一行可直接跳进 📘 Explain 看该 kind 的完整 schema —— api-resources 当索引，Explain 当详情，跟 CLI 里这两个命令的关系一样。手机上（≤600px）表格自动折叠成卡片，避免横向滚动。
 

@@ -2711,7 +2711,14 @@ function renderAnswerBox(ex, opts = {}) {
       title: 'Show sync status (auto-push, last push)',
       'aria-label': 'Show sync status',
     }, '☁');
-    syncDot.addEventListener('click', () => {
+    syncDot.addEventListener('click', (e) => {
+      // Stop the original click from reaching the document-level
+      // click-outside dismiss handler in installSyncMenu — without this,
+      // the popover opens via the programmatic sync-toggle click and then
+      // closes again in the same tick when the user's click finishes
+      // bubbling. (The synthetic event stopPropagation only halts the
+      // synthetic propagation, not the user's original event.)
+      e.stopPropagation();
       document.getElementById('sync-toggle')?.click();
     });
     const quizbar = el('div', { class: 'answer-fullscreen-quizbar' },
@@ -5744,6 +5751,17 @@ function renderExplainDetail() {
   const fields = def.fields || [];
   if (fields.length) {
     detail.appendChild(el('div', { class: 'explain-section' }, el('strong', {}, 'FIELDS:')));
+    // In-detail filter: substring match against field name + type + description.
+    // Especially useful for deep objects like Pod.spec where the field list is
+    // long and finding e.g. "affinity" by scroll on mobile is painful.
+    const filterInput = el('input', {
+      type: 'search',
+      class: 'tools-detail-filter',
+      placeholder: '🔎 Filter fields (name, type, description)',
+      autocomplete: 'off',
+    });
+    detail.appendChild(filterInput);
+    const rows = [];
     for (const f of fields) {
       const row = el('div', { class: 'field-row' });
       const head = el('div', { class: 'field-head' });
@@ -5762,8 +5780,15 @@ function renderExplainDetail() {
       head.append(nameSpan, typeSpan, drill);
       row.appendChild(head);
       if (f.description) row.appendChild(el('div', { class: 'field-desc' }, f.description));
+      const haystack = `${f.name} ${f.type || ''} ${f.description || ''}`.toLowerCase();
+      row.dataset.search = haystack;
       detail.appendChild(row);
+      rows.push(row);
     }
+    filterInput.addEventListener('input', () => {
+      const q = filterInput.value.trim().toLowerCase();
+      for (const r of rows) r.style.display = (!q || r.dataset.search.includes(q)) ? '' : 'none';
+    });
   } else {
     detail.appendChild(el('p', { class: 'muted' }, '(scalar / no sub-fields)'));
   }
@@ -5839,9 +5864,34 @@ function renderKubectlDetail() {
   heading.appendChild(copyBtn);
   detail.appendChild(heading);
 
-  const pre = el('pre', { class: 'kubectl-help' });
-  pre.appendChild(el('code', {}, cmd.rawHelp || ''));
-  detail.appendChild(pre);
+  // In-detail filter: substring match per help-text line. Useful for finding
+  // a flag like --image inside a long kubectl run -h output without scrolling.
+  const filterInput = el('input', {
+    type: 'search',
+    class: 'tools-detail-filter',
+    placeholder: '🔎 Filter lines (e.g. --image, hostNetwork)',
+    autocomplete: 'off',
+  });
+  detail.appendChild(filterInput);
+
+  // Render the help text as one <div> per line so the filter can show/hide
+  // individual lines. The container preserves indentation + monospace via
+  // .kubectl-help styling; each line wraps inside its own div.
+  const lines = (cmd.rawHelp || '').split('\n');
+  const helpBox = el('div', { class: 'kubectl-help' });
+  const lineNodes = [];
+  for (const raw of lines) {
+    const line = el('div', { class: 'kubectl-help-line' }, raw || ' ');
+    line.dataset.search = raw.toLowerCase();
+    helpBox.appendChild(line);
+    lineNodes.push(line);
+  }
+  detail.appendChild(helpBox);
+
+  filterInput.addEventListener('input', () => {
+    const q = filterInput.value.trim().toLowerCase();
+    for (const ln of lineNodes) ln.style.display = (!q || ln.dataset.search.includes(q)) ? '' : 'none';
+  });
 }
 
 // ---------- Nodes view (read-only kubeadm filesystem snapshot) ----------

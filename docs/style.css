@@ -1321,6 +1321,21 @@ body.answer-fullscreen-active { overflow: hidden; }
   min-width: 0;
   margin-bottom: 8px;
 }
+
+/* In-detail filter input — sits at the top of Explain and kubectl -h detail
+   panes, lets the user grep inside long field lists / help-text blocks. */
+.tools-detail-filter {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 10px;
+  margin: 8px 0 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  box-sizing: border-box;
+}
 #view-tools.in-drawer #tools-kind-list {
   /* Anything inside is allowed to shrink rather than overflow the card. */
   min-width: 0;
@@ -1874,7 +1889,10 @@ body.answer-fullscreen-active { overflow: hidden; }
   min-width: 280px; padding: 12px;
   background: var(--bg-elev); border: 1px solid var(--border); border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-  z-index: 100;
+  /* 1100 = above .answer-fullscreen (1000) and .tools-drawer (1010) so the
+     quizbar ☁ button can surface the popover while a fullscreen editor or
+     Tools drawer is active. */
+  z-index: 1100;
 }
 .sync-menu[hidden] { display: none; }
 .sync-menu-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; gap: 8px; }
@@ -3027,30 +3045,32 @@ body.answer-fullscreen-active { overflow: hidden; }
   background: var(--bg-code);
   border-radius: var(--radius);
   overflow-x: auto;
-  white-space: pre;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12.5px;
   line-height: 1.45;
   /* Belt-and-suspenders alongside `.tools-detail { min-width: 0 }` — locks
-     the <pre> to the container width so its overflow-x scrollbar fires
+     the help block to the container width so the overflow-x scrollbar fires
      inside the box instead of widening the parent. */
   max-width: 100%;
 }
 .kubectl-help code { background: none; padding: 0; }
+/* Line wrappers introduced for the in-detail filter (line-level show/hide).
+   white-space: pre preserves the leading indentation that kubectl -h relies
+   on for nesting; the mobile override below wraps long lines. */
+.kubectl-help-line { white-space: pre; }
 
 /* Wrap kubectl -h help text on phones + inside the Tools drawer. Desktop
-   keeps `white-space: pre` + `overflow-x: auto` for the terminal look; on a
-   narrow card horizontal scrolling is the wrong UX and lines get clipped at
-   the card's right edge because `min-width: 0` doesn't reliably propagate
-   through the in-drawer flex chain. pre-wrap preserves the leading
-   indentation + blank lines; word-break: break-word breaks long
-   `kubectl run hazelcast --image=…` lines so nothing escapes the container. */
+   keeps `white-space: pre` for the terminal look; on a narrow card horizontal
+   scrolling is the wrong UX and lines get clipped at the card's right edge.
+   pre-wrap preserves the leading indentation + blank lines; word-break
+   breaks long `kubectl run hazelcast --image=…` lines so nothing escapes. */
 @media (max-width: 600px) {
-  .kubectl-help {
+  .kubectl-help-line {
     white-space: pre-wrap;
     word-break: break-word;
   }
 }
-#view-tools.in-drawer .kubectl-help {
+#view-tools.in-drawer .kubectl-help-line {
   white-space: pre-wrap;
   word-break: break-word;
 }
