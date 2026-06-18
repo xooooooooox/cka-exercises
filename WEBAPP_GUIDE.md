@@ -1,12 +1,13 @@
 # Practice Web App — Usage Guide
 
-[中文版](WEBAPP_GUIDE_CN.md) · [Engineering README](README.md) · [Study Index](EXAM_GUIDE.md)
+[中文版](WEBAPP_GUIDE_CN.md) · [Engineering README](README.md) · [Study Index](EXAM_GUIDE.md) · [Changelog](CHANGELOG.md)
 
 A guided tour of the static SPA at <https://xooooooooox.github.io/cka-exercises/>: the three study modes, every Quiz button, how progress is persisted, how cross-device sync works, how the LLM grader behaves, and how to report issues without breaking your flow.
 
 > **TL;DR.** Pick a mode at the top. Browse to study, Quiz to drill under time pressure, Docs to learn the kubernetes.io tree. Everything you do is saved in your browser's `localStorage` — nothing leaves your machine unless you click **Test / Check** (sends to your chosen LLM provider) or **Push / Pull** (sends to your private GitHub Gist).
 
 > **What's new.**
+> - **📜 Changelog in Help.** The Help mode now has a `📜 Changelog` pill alongside `📖 Webapp Guide` / `🎯 Study Index` — every shipped change with commit hashes, no need to dig through git log.
 > - **Grader tolerance.** The LLM grader no longer marks you down for picking a different `metadata.name` / namespace / label / replica count than the reference, as long as the task didn't specify it. Verify-step omissions (`kubectl get` / `describe` / `logs`) are also fine unless the task explicitly asks to verify.
 > - **🐞 Quick Flag + header 🐛 issue queue.** One-click mark "this exercise has a problem, write up later" — with a scope picker (Solution / Task / Both). Header 🐛 popover shows your queue; batch-open on GitHub when you're ready.
 > - **Streaming grader.** Click ✓ Check and watch the response stream in live with a Cancel button + elapsed-time + char-count display, ending with a 🪙 token-usage line on the verdict.

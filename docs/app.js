@@ -56,7 +56,7 @@ const KEY = {
   fixDraftPrefix: 'cka:fix-draft:', // appended with <exerciseId>
   taskFixDraftPrefix: 'cka:task-fix-draft:', // task / docs reports — appended with <exerciseId>
   helpLang: 'cka:help:lang',     // 'en' | 'zh' — Help-tab language preference
-  helpDoc:  'cka:help:doc',      // 'webapp' | 'exam' — Help-tab document preference
+  helpDoc:  'cka:help:doc',      // 'webapp' | 'exam' | 'changelog' — Help-tab document preference
   filters: 'cka:filters',        // Browse-mode filter bar (persists across sessions + sync)
   gistToken: 'cka:gist:token',
   gistId: 'cka:gist:id',
@@ -260,10 +260,12 @@ function setHelpLang(lang) {
 // index). Persisted across reloads + carried in Backup / Gist export via the
 // cka:* prefix walker.
 function getHelpDoc() {
-  return storageGet(KEY.helpDoc, null) === 'exam' ? 'exam' : 'webapp';
+  const v = storageGet(KEY.helpDoc, null);
+  if (v === 'exam' || v === 'changelog') return v;
+  return 'webapp';
 }
 function setHelpDoc(doc) {
-  storageSet(KEY.helpDoc, doc === 'exam' ? 'exam' : 'webapp');
+  storageSet(KEY.helpDoc, (doc === 'exam' || doc === 'changelog') ? doc : 'webapp');
 }
 
 function getFixDraft(id) { return storageGet(KEY.fixDraftPrefix + id, null); }
@@ -5243,8 +5245,13 @@ function renderHelpView(opts = {}) {
   const helpCn = (State.data && State.data.helpGuideCN) || '';
   const examEn = (State.data && State.data.examGuide)   || '';
   const examCn = (State.data && State.data.examGuideCN) || '';
-  const cnForCurrentDoc = doc === 'exam' ? examCn : helpCn;
-  const enForCurrentDoc = doc === 'exam' ? examEn : helpEn;
+  const changelogEn = (State.data && State.data.changelog) || '';
+  // Changelog is English-only — no CN counterpart, so the language switcher
+  // is hidden when the user is viewing it. Same fallback chain otherwise:
+  // selected-doc CN if available + lang=zh, else selected-doc EN, else
+  // webapp EN as the universal default.
+  const cnForCurrentDoc = doc === 'exam' ? examCn : doc === 'changelog' ? '' : helpCn;
+  const enForCurrentDoc = doc === 'exam' ? examEn : doc === 'changelog' ? changelogEn : helpEn;
   const md = (lang === 'zh' && cnForCurrentDoc)
     ? cnForCurrentDoc
     : (enForCurrentDoc || helpEn);
@@ -5260,9 +5267,10 @@ function renderHelpView(opts = {}) {
   // Both are gated on the corresponding source being bundled so the SPA
   // degrades gracefully if a file is missing at build time.
   const hasExam = !!(examEn || examCn);
+  const hasChangelog = !!changelogEn;
   const controls = el('div', { class: 'help-controls' });
 
-  if (hasExam) {
+  if (hasExam || hasChangelog) {
     const docSwitch = el('div', { class: 'help-doc-switch', role: 'group', 'aria-label': 'Document' });
     const mkDocBtn = (code, label) => {
       const b = el('button', {
@@ -5279,7 +5287,8 @@ function renderHelpView(opts = {}) {
       return b;
     };
     docSwitch.appendChild(mkDocBtn('webapp', '📖 Webapp Guide'));
-    docSwitch.appendChild(mkDocBtn('exam',   '🎯 Study Index'));
+    if (hasExam) docSwitch.appendChild(mkDocBtn('exam', '🎯 Study Index'));
+    if (hasChangelog) docSwitch.appendChild(mkDocBtn('changelog', '📜 Changelog'));
     controls.appendChild(docSwitch);
   }
 
@@ -5312,12 +5321,13 @@ function renderHelpView(opts = {}) {
   // EXAM_GUIDE{,_CN}.md) are intercepted to switch state in-app instead of
   // navigating to a path that 404s on Pages.
   const REPO_BLOB = 'https://github.com/xooooooooox/cka-exercises/blob/main/';
-  const SELF_LINK_RE = /(^|\/)(WEBAPP_GUIDE_CN|WEBAPP_GUIDE|EXAM_GUIDE_CN|EXAM_GUIDE)\.md$/;
+  const SELF_LINK_RE = /(^|\/)(WEBAPP_GUIDE_CN|WEBAPP_GUIDE|EXAM_GUIDE_CN|EXAM_GUIDE|CHANGELOG)\.md$/;
   const LINK_TO_STATE = {
-    'WEBAPP_GUIDE.md':    { doc: 'webapp', lang: 'en' },
-    'WEBAPP_GUIDE_CN.md': { doc: 'webapp', lang: 'zh' },
-    'EXAM_GUIDE.md':      { doc: 'exam',   lang: 'en' },
-    'EXAM_GUIDE_CN.md':   { doc: 'exam',   lang: 'zh' },
+    'WEBAPP_GUIDE.md':    { doc: 'webapp',    lang: 'en' },
+    'WEBAPP_GUIDE_CN.md': { doc: 'webapp',    lang: 'zh' },
+    'EXAM_GUIDE.md':      { doc: 'exam',      lang: 'en' },
+    'EXAM_GUIDE_CN.md':   { doc: 'exam',      lang: 'zh' },
+    'CHANGELOG.md':       { doc: 'changelog', lang: 'en' },
   };
   body.querySelectorAll('a[href]').forEach(a => {
     const href = a.getAttribute('href');

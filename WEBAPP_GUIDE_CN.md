@@ -1,12 +1,13 @@
 # 在线练习页面 — 使用指南
 
-[English version](WEBAPP_GUIDE.md) · [工程 README](README_CN.md) · [备考索引](EXAM_GUIDE_CN.md)
+[English version](WEBAPP_GUIDE.md) · [工程 README](README_CN.md) · [备考索引](EXAM_GUIDE_CN.md) · [Changelog](CHANGELOG.md)
 
 把 <https://xooooooooox.github.io/cka-exercises/> 完整讲清楚：三种模式、Quiz 每个按钮的作用、答题数据怎么持久化、跨设备同步怎么用、LLM 批改器的行为、报告问题的工作流。
 
 > **一句话总结。** 顶部切换模式，Browse 学习、Quiz 限时刷题、Docs 学官方文档树。所有操作都存在浏览器 `localStorage` 里 — 不会有任何数据出本机，除非你点 **Test / Check**（发给你选的 LLM provider）或 **Push / Pull**（发到你自己的 private GitHub Gist）。
 
 > **本次更新亮点。**
+> - **📜 Help 里直接看 Changelog。** Help 模式新增 `📜 Changelog` 标签，跟 `📖 Webapp Guide` / `🎯 Study Index` 并列 —— 全部上线变更带 commit 哈希，不必去翻 git log。
 > - **Grader tolerance。** 题面没指定的 `metadata.name` / namespace / label / replica 数 等学生自选不再扣分；reference solution 里的 `kubectl get` / `describe` / `logs` 等 verify 步骤不再视为"必须出现"。
 > - **🐞 Quick Flag + header 🐛 队列。** 一键标记"这题有问题，之后再细写"，并能指定 scope（Solution / Task / Both）。Header 🐛 popover 显示全部队列，准备好时批量去 GitHub 开 issue。
 > - **流式批改。** 点 ✓ Check 实时看到响应流入，可随时取消，结束后 verdict 卡片底部多一行 🪙 token 使用量。

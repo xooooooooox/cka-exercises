@@ -14,6 +14,7 @@ Each entry references the commit hash in parens for traceability to git history.
 ## [Unreleased]
 
 ### Added
+- 📜 Changelog readable inside Help mode — pick the new `📜 Changelog` pill alongside `📖 Webapp Guide` / `🎯 Study Index`. Bundled into `docs/exercises.json` at build time via the same pipeline as the existing guides. Language switcher hidden for changelog (English-only). Cross-doc `[Changelog](CHANGELOG.md)` links from WEBAPP_GUIDE are intercepted to switch state in-app instead of navigating to a 404 on Pages. (this commit)
 - WEBAPP_GUIDE restructured: 🤖 Auto-grading (LLM) and ☁ Cross-device sync (Gist) promoted from sub-sections under `## Settings Panel` to their own top-level sections; long sections gain H3 sub-headings so they're scannable. EN + CN mirror each other. Adds a new `Grader tolerance — what the LLM will NOT mark you down for` subsection and a `🐞 Reporting issues + queue` top-level section. (this commit)
 - CHANGELOG.md (this file) — single canonical place for all repo changes; CLAUDE.md mandates entries for every change going forward.
 - Nodes mode parity with Tools: in-file filter input at the top of the file detail; mobile master-detail with ← Back button; role-tab switch resets list view. (this commit)
