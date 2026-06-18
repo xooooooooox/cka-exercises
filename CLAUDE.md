@@ -186,10 +186,15 @@ State management is in module-scope `State` object; no framework. Persistence vi
 | `cka:answer:<id>` | per-exercise saved answer + last verdict (with provider/model/usage pinned at grade-time) |
 | `cka:gist:token` | GitHub PAT (never exported, never round-tripped through gist) |
 | `cka:gist:id`    | Gist ID used by Push / Pull |
-| `cka:sync:meta`  | Per-device sync metadata — last push/pull/test timestamps, lastError, lastSyncedGistUpdatedAt (conflict-detection baseline) |
-| `cka:sync:prepull-backup` | Snapshot taken before any Pull / Import; restorable via the Settings button |
+| `cka:sync:meta`  | Per-device sync metadata — last push/pull/test timestamps, lastError, `lastSyncedGistUpdatedAt` (the conflict-detection baseline the per-key merge engine compares remote `updated_at` against) |
+| `cka:sync:prepull-backup` | Snapshot taken before any Pull / Import; restorable via the Settings button (integral overwrite via `restoreFromBackup`, distinct from the per-key `mergePayload` path) |
 | `cka:sync:autoDisabled` | `true` if the user opted out of auto-push |
-| `cka:sync:dirtyAt` | ISO timestamp of last sync-worthy edit; cleared after a successful auto-push |
+| `cka:sync:dirtyAt` | ISO timestamp of last sync-worthy edit; cleared after a successful auto-push. 1 h TTL on boot/visibility-change so stale flags from long-dead sessions don't push surprise edits |
+| `cka:sync:keymeta` | Per-key + per-id timestamps powering the merge engine — included in gist payload so devices can resolve "set union for done/bookmark", "take-newer for answers", and tombstone semantics across concurrent edits |
+| `cka:sync:beaconedAt` | ISO stamp written after a successful `beforeunload` `beaconPush()`; consumed once on next `bootAutoSync` to refresh `lastSyncedGistUpdatedAt` from the actual current gist `updated_at` (closes the iPhone "self-conflict" loop where the device's own beacon push looked like a remote change next session) |
+| `cka:sync:deviceId` | Random UUID minted once per browser profile on first auto-sync; copied into `payload.meta.lastPushDeviceId` for cross-device logging. Excluded from payload otherwise (per-device) |
+| `cka:fix-draft:<id>` | Per-exercise answer-fix queued draft — quick flag (`{flagged:true}`) and/or fully-written report payload (`type`, `additional`, etc.). Surfaces in the header 🐛 queue popover; submitted state tracked via optional `submittedAt` |
+| `cka:task-fix-draft:<id>` | Same shape as `cka:fix-draft:` but for task-side reports (docs-link / task-body issues). Listed independently in the queue popover |
 
 ## Content Conventions
 
