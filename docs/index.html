@@ -181,12 +181,36 @@
 
   <!-- Quiz mode -->
   <div id="view-quiz" class="view" hidden>
-    <!-- Setup screen -->
-    <section id="quiz-setup" class="quiz-screen">
+    <!-- Landing page — first thing the user sees. Surfaces resume / snapshots
+         and quick-start presets; the full configure form is one click away
+         via "▶ Start a new quiz". -->
+    <section id="quiz-home" class="quiz-screen">
+      <h2>🎯 Quiz mode</h2>
+      <p class="muted">Random-draw practice under exam-like conditions. Self-graded. Snapshots + auto-saved active sessions let you pause and resume.</p>
+
+      <!-- Resume / snapshots — populated by renderQuizResumePanel(container) -->
+      <div id="quiz-home-resume"></div>
+
+      <div class="quiz-home-actions">
+        <button id="quiz-home-start-new" type="button" class="primary" title="Open the full quiz configuration form to pick domain / tags / count / time limit / order / solutions visibility">▶ Start a new quiz</button>
+        <small class="muted">Pick domain, tags, count, time limit, order, solutions visibility.</small>
+      </div>
+
+      <div class="quiz-home-quickstart">
+        <span class="muted">Or one-click quick-start:</span>
+        <button id="quiz-home-quick-10" type="button" title="Start a quiz with 10 random questions, no time limit, solutions hidden until reveal">🎲 10 random</button>
+        <button id="quiz-home-quick-mock" type="button" title="Start a 17-question full mock — the exam-sized round, no time limit, solutions hidden">🎯 17-question mock</button>
+      </div>
+    </section>
+
+    <!-- Setup screen — hidden by default; opened via "▶ Start a new quiz". -->
+    <section id="quiz-setup" class="quiz-screen" hidden>
+      <button id="quiz-setup-back-to-home" type="button" class="quiz-back-btn" title="Back to Quiz home">← Back to Quiz home</button>
       <h2>🎯 Start a quiz session</h2>
       <p class="muted">Randomly pull questions from the question bank for focused practice. Self-grade your answers — there's no automatic checking (solutions are CLI/YAML).</p>
 
-      <!-- Resume / snapshots panel (populated by renderQuizResumePanel) -->
+      <!-- Legacy slot — kept for backwards compat; renderQuizResumePanel now
+           writes to #quiz-home-resume by default. Hidden empty container. -->
       <div id="quiz-resume-panel" hidden></div>
 
       <fieldset>

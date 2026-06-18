@@ -54,7 +54,9 @@ The default mode. All ~271 exercises in a scrollable list.
 
 Random-draw practice under exam-like conditions.
 
-**Setup screen** — pick:
+**Landing page first.** Opening the 🎯 Quiz tab no longer drops you into a config form — you land on a Quiz home that surfaces (a) any paused session you can ⏸ Resume, (b) any 💾 Snapshots you've saved, and (c) two action paths: **▶ Start a new quiz** (opens the full configure form) or a one-click quick-start (**🎲 10 random** / **🎯 17-question mock**).
+
+**Setup screen** — when you click **▶ Start a new quiz**, pick:
 
 - Source filters (domain, tags, only bookmarks, only not-yet-done)
 - Question count (5 / 10 / 17 full mock / custom up to 500)

@@ -479,6 +479,61 @@ pre .copy-btn.copied { color: var(--success); }
 }
 .quiz-screen legend { padding: 0 8px; font-weight: 600; }
 .quiz-actions { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
+
+/* ---------- Quiz mode landing page ---------- */
+/* Primary CTA block — large "▶ Start a new quiz" button with subtitle. */
+.quiz-home-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 20px 0 8px 0;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.quiz-home-actions button {
+  font-size: 16px;
+  padding: 10px 22px;
+}
+.quiz-home-actions small { margin-left: 2px; }
+
+/* Quick-start row — one-click presets sitting below the primary CTA. */
+.quiz-home-quickstart {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0 4px 0;
+  margin-bottom: 8px;
+}
+.quiz-home-quickstart > span.muted { font-size: 12px; }
+.quiz-home-quickstart button {
+  padding: 6px 12px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  color: var(--fg);
+  cursor: pointer;
+}
+.quiz-home-quickstart button:hover { background: var(--bg); border-color: var(--accent); }
+
+/* Back-from-setup button — sits above the page title; same chrome as the
+   Tools tab's .tools-back-to-list. */
+.quiz-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px 0;
+  padding: 6px 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--fg);
+}
+.quiz-back-btn:hover { border-color: var(--accent); }
 .quiz-progress { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
 .quiz-progress progress { flex: 1; height: 10px; }
 #quiz-nav-toggle { white-space: nowrap; }

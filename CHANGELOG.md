@@ -26,6 +26,7 @@ Each entry references the commit hash in parens for traceability to git history.
 - Quiz fullscreen quizbar ☁ icon — opens the sync popover without exiting fullscreen. ([319b51b], later wired correctly by [03a591b] and [04ab81b])
 
 ### Changed
+- Quiz mode entry shows a landing page (Resume / Snapshots / two quick-start presets + a `▶ Start a new quiz` CTA) instead of dumping the full 9-fieldset configure form. The form is one click away via `▶ Start a new quiz`; quick-start `🎲 10 random` and `🎯 17-question mock` skip the form entirely with sensible defaults. (this commit)
 - ☁ Sync popover trimmed to ⬆ Push + ⬇ Pull. Removed redundant 🚀 Push now (functionally identical to Push) ([319b51b]) and Test (now Settings → Sync only — setup-time check, not per-session) ([c19a99f]).
 - Settings → 🐛 Issues sub-tab retired; the header 🐛 popover is the single queue entry. ([319b51b])
 - Sync popover z-index raised to 1100 so it floats above the fullscreen answer editor (z-index 1000). ([03a591b])

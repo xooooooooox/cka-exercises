@@ -4332,8 +4332,35 @@ function quizMinutesLeft(deadline) {
   return Math.ceil(left / 60_000);
 }
 
-function renderQuizResumePanel() {
-  const panel = document.getElementById('quiz-resume-panel');
+// Quiz mode landing page. Shows resume / snapshots first (if any), then the
+// primary "▶ Start a new quiz" CTA + two quick-start preset buttons. Users no
+// longer get the dense 9-fieldset configure form on entry — that lives one
+// click away behind ▶ Start a new quiz.
+function showQuizHome() {
+  document.getElementById('quiz-home').hidden = false;
+  document.getElementById('quiz-setup').hidden = true;
+  document.getElementById('quiz-active').hidden = true;
+  const sum = document.getElementById('quiz-summary'); if (sum) sum.hidden = true;
+  renderQuizResumePanel(document.getElementById('quiz-home-resume'));
+}
+
+// Open the full configure form (used by the "▶ Start a new quiz" CTA on home).
+function showQuizSetup() {
+  document.getElementById('quiz-home').hidden = true;
+  document.getElementById('quiz-setup').hidden = false;
+  document.getElementById('quiz-active').hidden = true;
+  const sum = document.getElementById('quiz-summary'); if (sum) sum.hidden = true;
+  // Recompute eligible count in case Done / Bookmark changed since the last
+  // time the form was visible (could affect Only-bookmarked / Only-undone).
+  try { updateQuizEligibleCount(); } catch {}
+}
+
+function renderQuizResumePanel(container) {
+  // Caller can pass an explicit container (the Quiz landing page uses
+  // #quiz-home-resume). Default — kept for callers that pre-date the
+  // landing-page split — is the legacy #quiz-resume-panel slot inside
+  // the setup screen.
+  const panel = container || document.getElementById('quiz-home-resume') || document.getElementById('quiz-resume-panel');
   if (!panel) return;
   const saved = storageGet(KEY.quizActive, null);
   const snaps = getSnapshots();
@@ -4475,15 +4502,14 @@ function saveAsSnapshot() {
     alert(`Couldn't save snapshot: ${e.message}`);
     return;
   }
-  // The snapshot is now the source of truth; clear the active slot and exit to setup.
+  // The snapshot is now the source of truth; clear the active slot and exit to
+  // the landing page so the snapshot we just saved is immediately visible.
   clearInterval(State.quizTimerHandle);
   State.quiz = null;
   clearActiveQuiz();
-  document.getElementById('quiz-active').hidden = true;
   document.getElementById('quiz-timer').hidden = true;
-  document.getElementById('quiz-setup').hidden = false;
   document.getElementById('quiz-summary').hidden = true;
-  renderQuizResumePanel();
+  showQuizHome();
 }
 
 function renderQuizSetup() {
@@ -5196,13 +5222,12 @@ function setMode(mode, opts = {}) {
     v.hidden = !want;
   });
   if (mode === 'quiz') {
-    if (!document.getElementById('quiz-domain-list').firstChild) {
-      renderQuizSetup();
-    } else if (!State.quiz) {
-      // Returning to Quiz with no active in-memory session — refresh the resume panel
-      // in case storage changed since last visit (e.g. cross-tab Push/Pull).
-      renderQuizResumePanel();
-    }
+    // Make sure the setup form is populated once so the user sees the same
+    // filters when they hit "▶ Start a new quiz". Lazy first-time init.
+    if (!document.getElementById('quiz-domain-list').firstChild) renderQuizSetup();
+    // If there's an active in-memory quiz, the active view is already shown
+    // by the renderQuizCard flow; otherwise land on the home screen.
+    if (!State.quiz) showQuizHome();
   }
   if (mode === 'browse') renderBrowse();
   if (mode === 'help') renderHelpView();
@@ -6605,11 +6630,48 @@ async function init() {
     if (confirm('End this quiz session and see your summary?')) finishQuiz();
   });
   document.getElementById('quiz-restart').addEventListener('click', () => {
+    // After finishing a quiz, return to the landing page so the user decides
+    // again whether to customise or just quick-start another round.
     document.getElementById('quiz-summary').hidden = true;
-    document.getElementById('quiz-setup').hidden = false;
-    updateQuizEligibleCount();
-    renderQuizResumePanel();
+    showQuizHome();
   });
+
+  // Quiz home → Setup
+  document.getElementById('quiz-home-start-new')?.addEventListener('click', () => {
+    updateQuizEligibleCount();
+    showQuizSetup();
+  });
+
+  // Setup → Quiz home
+  document.getElementById('quiz-setup-back-to-home')?.addEventListener('click', () => {
+    showQuizHome();
+  });
+
+  // Quick-start presets — prefill form fields then click the existing Start
+  // button so the existing startQuiz path (filter parsing, state hydration,
+  // timer setup) runs unchanged.
+  function quickStartWithCount(count) {
+    // Ensure all sources are selected (domain + tag checkboxes) so we draw
+    // from the full corpus; clear bookmark / undone filters.
+    document.querySelectorAll('[name="quiz-domain"]').forEach(cb => { cb.checked = true; });
+    document.querySelectorAll('[name="quiz-tag"]').forEach(cb => { cb.checked = true; });
+    const onlyBm = document.getElementById('quiz-only-bookmarks');
+    const onlyUd = document.getElementById('quiz-only-undone');
+    if (onlyBm) onlyBm.checked = false;
+    if (onlyUd) onlyUd.checked = false;
+    const countInput = document.querySelector(`[name="quiz-count"][value="${count}"]`);
+    if (countInput) countInput.checked = true;
+    const timeInput = document.querySelector('[name="quiz-time"][value="0"]');
+    if (timeInput) timeInput.checked = true;
+    const orderInput = document.querySelector('[name="quiz-order"][value="random"]');
+    if (orderInput) orderInput.checked = true;
+    const solInput = document.querySelector('[name="quiz-solutions"][value="hidden"]');
+    if (solInput) solInput.checked = true;
+    updateQuizEligibleCount();
+    document.getElementById('quiz-start-btn')?.click();
+  }
+  document.getElementById('quiz-home-quick-10')?.addEventListener('click', () => quickStartWithCount(10));
+  document.getElementById('quiz-home-quick-mock')?.addEventListener('click', () => quickStartWithCount(17));
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
