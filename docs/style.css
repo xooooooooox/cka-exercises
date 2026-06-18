@@ -2094,7 +2094,7 @@ body.answer-fullscreen-active { overflow: hidden; }
   opacity: 0.45;
   cursor: not-allowed;
 }
-/* ---------- 🐞 Quick Flag button on cards ---------- */
+/* ---------- 🐞 Quick Flag button + scope picker menu ---------- */
 .btn-flag-toggle {
   background: transparent;
   border: 1px solid transparent;
@@ -2106,11 +2106,64 @@ body.answer-fullscreen-active { overflow: hidden; }
   filter: grayscale(0.85);
 }
 .btn-flag-toggle:hover { opacity: 0.9; filter: grayscale(0.3); }
-.btn-flag-toggle.active {
-  opacity: 1;
-  filter: none;
+.btn-flag-toggle.active { opacity: 1; filter: none; }
+/* Scope-specific border colors so the user can see at a glance which side of
+   the exercise they've flagged: solution = red, task = blue, both = gradient. */
+.btn-flag-toggle.flag-solution {
   border-color: var(--danger);
   background: rgba(215, 58, 74, 0.08);
+}
+.btn-flag-toggle.flag-task {
+  border-color: var(--accent);
+  background: rgba(31, 111, 235, 0.08);
+}
+.btn-flag-toggle.flag-both {
+  border-color: var(--danger);
+  background: linear-gradient(135deg, rgba(215, 58, 74, 0.18) 0%, rgba(31, 111, 235, 0.18) 100%);
+}
+
+/* Fullscreen-only 🐞 in the answer-box label row — same hidden-until-fullscreen
+   pattern as the Tools / Task / Solution drawer buttons. Avoids duplicating
+   the card's flag button when both are visible at once. */
+.answer-flag-btn { display: none; }
+.answer-box.answer-fullscreen .answer-flag-btn { display: inline-block; }
+
+/* Scope picker menu — floats above the 🐞 button. Position is set inline by
+   openFlagMenu(); this rule only handles chrome. */
+.flag-menu {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 4px;
+  min-width: 180px;
+  /* Above .answer-fullscreen (1000), .tools-drawer (1010), and the popovers (1100). */
+  z-index: 1200;
+  font-size: 13px;
+}
+.flag-menu-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--fg);
+  font: inherit;
+}
+.flag-menu-row:hover { background: var(--bg); }
+.flag-menu-row.selected::after {
+  content: ' ✓';
+  color: var(--success, #2ea043);
+  font-weight: 600;
+}
+.flag-menu-clear { color: var(--muted); }
+.flag-menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
 }
 
 /* ---------- Header 🐛 Issues popover (reuses .sync-menu chrome) ---------- */

@@ -193,11 +193,11 @@ What gets sent on Check: `{ exercise question, reference solution, your answer }
 
 **Queue for later — three entry points.** Don't want to interrupt your study flow to file every issue immediately? Three ways into the queue:
 
-- **🐞 Mark for follow-up** (next to ⭐ Bookmark on every card) — one-click "this exercise needs a closer look later" with no form at all. Just marks the entry in the queue.
+- **🐞 Mark for follow-up** (next to ⭐ Bookmark on every card) — clicking opens a small **scope picker**: 🔧 Solution issue / 📝 Task issue / 🔧📝 Both. Pick what's wrong and the button stays lit accordingly (red border = Solution, blue border = Task, red-blue gradient = Both). No form, no GitHub navigation. Re-click the same row to toggle off; pick "🗑 Unflag all" to clear. Available in fullscreen too — the answer-box label row reveals a 🐞 button alongside ⛶ / 🔧 / 📝 / 💡 when maximised.
 - **🐛 Suggest a fix** + **💾 Save draft** — fill out the modal partially, save as draft (form persists; finish later).
 - **🐛 Suggest a fix** + **🚀 Open GitHub issue** — files immediately AND keeps a record in the queue under "Already opened".
 
-The 🐞 ladybug is used (not 🚩) so it's visually distinct from the in-quiz **🚩 Flag** button (which marks a question for review during a quiz session — a separate concept).
+The 🐞 ladybug is used (not 🚩) so it's visually distinct from the in-quiz **🚩 Flag** button (which marks a question for review during a quiz session — a separate concept). Both-flagged exercises render as **two independent rows** in the queue popover — one with the `answer-fix` tag, one with `task-fix` — so each side can be filled in / opened / removed independently.
 
 **Header 🐛 N icon** opens the queue popover from any tab. Items split into two groups:
 

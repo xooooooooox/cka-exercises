@@ -287,14 +287,141 @@ function setFixDraft(id, payload) {
 }
 
 // Quick Flag: one-click "this exercise needs attention" with no form. Stores
-// a lightweight stub in cka:fix-draft:<id> so it shows up in the queue
-// alongside fully-written drafts. Toggling off drops the stub if no other
-// content is present, or just flips the flag if the user has also written
-// a partial report.
-function isFlagged(id) { return !!(getFixDraft(id)?.flagged); }
+// a lightweight stub in cka:fix-draft:<id> (solution side) or
+// cka:task-fix-draft:<id> (task side) so it shows up in the queue alongside
+// fully-written drafts. The 🐞 button on the card pops a small menu where the
+// user picks the scope — Solution / Task / Both — then this helper writes the
+// corresponding stub(s).
+function isFlagged(id, mode) {
+  if (mode === 'task') return !!(getTaskFixDraft(id)?.flagged);
+  return !!(getFixDraft(id)?.flagged);
+}
+function setFlaggedMode(id, mode, on) {
+  // Routes through setFixDraft / setTaskFixDraft so empty-prune + stamp +
+  // markSyncDirty all happen consistently.
+  if (mode === 'task') {
+    const cur = getTaskFixDraft(id) || {};
+    setTaskFixDraft(id, { ...cur, flagged: !!on });
+  } else {
+    const cur = getFixDraft(id) || {};
+    setFixDraft(id, { ...cur, flagged: !!on });
+  }
+}
+// Legacy single-flag toggle: cycles the solution slot only. Kept for any
+// callers that still expect the no-mode signature.
 function toggleFlagForReview(id) {
-  const cur = getFixDraft(id) || {};
-  setFixDraft(id, { ...cur, flagged: !cur.flagged });
+  setFlaggedMode(id, 'solution', !isFlagged(id, 'solution'));
+}
+// "What scope is this exercise flagged at right now?" — drives the 🐞 button's
+// active class + the menu's ✓ marks.
+function flaggedScope(id) {
+  const sol = isFlagged(id, 'solution');
+  const tsk = isFlagged(id, 'task');
+  if (sol && tsk) return 'both';
+  if (sol) return 'solution';
+  if (tsk) return 'task';
+  return 'none';
+}
+
+// Apply visual state to a 🐞 button based on current flagged scope. Used by
+// the card's flag button + the answer-box fullscreen flag button.
+function applyFlagBtnState(btn, exId) {
+  const scope = flaggedScope(exId);
+  btn.classList.remove('flag-solution', 'flag-task', 'flag-both', 'active');
+  if (scope === 'none') {
+    btn.title = 'Mark this exercise for follow-up (Solution / Task / Both)';
+  } else {
+    btn.classList.add('active');
+    btn.classList.add(`flag-${scope}`);
+    const label = scope === 'both' ? 'Solution + Task' : (scope === 'solution' ? 'Solution' : 'Task');
+    btn.title = `Flagged for follow-up (${label}) — click to change scope`;
+  }
+}
+
+// Floating menu anchored to a 🐞 button. Options: Solution / Task / Both /
+// Unflag all. ✓ marks reflect current state. Selecting a row toggles the
+// corresponding flag(s); the menu stays open so the user can adjust further,
+// closing on outside click or Esc.
+let _activeFlagMenu = null;
+function openFlagMenu(anchorBtn, ex) {
+  // Close any previously open instance so we only ever have one floating.
+  if (_activeFlagMenu) { try { _activeFlagMenu.remove(); } catch {} _activeFlagMenu = null; }
+
+  const menu = el('div', { class: 'flag-menu' });
+  const refreshIndicators = () => {
+    const scope = flaggedScope(ex.id);
+    menu.querySelectorAll('[data-scope]').forEach(r => {
+      const matches = r.dataset.scope === scope || (r.dataset.scope === 'solution' && scope === 'solution')
+        || (r.dataset.scope === 'task' && scope === 'task')
+        || (r.dataset.scope === 'both' && scope === 'both');
+      r.classList.toggle('selected', matches);
+    });
+    applyFlagBtnState(anchorBtn, ex.id);
+    refreshIssuesQueueCount();
+    renderIssuesQueue();
+  };
+
+  const makeRow = (label, scope, action) => {
+    const row = el('button', { type: 'button', class: 'flag-menu-row', 'data-scope': scope }, label);
+    row.addEventListener('click', (e) => {
+      e.stopPropagation();
+      action();
+      refreshIndicators();
+    });
+    return row;
+  };
+
+  menu.appendChild(makeRow('🔧 Solution issue', 'solution', () => {
+    setFlaggedMode(ex.id, 'solution', !isFlagged(ex.id, 'solution'));
+  }));
+  menu.appendChild(makeRow('📝 Task issue', 'task', () => {
+    setFlaggedMode(ex.id, 'task', !isFlagged(ex.id, 'task'));
+  }));
+  menu.appendChild(makeRow('🔧📝 Both', 'both', () => {
+    const wantBoth = flaggedScope(ex.id) !== 'both';
+    setFlaggedMode(ex.id, 'solution', wantBoth);
+    setFlaggedMode(ex.id, 'task', wantBoth);
+  }));
+  menu.appendChild(el('div', { class: 'flag-menu-sep' }));
+  const unflagRow = el('button', { type: 'button', class: 'flag-menu-row flag-menu-clear' }, '🗑 Unflag all');
+  unflagRow.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setFlaggedMode(ex.id, 'solution', false);
+    setFlaggedMode(ex.id, 'task', false);
+    refreshIndicators();
+  });
+  menu.appendChild(unflagRow);
+
+  // Position the menu just below the anchor button using viewport coordinates.
+  document.body.appendChild(menu);
+  const rect = anchorBtn.getBoundingClientRect();
+  const menuW = menu.getBoundingClientRect().width || 200;
+  const left = Math.min(window.innerWidth - menuW - 8, Math.max(8, rect.left));
+  menu.style.position = 'fixed';
+  menu.style.top = `${rect.bottom + 6}px`;
+  menu.style.left = `${left}px`;
+
+  refreshIndicators();
+  _activeFlagMenu = menu;
+
+  const close = () => {
+    if (_activeFlagMenu === menu) _activeFlagMenu = null;
+    try { menu.remove(); } catch {}
+    document.removeEventListener('click', onDocClick, true);
+    document.removeEventListener('keydown', onKey);
+  };
+  const onDocClick = (e) => {
+    if (menu.contains(e.target) || anchorBtn.contains(e.target)) return;
+    close();
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  // Capture phase so we beat the document-level click-dismiss handlers
+  // registered by sync-menu / llm-menu / issues-menu without those handlers
+  // closing us prematurely.
+  setTimeout(() => {
+    document.addEventListener('click', onDocClick, true);
+    document.addEventListener('keydown', onKey);
+  }, 0);
 }
 function getTaskFixDraft(id) { return storageGet(KEY.taskFixDraftPrefix + id, null); }
 function setTaskFixDraft(id, payload) {
@@ -1165,32 +1292,47 @@ function mergePayload(payload, opts) {
       continue;
     }
 
-    // ---- LLM settings: special API key preservation
+    // ---- LLM settings: special API key preservation. Same tombstone
+    //      invariant as the generic singleton branch — only adopt remote on a
+    //      cold device (no local keymeta) or when remote is strictly newer.
     if (k === KEY.llmSettings && vRemote && typeof vRemote === 'object') {
       const lTime = (localKeymeta[k] || {}).t || '';
       const rTime = (remoteKeymeta[k] || {}).t || remoteV2.exportedAt || '';
-      const local = storageGet(k, null);
-      if (!local || (rTime && rTime > lTime)) {
+      if (!lTime || (rTime && rTime > lTime)) {
         storageSet(k, preserveLocalLLMKeys({ ...vRemote }));
         mergedKeymeta[k] = { t: rTime || remoteV2.exportedAt };
       }
       continue;
     }
 
-    // ---- All other singletons (theme, filters, docsLastUrl, UI nav…)
-    //      With keymeta on either side → take-newer; otherwise: if local
-    //      missing adopt remote, else this-device-wins.
+    // ---- All other singletons (theme, filters, docsLastUrl, fix-drafts,
+    //      UI nav…). Invariants:
+    //        - localKeymeta[k] presence  = local has SEEN this key (now or
+    //          previously). Combined with localStorage absence, that's a
+    //          tombstone (the user deleted it locally at time lTime).
+    //        - rTime is the remote's last-write timestamp for this key.
+    //
+    //      Adopt remote ONLY when local has never seen the key (so we
+    //      cold-adopt) OR when remote.t is STRICTLY newer than local's last
+    //      activity time. Otherwise keep local — including the deleted case,
+    //      which is the bug commit 03a591b missed: removed queue drafts kept
+    //      reappearing because the second branch was greedy about resurrecting
+    //      remote whenever the local value was gone.
     const lTime = (localKeymeta[k] || {}).t || '';
     const rTime = (remoteKeymeta[k] || {}).t || '';
-    const localHas = storageGet(k, undefined) !== undefined && storageGet(k, undefined) !== null;
-    if (rTime && lTime && rTime > lTime) {
-      storageSet(k, vRemote);
-      mergedKeymeta[k] = { t: rTime };
-    } else if (!localHas && vRemote !== undefined && vRemote !== null) {
+    const remoteHas = vRemote !== undefined && vRemote !== null;
+    if (!lTime && remoteHas) {
+      // Cold-adopt: local has no record of this key at all.
       storageSet(k, vRemote);
       if (rTime) mergedKeymeta[k] = { t: rTime };
+    } else if (remoteHas && rTime && rTime > lTime) {
+      // Remote write is strictly newer than local's last activity (including
+      // deletion). Adopt — overrides our tombstone too, which is correct:
+      // another device re-added the entry after our delete.
+      storageSet(k, vRemote);
+      mergedKeymeta[k] = { t: rTime };
     }
-    // else: keep local; this-device-wins for unstamped UI prefs.
+    // else: keep local state — this includes tombstones (no resurrection).
   }
 
   saveKeymeta(mergedKeymeta);
@@ -1442,6 +1584,10 @@ const Sync = (() => {
 // flush via fetch(..., {keepalive:true}) so a fresh edit isn't lost.
 const AUTO_SYNC_DEBOUNCE_MS = 30_000;
 let _autoSyncTimer = null;
+// Set by installSyncMenu() — opens the ☁ Sync popover from anywhere in the
+// SPA without depending on a synthetic click on sync-toggle (unreliable on
+// mobile Safari). Stays null until installSyncMenu has run at boot.
+let _openSyncMenuExternal = null;
 
 // Tiny pub/sub for auto-sync state transitions. The ☁ status dot + the
 // popover diagnostic line both subscribe so they can show "pending" /
@@ -1982,6 +2128,11 @@ function installSyncMenu() {
     menu.hidden = true;
     toggle.setAttribute('aria-expanded', 'false');
   }
+  // Expose to the module scope so callers outside the popover (e.g. the quiz
+  // fullscreen quizbar's ☁ button) can open it directly without going through
+  // sync-toggle.click() — that synthetic-click indirection turned out to be
+  // unreliable on mobile Safari.
+  _openSyncMenuExternal = openMenu;
 
   toggle.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -2397,6 +2548,19 @@ function renderAnswerBox(ex, opts = {}) {
   }, '💡');
   labelRow.appendChild(solBtn);
   solBtn.addEventListener('click', () => { openSolutionDrawer(ex); });
+  // Same hidden-until-fullscreen pattern — gives the user a way to flag the
+  // exercise (Solution / Task / Both) without exiting fullscreen.
+  const flagDrawerBtn = el('button', {
+    type: 'button',
+    class: 'answer-flag-btn btn-flag-toggle',
+    'aria-label': 'Mark this exercise for follow-up',
+  }, '🐞');
+  applyFlagBtnState(flagDrawerBtn, ex.id);
+  labelRow.appendChild(flagDrawerBtn);
+  flagDrawerBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openFlagMenu(flagDrawerBtn, ex);
+  });
   box.appendChild(labelRow);
 
   const ta = el('textarea', {
@@ -2712,14 +2876,13 @@ function renderAnswerBox(ex, opts = {}) {
       'aria-label': 'Show sync status',
     }, '☁');
     syncDot.addEventListener('click', (e) => {
-      // Stop the original click from reaching the document-level
-      // click-outside dismiss handler in installSyncMenu — without this,
-      // the popover opens via the programmatic sync-toggle click and then
-      // closes again in the same tick when the user's click finishes
-      // bubbling. (The synthetic event stopPropagation only halts the
-      // synthetic propagation, not the user's original event.)
+      // Open the popover directly via the closure exposed by installSyncMenu,
+      // not via sync-toggle.click() — the synthetic-click indirection turned
+      // out to be unreliable on mobile Safari (touch→click conversion timing
+      // collides with the document-level click-outside handler). stopPropagation
+      // still keeps the user's original click from reaching that handler.
       e.stopPropagation();
-      document.getElementById('sync-toggle')?.click();
+      _openSyncMenuExternal?.();
     });
     const quizbar = el('div', { class: 'answer-fullscreen-quizbar' },
       proxy('quiz-nav-toggle', '📋 Questions'),
@@ -3890,27 +4053,18 @@ function renderExerciseCard(ex, opts = {}) {
     bmBtn.textContent = isBookmark(ex.id) ? '⭐' : '☆';
     renderSidebarProgress();
   });
-  // 🐞 Quick Flag — one-click "this exercise has a problem, write up later".
-  // Sits in the issue queue immediately; the user can fill out details or
-  // submit later via the header 🐛 popover. Uses 🐞 (ladybug) instead of 🚩
-  // to stay visually distinct from the quiz mode 🚩 Flag button (which marks
-  // a question for review during a quiz session — a different concept).
+  // 🐞 Quick Flag — opens a small scope-picker menu (Solution / Task / Both)
+  // so the user can indicate which side of the exercise has a problem. The
+  // 🐞 ladybug is used (not 🚩) to stay visually distinct from the in-quiz
+  // 🚩 Flag button (mark-question-for-review — separate concept).
   const flagBtn = el('button', {
     type: 'button',
-    class: 'btn-flag-toggle' + (isFlagged(ex.id) ? ' active' : ''),
-    title: isFlagged(ex.id)
-      ? 'Marked for follow-up — click to unmark (lives in the header 🐛 issue queue)'
-      : 'Mark this exercise for follow-up (no form — adds it to the header 🐛 issue queue)',
+    class: 'btn-flag-toggle',
   }, '🐞');
-  flagBtn.addEventListener('click', () => {
-    toggleFlagForReview(ex.id);
-    const on = isFlagged(ex.id);
-    flagBtn.classList.toggle('active', on);
-    flagBtn.title = on
-      ? 'Marked for follow-up — click to unmark (lives in the header 🐛 issue queue)'
-      : 'Mark this exercise for follow-up (no form — adds it to the header 🐛 issue queue)';
-    refreshIssuesQueueCount();
-    renderIssuesQueue();
+  applyFlagBtnState(flagBtn, ex.id);
+  flagBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openFlagMenu(flagBtn, ex);
   });
   tools.append(doneBtn, bmBtn, flagBtn);
 
