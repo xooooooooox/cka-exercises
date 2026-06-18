@@ -13,7 +13,7 @@ A 5-minute tour of the static SPA at <https://xooooooooox.github.io/cka-exercise
 > - **📑 api-resources in Tools.** New third Tools sub-tab — a `kubectl api-resources` lookup table with filter syntax (`namespaced:false`, `verb:patch`, `group:apps`).
 > - **Fullscreen quiz controls.** Maximise the answer editor in quiz mode and you now keep Prev / Next / Got / Missed / Skip / Flag / Reveal / 📋 Questions in a sticky strip at the bottom — no exit-fullscreen-to-navigate dance.
 > - **💡 Solution drawer.** Even in fullscreen, click 💡 (or Reveal) to see the reference solution in an overlay drawer.
-> - **Auto-sync.** Configure a Gist and edits auto-push 30 s after you stop changing things. Plus pre-pull backup + conflict detection guard against multi-device clobber.
+> - **Auto-sync (now with per-key merge).** Configure a Gist and edits auto-push 30 s after you stop changing things. Concurrent edits across devices are merged losslessly — Done / Bookmark unions, answers take-newer by savedAt, tombstones propagate un-marks. No more conflict modals.
 > - **Bash syntax highlighting** in the answer editor (was YAML — bash is closer to what you'll type during the exam).
 
 ---
@@ -211,11 +211,18 @@ Same payload as Export/Import, but pushed to / pulled from a private GitHub Gist
 
 **Auto-push (default ON).** Once both PAT and Gist ID are configured, the SPA debounces a push **30 seconds after your last sync-worthy edit** (toggling Done, adding a bookmark, saving an answer, getting a verdict, or any quiz state change). Five Done toggles within 10 s = one push, 30 s after the last toggle. You stop having to remember to Push before switching devices. UI preferences (theme, filters, tools sub-tab) do NOT trigger auto-sync. Opt out via the **Auto-push 30 s after changes** checkbox in Settings → Sync.
 
-**Pre-pull backup + Restore.** Before any Pull (or Backup-file Import) runs, the SPA snapshots your current state to `cka:sync:prepull-backup` so the import is reversible. If the Pull replaced something you didn't mean to lose, click **↩ Restore pre-pull backup** in Settings → Sync — the button only appears when a backup exists. One click → confirm → state reverts → page reloads → backup is consumed.
+**Per-key merge — no more conflict modals.** Push and Pull now go through a per-key merge engine instead of integral overwrite. When the SPA detects the gist was updated since this device's baseline (another device, or this device's own previous beacon push), it **automatically** pulls the remote, merges it with local pending edits, then pushes the merged result. Rules:
 
-**Conflict detection on Push.** Before uploading, the SPA fetches the gist's `updated_at` and compares it with your last-synced baseline. If the gist was modified elsewhere (another device pushed; you edited it on github.com) since your last sync, a confirm dialog warns you with both timestamps: **OK** = force-push (overwrites the remote changes), **Cancel** = stop so you can ⬇ Pull first to merge manually. First-ever push has no baseline so it just succeeds.
+- `cka:done` / `cka:bookmark`: per-id union with tombstones (un-marking an exercise on device A propagates to B via a `{v:false, t:ISO}` entry in the `cka:sync:keymeta` side-table).
+- `cka:answer:*`: take whichever side's `savedAt` is later.
+- `cka:quiz:active` / `cka:quiz:snapshots`: take-newer by `cka:sync:keymeta.t`.
+- LLM settings: this-device's `apiKey` is always preserved across merges.
 
-**Tab-close safety net.** If you close the browser within the 30 s debounce window, a best-effort `keepalive:true` PATCH fires on `beforeunload` so your last burst of edits doesn't get lost.
+Local edits this device hasn't pushed yet never get clobbered by a Pull. Manual ⬇ Pull and ⬆ Push hit the same engine — both are lossless.
+
+**Pre-pull backup + Restore.** Before any Pull (or Backup-file Import) runs, the SPA snapshots your current state to `cka:sync:prepull-backup` so the import is reversible. The Restore button uses an integral overwrite (it has to put back exactly what Pull replaced); the regular Pull / Auto-merge paths use the merge engine.
+
+**Tab-close safety net.** If you close the browser within the 30 s debounce window, a best-effort `keepalive:true` PATCH fires on `beforeunload` so your last burst of edits doesn't get lost. The next session refreshes the baseline from the actual gist `updated_at` so this device never argues with its own past beacon pushes.
 
 **Background-tab safety net.** Browsers throttle `setTimeout` aggressively in background tabs (Chrome ≈ 1/minute, Safari even less). To keep auto-sync reliable, a `visibilitychange` handler fires immediately when the tab returns to the foreground if a pending edit is already past its 30 s window. Net: you'll never lose a sync just because you switched to a different tab during the debounce.
 

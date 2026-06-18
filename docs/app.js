@@ -64,6 +64,9 @@ const KEY = {
   prePullBackup: 'cka:sync:prepull-backup', // { takenAt: ISO, payload: <collectExportable result> }
   autoSyncDisabled: 'cka:sync:autoDisabled', // user opt-out for the 30s debounced auto-push
   syncDirtyAt: 'cka:sync:dirtyAt',           // ISO — set on every sync-worthy mutation, cleared after successful push
+  syncBeaconedAt: 'cka:sync:beaconedAt',     // ISO — set after beforeunload's beaconPush(); consumed once on next bootAutoSync to re-stamp baseline
+  syncKeymeta: 'cka:sync:keymeta',           // per-key + per-id timestamps powering the merge engine; included in gist payload
+  deviceId: 'cka:sync:deviceId',             // random UUID minted once on first auto-sync; excluded from payload (per-device)
 };
 
 // All providers we offer. Their slots get pre-created on first save so the
@@ -188,7 +191,11 @@ function clearLLMListeners() { LLM_LISTENERS.clear(); }
 let _quizFullscreenSticky = false;
 
 function getAnswer(exerciseId) { return storageGet(KEY.answerPrefix + exerciseId, null); }
-function setAnswer(exerciseId, payload) { storageSet(KEY.answerPrefix + exerciseId, payload); markSyncDirty(); }
+function setAnswer(exerciseId, payload) {
+  const stamped = Object.assign({}, payload || {}, { savedAt: new Date().toISOString() });
+  storageSet(KEY.answerPrefix + exerciseId, stamped);
+  markSyncDirty();
+}
 
 // Browse-mode filter persistence. Set<string> fields serialise to arrays so the
 // payload survives JSON round-trips (JSON.stringify(new Set([...])) returns {}).
@@ -297,10 +304,12 @@ function isDone(id)     { return !!storageGet(KEY.done, {})[id]; }
 function isBookmark(id) { return !!storageGet(KEY.bookmark, {})[id]; }
 function setDone(id, v) {
   const m = storageGet(KEY.done, {}); if (v) m[id] = true; else delete m[id]; storageSet(KEY.done, m);
+  stampCollectionItem(KEY.done, id, v);
   markSyncDirty();
 }
 function setBookmark(id, v) {
   const m = storageGet(KEY.bookmark, {}); if (v) m[id] = true; else delete m[id]; storageSet(KEY.bookmark, m);
+  stampCollectionItem(KEY.bookmark, id, v);
   markSyncDirty();
 }
 
@@ -894,25 +903,58 @@ function installSettingsOverlay() {
 // ---------- Backup / Import ----------
 
 // Scrubs API key from llm settings; never includes the gist PAT.
+// Keys that must never leave the device. Used by collectExportable AND
+// mergePayload so a key marked per-device is invisible to the sync engine
+// in both directions.
+function isPerDeviceKey(k) {
+  return k === KEY.gistToken
+      || k === KEY.syncMeta
+      || k === KEY.prePullBackup
+      || k === KEY.syncDirtyAt
+      || k === KEY.autoSyncDisabled
+      || k === KEY.syncBeaconedAt
+      || k === KEY.deviceId;
+}
+
+// For older local state that pre-dates the keymeta side-table, synthesize
+// timestamps so the first push carries a usable merge baseline. Items get
+// "now" — close enough to make first push idempotent. After that, every
+// future write goes through stampCollectionItem / stampSingleton and the
+// timestamps are real.
+function synthesizeKeymetaForLocalState() {
+  const km = loadKeymeta();
+  const now = new Date().toISOString();
+  let dirty = false;
+
+  for (const colKey of [KEY.done, KEY.bookmark]) {
+    const col = storageGet(colKey, {}) || {};
+    if (!km[colKey]) { km[colKey] = { items: {} }; dirty = true; }
+    if (!km[colKey].items) { km[colKey].items = {}; dirty = true; }
+    for (const id of Object.keys(col)) {
+      if (!km[colKey].items[id]) { km[colKey].items[id] = { v: true, t: now }; dirty = true; }
+    }
+  }
+
+  for (const singletonKey of [KEY.quizActive, KEY.quizSnapshots]) {
+    const v = storageGet(singletonKey, undefined);
+    if (v !== undefined && v !== null && !km[singletonKey]) {
+      km[singletonKey] = { t: now };
+      dirty = true;
+    }
+  }
+
+  if (dirty) saveKeymeta(km);
+}
+
 function collectExportable() {
+  synthesizeKeymetaForLocalState();
   const data = {};
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (!k || !k.startsWith('cka:')) continue;
-    if (k === KEY.gistToken) continue;
-    // Sync metadata (lastPushAt / lastPullAt / lastError) is per-device and
-    // round-tripping it through the gist made the popover show stale "X d ago"
-    // times after a reload (the gist's snapshot from the last push would
-    // overwrite the local lastPullAt that _run() had just stamped).
-    if (k === KEY.syncMeta) continue;
-    // Pre-pull backup is a per-device snapshot of state to recover from an
-    // accidental Pull. Round-tripping it through the gist would double the
-    // payload and confuse new devices on first pull.
-    if (k === KEY.prePullBackup) continue;
-    // Auto-sync local-only flags. The dirty-at flag is consumed by the
-    // current device's debouncer; the opt-out is per-device preference.
-    if (k === KEY.syncDirtyAt) continue;
-    if (k === KEY.autoSyncDisabled) continue;
+    if (isPerDeviceKey(k)) continue;
+    // NOTE: cka:sync:keymeta IS included — the merge engine on the receiving
+    // device needs the per-key + per-id timestamps to reconcile correctly.
     let val = storageGet(k, null);
     if (k === KEY.llmSettings && val && typeof val === 'object') {
       // v2 shape: scrub every provider's apiKey. v1 legacy: scrub the top-level
@@ -929,37 +971,189 @@ function collectExportable() {
     }
     data[k] = val;
   }
-  return { schemaVersion: 1, exportedAt: new Date().toISOString(), data };
+  return {
+    schemaVersion: 2,
+    exportedAt: new Date().toISOString(),
+    meta: { lastPushDeviceId: getDeviceId() },
+    data,
+  };
 }
 
-function importPayload(payload) {
-  if (!payload || payload.schemaVersion !== 1 || !payload.data) {
+// Preserve any locally-saved LLM apiKey when an incoming (always-scrubbed)
+// payload arrives. Works for both v1 (top-level apiKey) and v2 (per-provider
+// providers[*].apiKey) shapes. Mutates `incoming` in place.
+function preserveLocalLLMKeys(incoming) {
+  const existing = storageGet(KEY.llmSettings, {}) || {};
+  if (incoming.providers && existing.providers) {
+    for (const [pk, slot] of Object.entries(incoming.providers)) {
+      if (slot && !slot.apiKey && existing.providers[pk]?.apiKey) {
+        incoming.providers[pk] = { ...slot, apiKey: existing.providers[pk].apiKey };
+      }
+    }
+  } else if (!incoming.apiKey && existing.apiKey) {
+    incoming.apiKey = existing.apiKey;
+  }
+  return incoming;
+}
+
+// v1 → v2 upgrade: synthesize keymeta using the payload's exportedAt as the
+// timestamp for every entry. Coarse but enough for first-pull merge to make
+// "remote was written before this device's edits" judgements correctly.
+function upgradeV1ToV2(payload) {
+  const t = payload.exportedAt || new Date().toISOString();
+  const data = { ...payload.data };
+  const keymeta = { ...(data[KEY.syncKeymeta] || {}) };
+  for (const colKey of [KEY.done, KEY.bookmark]) {
+    const col = data[colKey];
+    if (col && typeof col === 'object') {
+      if (!keymeta[colKey]) keymeta[colKey] = { items: {} };
+      if (!keymeta[colKey].items) keymeta[colKey].items = {};
+      for (const id of Object.keys(col)) {
+        if (!keymeta[colKey].items[id]) keymeta[colKey].items[id] = { v: !!col[id], t };
+      }
+    }
+  }
+  for (const singletonKey of [KEY.quizActive, KEY.quizSnapshots]) {
+    if (singletonKey in data && !keymeta[singletonKey]) {
+      keymeta[singletonKey] = { t };
+    }
+  }
+  data[KEY.syncKeymeta] = keymeta;
+  return { schemaVersion: 2, exportedAt: t, meta: payload.meta || {}, data };
+}
+
+function pickNewer(a, b) {
+  if (!a) return b || null;
+  if (!b) return a;
+  return ((b.t || '') > (a.t || '')) ? b : a;
+}
+
+// Per-key + per-id merge. Replaces the old integral-overwrite importPayload
+// on every code path EXCEPT the undo-Pull restoreFromBackup (which still
+// needs to faithfully wipe what Pull added).
+//
+// Rules:
+//   - Collection (cka:done, cka:bookmark): for each id seen on either side,
+//     pick the keymeta entry with the later `t`. If winner.v is true, the
+//     id ends up in the collection; if false (tombstone), it gets removed.
+//   - Per-exercise (cka:answer:*): take whichever side has the later
+//     `savedAt`. If local has no savedAt (legacy), adopt remote unconditionally.
+//   - Singleton with keymeta (quizActive, quizSnapshots): take whichever
+//     side's keymeta.t is later.
+//   - Other singleton without keymeta on either side: if local doesn't have
+//     the key, adopt remote; otherwise leave local alone (UI prefs:
+//     this-device-wins is the right default).
+//   - cka:llm:settings: route through preserveLocalLLMKeys before any storage write.
+function mergePayload(payload, opts) {
+  if (!payload || (payload.schemaVersion !== 1 && payload.schemaVersion !== 2) || !payload.data) {
+    throw new Error('Unrecognized backup format (schemaVersion mismatch).');
+  }
+  const remoteV2 = (payload.schemaVersion === 2) ? payload : upgradeV1ToV2(payload);
+  const remoteData = remoteV2.data;
+  const remoteKeymeta = remoteData[KEY.syncKeymeta] || {};
+  const localKeymeta = loadKeymeta();
+  const mergedKeymeta = { ...localKeymeta };
+
+  for (const [k, vRemote] of Object.entries(remoteData)) {
+    if (!k.startsWith('cka:')) continue;
+    if (isPerDeviceKey(k)) continue;
+    if (k === KEY.syncKeymeta) continue; // handled at the end
+
+    // ---- Collection: cka:done / cka:bookmark
+    if (k === KEY.done || k === KEY.bookmark) {
+      const local = storageGet(k, {}) || {};
+      const lItems = (localKeymeta[k] || {}).items || {};
+      const rItems = (remoteKeymeta[k] || {}).items || {};
+      const mergedCol = { ...local };
+      const mergedItems = { ...lItems };
+      const ids = new Set([
+        ...Object.keys(lItems),
+        ...Object.keys(rItems),
+        ...Object.keys(local || {}),
+        ...Object.keys(vRemote || {}),
+      ]);
+      for (const id of ids) {
+        // Fall back: if a side has the id in the collection but no keymeta
+        // (legacy v1 payload pre-upgrade), synthesize an entry at the
+        // payload's exportedAt time so the comparison is meaningful.
+        const lEntry = lItems[id] || (local[id] ? { v: true, t: remoteV2.exportedAt } : null);
+        const rEntry = rItems[id] || ((vRemote && vRemote[id]) ? { v: true, t: remoteV2.exportedAt } : null);
+        const winner = pickNewer(lEntry, rEntry);
+        if (!winner) continue;
+        mergedItems[id] = winner;
+        if (winner.v) mergedCol[id] = true;
+        else delete mergedCol[id];
+      }
+      storageSet(k, mergedCol);
+      mergedKeymeta[k] = { items: mergedItems };
+      continue;
+    }
+
+    // ---- Per-exercise: cka:answer:*
+    if (k.startsWith(KEY.answerPrefix)) {
+      const local = storageGet(k, null);
+      if (!local) { storageSet(k, vRemote); continue; }
+      const lSaved = local.savedAt || '';
+      const rSaved = (vRemote && vRemote.savedAt) || '';
+      if (rSaved && rSaved > lSaved) storageSet(k, vRemote);
+      continue;
+    }
+
+    // ---- Singleton with keymeta
+    if (k === KEY.quizActive || k === KEY.quizSnapshots) {
+      const lTime = (localKeymeta[k] || {}).t || '';
+      const rTime = (remoteKeymeta[k] || {}).t || remoteV2.exportedAt || '';
+      if (!lTime || rTime > lTime) {
+        storageSet(k, vRemote);
+        mergedKeymeta[k] = { t: rTime };
+        if (k === KEY.quizActive) {
+          try { refreshQuizTabDot(); } catch {}
+        }
+      }
+      continue;
+    }
+
+    // ---- LLM settings: special API key preservation
+    if (k === KEY.llmSettings && vRemote && typeof vRemote === 'object') {
+      const lTime = (localKeymeta[k] || {}).t || '';
+      const rTime = (remoteKeymeta[k] || {}).t || remoteV2.exportedAt || '';
+      const local = storageGet(k, null);
+      if (!local || (rTime && rTime > lTime)) {
+        storageSet(k, preserveLocalLLMKeys({ ...vRemote }));
+        mergedKeymeta[k] = { t: rTime || remoteV2.exportedAt };
+      }
+      continue;
+    }
+
+    // ---- All other singletons (theme, filters, docsLastUrl, UI nav…)
+    //      With keymeta on either side → take-newer; otherwise: if local
+    //      missing adopt remote, else this-device-wins.
+    const lTime = (localKeymeta[k] || {}).t || '';
+    const rTime = (remoteKeymeta[k] || {}).t || '';
+    const localHas = storageGet(k, undefined) !== undefined && storageGet(k, undefined) !== null;
+    if (rTime && lTime && rTime > lTime) {
+      storageSet(k, vRemote);
+      mergedKeymeta[k] = { t: rTime };
+    } else if (!localHas && vRemote !== undefined && vRemote !== null) {
+      storageSet(k, vRemote);
+      if (rTime) mergedKeymeta[k] = { t: rTime };
+    }
+    // else: keep local; this-device-wins for unstamped UI prefs.
+  }
+
+  saveKeymeta(mergedKeymeta);
+}
+
+// Integral overwrite — used ONLY by the undo-Pull restore path. Faithfully
+// puts the pre-Pull snapshot back, including removing keys the Pull added.
+function restoreFromBackup(payload) {
+  if (!payload || (payload.schemaVersion !== 1 && payload.schemaVersion !== 2) || !payload.data) {
     throw new Error('Unrecognized backup format (schemaVersion mismatch).');
   }
   for (const [k, v] of Object.entries(payload.data)) {
     if (!k.startsWith('cka:')) continue;
-    // Defensive skip for old gists that still contain sync metadata —
-    // preserves the fresh lastPullAt that _run('pull', …) stamped moments
-    // before this import runs (see paired skip in collectExportable).
-    if (k === KEY.syncMeta) continue;
-    if (k === KEY.prePullBackup) continue;
-    if (k === KEY.syncDirtyAt) continue;
-    if (k === KEY.autoSyncDisabled) continue;
-    if (k === KEY.llmSettings && v && typeof v === 'object') {
-      const existing = storageGet(k, {}) || {};
-      // Preserve any apiKeys already present locally for providers whose slot
-      // is being imported empty (e.g. a Backup file that was exported with
-      // keys scrubbed). Works for both v1 and v2 shapes.
-      if (v.providers && existing.providers) {
-        for (const [pk, slot] of Object.entries(v.providers)) {
-          if (slot && !slot.apiKey && existing.providers[pk]?.apiKey) {
-            v.providers[pk] = { ...slot, apiKey: existing.providers[pk].apiKey };
-          }
-        }
-      } else if (!v.apiKey && existing.apiKey) {
-        v.apiKey = existing.apiKey;
-      }
-    }
+    if (isPerDeviceKey(k)) continue;
+    if (k === KEY.llmSettings && v && typeof v === 'object') preserveLocalLLMKeys(v);
     storageSet(k, v);
   }
 }
@@ -1023,7 +1217,7 @@ function installBackupHandlers() {
       );
       if (!ok) { flash(''); return; }
       backupBeforePull();
-      importPayload(payload);
+      withSyncDirtySuppressed(() => mergePayload(payload, { source: 'import' }));
       flash('✓ Imported — reloading…', 0);
       setTimeout(() => location.reload(), 500);
     } catch (err) {
@@ -1047,8 +1241,7 @@ function setGistId(v) { storageSet(KEY.gistId, v || null); }
 // `lastSyncedGistUpdatedAt` is stamped on the success path of every push +
 // pull so the next push's pre-flight has a fresh baseline to compare against.
 // Lives in cka:sync:meta (same per-device key as lastPushAt/lastPullAt) so it
-// never round-trips through the gist itself (excluded by collectExportable +
-// importPayload — see commit a5738a7).
+// never round-trips through the gist itself (excluded via isPerDeviceKey()).
 function stampSyncedRemote(updatedAt) {
   if (!updatedAt) return;
   const m = storageGet(KEY.syncMeta, {}) || {};
@@ -1056,29 +1249,27 @@ function stampSyncedRemote(updatedAt) {
   storageSet(KEY.syncMeta, m);
 }
 
-async function doGistPush() {
+async function doGistPush(opts) {
   if (!window.GistSync) throw new Error('sync.js failed to load');
   const token = getGistToken();
   if (!token) throw new Error('Need a GitHub PAT first');
   let id = getGistId();
-  // Conflict pre-flight: only when we already have a remote AND a baseline.
-  // First-ever push (no baseline) skips this so it just works.
+  // Conflict pre-flight: when there's a remote AND a baseline AND the remote
+  // is newer, automatically pull → merge → push. The merge engine handles
+  // both single-device baseline drift (this device's own beacon-push) and
+  // real cross-device concurrent edits — local pending changes never get
+  // lost. No confirm() dialog on any code path.
   if (id) {
     const baseline = (storageGet(KEY.syncMeta, {}) || {}).lastSyncedGistUpdatedAt;
     if (baseline) {
       try {
         const remote = await window.GistSync.getGistMeta(token, id);
         if (remote.updated_at && remote.updated_at > baseline) {
-          const ok = confirm(
-            `⚠ The gist was updated elsewhere ${humanTimeAgo(remote.updated_at)} ` +
-            `(after your last sync ${humanTimeAgo(baseline)}).\n\n` +
-            `OK = force-push (overwrites the remote changes).\n` +
-            `Cancel = stop, then ⬇ Pull first to merge manually.`
-          );
-          if (!ok) throw new Error('Push cancelled — remote is newer');
+          const remotePayload = await window.GistSync.readGist(token, id);
+          withSyncDirtySuppressed(() => mergePayload(remotePayload, { source: 'auto-merge' }));
+          stampSyncedRemote(remote.updated_at);
         }
       } catch (e) {
-        if (/cancelled/.test(e.message)) throw e;
         // Pre-flight failed (network, auth, etc) — fall through to the real
         // push which will surface the same error with the same UI.
       }
@@ -1145,7 +1336,7 @@ const Sync = (() => {
     inFlight = { op, origin, startedAt: new Date().toISOString() };
     notify();
     try {
-      const r = await doFn();
+      const r = await doFn(opts);
       const meta = loadMeta();
       const key = `last${op[0].toUpperCase()}${op.slice(1)}At`;
       meta[key] = new Date().toISOString();
@@ -1259,7 +1450,62 @@ function _logAutoSyncSkipOnce() {
   console.info('[auto-sync] dirty edit ignored — auto-sync disabled:', why);
 }
 
+// Random per-device id, minted once on first sync-enabled boot. Lives only
+// in localStorage (excluded from payload via the cka:sync:deviceId prefix
+// skip). Surfaces in payload.meta.lastPushDeviceId for cross-device logs.
+function getDeviceId() {
+  let id = storageGet(KEY.deviceId, null);
+  if (id) return id;
+  id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'dev-' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  storageSet(KEY.deviceId, id);
+  return id;
+}
+
+// ---------- Sync keymeta — per-key + per-id timestamps for merge ----------
+//
+// `cka:sync:keymeta` shape:
+//   {
+//     "cka:done":     { items: { exId: { v: bool, t: ISO } } },
+//     "cka:bookmark": { items: { exId: { v: bool, t: ISO } } },
+//     "cka:quiz:active":    { t: ISO },
+//     "cka:quiz:snapshots": { t: ISO },
+//     ...
+//   }
+// Collection types (done/bookmark) track each id's last set/unset time so a
+// merge can union the live set + remove tombstoned ids correctly. Singletons
+// (active quiz, snapshots) just need the last-write time. Per-exercise answers
+// (`cka:answer:*`) already carry `savedAt` inside their value — no keymeta
+// needed for them.
+function loadKeymeta() { return storageGet(KEY.syncKeymeta, {}) || {}; }
+function saveKeymeta(km) { storageSet(KEY.syncKeymeta, km); }
+
+function stampCollectionItem(collectionKey, itemId, value) {
+  const km = loadKeymeta();
+  if (!km[collectionKey]) km[collectionKey] = { items: {} };
+  if (!km[collectionKey].items) km[collectionKey].items = {};
+  km[collectionKey].items[itemId] = { v: !!value, t: new Date().toISOString() };
+  saveKeymeta(km);
+}
+
+function stampSingleton(key) {
+  const km = loadKeymeta();
+  km[key] = { t: new Date().toISOString() };
+  saveKeymeta(km);
+}
+
+// Mutations driven by the merge engine (pull, auto-merge) must not re-arm the
+// auto-sync timer — otherwise pull-merge-push would loop forever.
+let _suppressDirty = false;
+function withSyncDirtySuppressed(fn) {
+  const prev = _suppressDirty;
+  _suppressDirty = true;
+  try { return fn(); } finally { _suppressDirty = prev; }
+}
+
 function markSyncDirty() {
+  if (_suppressDirty) return;
   if (!isAutoSyncEnabled()) {
     _logAutoSyncSkipOnce();
     return;
@@ -1298,17 +1544,56 @@ async function runAutoSync() {
   }
 }
 
+// Dirty flags older than this on boot or visibility-restore are discarded
+// rather than replayed — they almost certainly came from a long-dead session
+// and pushing them now would surprise the user with state from days ago.
+const SYNC_DIRTY_TTL_MS = 60 * 60 * 1000;
+
 function bootAutoSync() {
-  // Replay a pending dirty flag from a previous session.
-  if (isAutoSyncEnabled() && storageGet(KEY.syncDirtyAt, null)) scheduleAutoSync();
+  // If last session's beforeunload fired a beacon push, the gist's updated_at
+  // advanced server-side but we never read the response. Refresh the local
+  // baseline from the actual current gist state so the next push's pre-flight
+  // doesn't mistake our own beacon push for "someone else updated the gist".
+  if (isAutoSyncEnabled() && storageGet(KEY.syncBeaconedAt, null)) {
+    const token = getGistToken(); const id = getGistId();
+    if (token && id) {
+      window.GistSync.getGistMeta?.(token, id).then(meta => {
+        if (meta?.updated_at) stampSyncedRemote(meta.updated_at);
+        try { localStorage.removeItem(KEY.syncBeaconedAt); } catch {}
+      }).catch(() => {/* try again on next boot */});
+    }
+  }
+
+  // Replay a pending dirty flag from a previous session — but only if it's
+  // recent enough to plausibly represent live work. Anything older than
+  // SYNC_DIRTY_TTL_MS is the residue of a long-closed tab and gets dropped.
+  if (isAutoSyncEnabled()) {
+    const dirtyIso = storageGet(KEY.syncDirtyAt, null);
+    if (dirtyIso) {
+      const age = Date.now() - Date.parse(dirtyIso);
+      if (age < SYNC_DIRTY_TTL_MS) {
+        scheduleAutoSync();
+      } else {
+        try { localStorage.removeItem(KEY.syncDirtyAt); } catch {}
+        console.info('[auto-sync] discarded stale dirty flag (older than 1h)');
+      }
+    }
+  }
 
   // Best-effort flush on page close. keepalive:true lets the request survive
-  // the document teardown that an inflight regular fetch wouldn't.
+  // the document teardown that an inflight regular fetch wouldn't. After a
+  // successful enqueue we record `syncBeaconedAt` so bootAutoSync on the next
+  // session can refresh the baseline, and clear the dirty flag so a duplicate
+  // push doesn't fire on the next boot.
   window.addEventListener('beforeunload', () => {
     if (!isAutoSyncEnabled()) return;
     if (!_autoSyncTimer && !storageGet(KEY.syncDirtyAt, null)) return;
     try {
-      window.GistSync.beaconPush?.(getGistToken(), getGistId(), collectExportable());
+      const ok = window.GistSync.beaconPush?.(getGistToken(), getGistId(), collectExportable());
+      if (ok) {
+        try { localStorage.setItem(KEY.syncBeaconedAt, JSON.stringify(new Date().toISOString())); } catch {}
+        try { localStorage.removeItem(KEY.syncDirtyAt); } catch {}
+      }
     } catch {}
   });
 
@@ -1323,6 +1608,11 @@ function bootAutoSync() {
     if (!dirtyIso) return;
     const elapsed = Date.now() - Date.parse(dirtyIso);
     if (_autoSyncTimer) { clearTimeout(_autoSyncTimer); _autoSyncTimer = null; }
+    if (elapsed >= SYNC_DIRTY_TTL_MS) {
+      // Same TTL as boot — discard rather than push state from a long-idle tab.
+      try { localStorage.removeItem(KEY.syncDirtyAt); } catch {}
+      return;
+    }
     if (elapsed >= AUTO_SYNC_DEBOUNCE_MS) {
       runAutoSync();
     } else {
@@ -1354,7 +1644,7 @@ function confirmPullOverwrite(payload) {
   );
 }
 
-// Pre-pull backup — taken just before importPayload() overwrites localStorage.
+// Pre-pull backup — taken just before mergePayload() folds the gist into localStorage.
 // Reuses collectExportable() so the format matches the gist exactly. Lives
 // under cka:sync:prepull-backup (skipped from gist round-trip — see export/import).
 function backupBeforePull() {
@@ -1382,7 +1672,7 @@ function restoreFromPrePull() {
     `This overwrites the data that the Pull replaced. (The page will reload.)`
   )) return;
   try {
-    importPayload(backup.payload);
+    restoreFromBackup(backup.payload);
     clearPrePullBackup();
     setTimeout(() => location.reload(), 300);
   } catch (e) {
@@ -1487,7 +1777,7 @@ function installGistHandlers() {
       const payload = await Sync.runPull();
       if (!confirmPullOverwrite(payload)) return;
       backupBeforePull();
-      importPayload(payload);
+      withSyncDirtySuppressed(() => mergePayload(payload, { source: 'pull' }));
       setTimeout(() => location.reload(), 500);
     } catch {}
   });
@@ -1653,7 +1943,7 @@ function installSyncMenu() {
       const payload = await Sync.runPull();
       if (!confirmPullOverwrite(payload)) return;
       backupBeforePull();
-      importPayload(payload);
+      withSyncDirtySuppressed(() => mergePayload(payload, { source: 'pull' }));
       setTimeout(() => location.reload(), 500);
     } catch {}
   });
@@ -3449,6 +3739,7 @@ function saveActiveQuiz() {
   try {
     storageSet(KEY.quizActive, serialiseQuiz(State.quiz));
     refreshQuizTabDot();
+    stampSingleton(KEY.quizActive);
     markSyncDirty();
   } catch (e) {
     // localStorage quota etc — silently drop. User-visible feedback would be noise.
@@ -3458,6 +3749,7 @@ function saveActiveQuiz() {
 function clearActiveQuiz() {
   storageSet(KEY.quizActive, null);
   refreshQuizTabDot();
+  stampSingleton(KEY.quizActive);
   markSyncDirty();
 }
 
@@ -3476,6 +3768,7 @@ function getSnapshots() {
 
 function setSnapshots(list) {
   storageSet(KEY.quizSnapshots, list);
+  stampSingleton(KEY.quizSnapshots);
   markSyncDirty();
 }
 
