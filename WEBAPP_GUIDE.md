@@ -128,7 +128,7 @@ Bundle size is ~30KB per version, lazy-loaded only when you first open the Nodes
 | Mode tabs (📚 / 🎯 / 📖 / ❓ / 🔧 / 🖥) | Switch between Browse, Quiz, Docs, Help, Tools, Nodes. **On mobile (≤768px) the tabs move to a fixed bar at the bottom of the screen** (iOS-PWA style) so the top header stays uncluttered. |
 | Search box | Free-text filter (Browse mode) |
 | ⏱ Timer | Live countdown during a timed quiz |
-| ☁ Sync | Quick Gist Push / Pull / Test popover (uses the same PAT + Gist ID configured in Settings) |
+| ☁ Sync | Quick Gist Push / Pull popover (uses the same PAT + Gist ID configured in Settings; Test lives in Settings → Sync) |
 | 🤖 LLM | Quick provider switch — popover lists every provider you've configured (with API key) and shows the active one ✓-marked. One click flips the active provider without opening Settings. The "Using X (Y)" hint on every answer-box refreshes in place. |
 | 🔄 Refresh | Force-reload the latest deployment from the server — useful on iOS PWA standalone, where the app otherwise caches aggressively until you force-quit. A small "✨ New content available" banner also auto-appears at the bottom whenever a newer deploy is detected (compared against a tiny `version.json` fetched fresh on each launch). |
 | 🌓 Theme toggle | Light / dark mode (persisted) |
@@ -257,7 +257,7 @@ Local edits this device hasn't pushed yet never get clobbered by a Pull. Manual 
 
 The `⬆ Last push` line also gets an `(auto)` tag when the most recent push was from auto-sync (vs a manual click). The ☁ status dot pulses accent while the timer is armed, blue while pushing, green for ~30s after success, red for an unread error.
 
-After your PAT is configured here, you can also Push / Pull / Test from the **☁ Sync** icon in the header without re-opening Settings.
+After your PAT is configured here, you can also Push / Pull from the **☁ Sync** icon in the header without re-opening Settings. (Test lives in Settings → Sync only — it's a setup-time check, not a per-session action.)
 
 ---
 

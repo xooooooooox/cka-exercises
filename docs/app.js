@@ -1847,7 +1847,6 @@ function installSyncMenu() {
   const idLabel = document.getElementById('sync-menu-id');
   const pushBtn = document.getElementById('sync-menu-push');
   const pullBtn = document.getElementById('sync-menu-pull');
-  const testBtn = document.getElementById('sync-menu-test');
   const status = document.getElementById('sync-menu-status');
   const settingsLink = document.getElementById('sync-menu-settings');
   if (!toggle || !menu) return;
@@ -1868,7 +1867,6 @@ function installSyncMenu() {
     // Disabled state — same logic as before, plus in-flight lock-out.
     pushBtn.disabled = !hasToken || !!inFlight;
     pullBtn.disabled = !hasToken || !id || !!inFlight;
-    testBtn.disabled = !hasToken || !!inFlight;
 
     status.replaceChildren();
 
@@ -2014,10 +2012,6 @@ function installSyncMenu() {
       withSyncDirtySuppressed(() => mergePayload(payload, { source: 'pull' }));
       setTimeout(() => location.reload(), 500);
     } catch {}
-  });
-
-  testBtn?.addEventListener('click', async () => {
-    try { await Sync.runTest(); } catch {}
   });
 
   settingsLink?.addEventListener('click', (e) => {
