@@ -2003,7 +2003,7 @@ body.answer-fullscreen-active { overflow: hidden; }
   color: var(--accent);
 }
 
-/* ---------- Settings → 🐛 Issues queue panel ---------- */
+/* ---------- Issue queue (header 🐛 popover) ---------- */
 .issues-queue-empty { margin: 8px 0 0 0; }
 .issues-queue-list {
   list-style: none;
@@ -2076,18 +2076,7 @@ body.answer-fullscreen-active { overflow: hidden; }
   opacity: 0.45;
   cursor: not-allowed;
 }
-.issues-queue-actions { margin-top: 8px; }
-.issues-queue-actions button {
-  padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--fg);
-  font: inherit;
-  cursor: pointer;
-}
-
-/* ---------- 🚩 Quick Flag button on cards ---------- */
+/* ---------- 🐞 Quick Flag button on cards ---------- */
 .btn-flag-toggle {
   background: transparent;
   border: 1px solid transparent;

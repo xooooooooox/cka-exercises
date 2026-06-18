@@ -805,11 +805,10 @@ function installSettingsOverlay() {
   const settingsSubtabs = overlay.querySelectorAll('.settings-subtabs button[data-settings-tab]');
   const settingsPanels  = overlay.querySelectorAll('.settings-tab-panel');
   function showSettingsTab(name) {
-    const target = (['grading', 'backup', 'sync', 'issues'].includes(name)) ? name : 'grading';
+    const target = (['grading', 'backup', 'sync'].includes(name)) ? name : 'grading';
     settingsPanels.forEach(p => { p.hidden = (p.dataset.settingsTab !== target); });
     settingsSubtabs.forEach(b => { b.classList.toggle('active', b.dataset.settingsTab === target); });
     storageSet(KEY.settingsTab, target);
-    if (target === 'issues') renderIssuesQueue();
   }
   settingsSubtabs.forEach(b => {
     b.addEventListener('click', () => showSettingsTab(b.dataset.settingsTab));
@@ -819,9 +818,6 @@ function installSettingsOverlay() {
     loadIntoForm();
     showSettingsTab(storageGet(KEY.settingsTab, 'grading'));
     overlay.hidden = false;
-    // Always refresh the count badge so the Issues tab pip stays accurate
-    // even when the user is looking at another tab.
-    refreshIssuesQueueCount();
   }
   function shut() { overlay.hidden = true; status.textContent = ''; }
 
@@ -2008,14 +2004,6 @@ function installSyncMenu() {
   pushBtn?.addEventListener('click', async () => {
     try { await Sync.runPush(); renderHeader(); }
     catch {}      // already surfaced via the subscription
-  });
-
-  // 🚀 Push now — skip the 30s auto-sync debounce. Tagged as auto in the
-  // history so it shows up in the (auto) column on the "Last push" line.
-  const pushNowBtn = document.getElementById('sync-menu-push-now');
-  pushNowBtn?.addEventListener('click', async () => {
-    try { await Sync.runPush({ origin: 'auto' }); renderHeader(); }
-    catch {}
   });
 
   pullBtn?.addEventListener('click', async () => {
@@ -3507,11 +3495,10 @@ function openFixReportModal(ex, ctx = {}) {
     includeCtxBox.removeEventListener('change', syncHref);
     suggestedUrl?.removeEventListener('input', syncHref);
     existingLinkPick?.removeEventListener('change', syncHref);
-    // If the Issues queue tab is currently open, re-render so an edit /
-    // save / removal made from the modal shows immediately.
+    // Refresh the header 🐛 badge + popover (if open) so an edit / save /
+    // submit made from the modal is reflected immediately.
     refreshIssuesQueueCount();
-    const issuesPanel = document.querySelector('.settings-tab-panel[data-settings-tab="issues"]');
-    if (issuesPanel && !issuesPanel.hidden) renderIssuesQueue();
+    renderIssuesQueue();
   };
 
   const onEsc = (e) => { if (e.key === 'Escape') cleanup(); };
@@ -3581,15 +3568,13 @@ function openFixReportModal(ex, ctx = {}) {
 
 // ---------- Issue queue ----------
 //
-// A flat view over every cka:fix-draft:* + cka:task-fix-draft:* entry.
-// Two surfaces share the same renderer:
-//   - Header 🐛 popover (#issues-menu-body) — quick triage; primary entry.
-//   - Settings → 🐛 Issues panel (#issues-queue-list) — full-width view.
+// A flat view over every cka:fix-draft:* + cka:task-fix-draft:* entry,
+// rendered into the header 🐛 popover (#issues-menu-body).
 //
 // Items split into two groups: "To submit" (no submittedAt) and "Already
 // opened" (submittedAt was stamped when the user clicked 🚀 Open). Submitted
 // items don't disappear — they stay in the list so the user can ↻ Re-open or
-// 🗑 Remove them. Flag-only items (toggled via 🚩 on a card, no form) render
+// 🗑 Remove them. Flag-only items (toggled via 🐞 on a card, no form) render
 // as lightweight cards with a "Write report" CTA.
 
 function isQueueSubmitted(item) { return !!(item.draft?.submittedAt); }
@@ -3614,12 +3599,11 @@ function unmarkDraftSubmitted(item) {
   else setFixDraft(item.exId, next);
 }
 
-// Update every count badge across the SPA so all three surfaces stay in
-// sync after any queue mutation (count badges live in Settings tab + header).
+// Update the header 🐛 N badge after any queue mutation. Sole surface now —
+// the Settings → Issues tab has been retired; the header popover is the
+// single entry point.
 function refreshIssuesQueueCount() {
   const n = collectAllIssueDrafts().length;
-  const settingsBadge = document.getElementById('settings-issues-count');
-  if (settingsBadge) settingsBadge.textContent = n > 0 ? `(${n})` : '';
   const headerBadge = document.getElementById('issues-count');
   if (headerBadge) {
     headerBadge.textContent = n > 0 ? String(n) : '';
@@ -3637,7 +3621,7 @@ function buildIssueItem(item, ex, onChange) {
   const titleText = ex ? ex.displayTitle : `(exercise no longer in corpus: ${item.exId})`;
   const domain    = ex ? (ex.domain || '') : '';
   const t = item.draft.type ? getReportType(item.draft.type, item.mode) : null;
-  const kindLabel = flagOnly ? '🚩 Flagged — no details yet' : (t?.label || item.draft.type || '—');
+  const kindLabel = flagOnly ? '🐞 Flagged — no details yet' : (t?.label || item.draft.type || '—');
   const savedRel  = item.draft.savedAt ? humanTimeAgo(item.draft.savedAt) : 'just now';
 
   const li = document.createElement('li');
@@ -3647,7 +3631,7 @@ function buildIssueItem(item, ex, onChange) {
   head.className = 'issues-queue-item-head';
   const tag = document.createElement('span');
   tag.className = `issues-queue-tag issues-queue-tag-${flagOnly ? 'flag' : item.mode}`;
-  tag.textContent = flagOnly ? '🚩 flagged' : modeLabel;
+  tag.textContent = flagOnly ? '🐞 flagged' : modeLabel;
   const title = document.createElement('span');
   title.className = 'issues-queue-title';
   title.textContent = titleText;
@@ -3776,7 +3760,7 @@ function renderIssuesQueueInto(container) {
   if (!items.length) {
     const empty = document.createElement('div');
     empty.className = 'muted issues-queue-empty';
-    empty.textContent = 'No saved reports yet. Use the 🚩 Flag button on any exercise to add a quick-note, or the 🐛 Suggest a fix link to file a detailed draft.';
+    empty.textContent = 'No saved reports yet. Use the 🐞 button on any exercise to flag it for follow-up, or 🐛 Suggest a fix to file a detailed draft.';
     container.appendChild(empty);
     return;
   }
@@ -3784,27 +3768,17 @@ function renderIssuesQueueInto(container) {
   const toSubmit = items.filter(it => !isQueueSubmitted(it));
   const submitted = items.filter(it => isQueueSubmitted(it));
 
-  const onChange = () => {
-    renderIssuesQueueInto(container);
-    // Mirror to the other surface if it's also rendered.
-    const settingsList = document.getElementById('issues-queue-list');
-    if (settingsList && container.id !== 'issues-queue-list') {
-      renderIssuesQueueInto(settingsList);
-    }
-    const headerBody = document.getElementById('issues-menu-body');
-    if (headerBody && container.id !== 'issues-menu-body' && !headerBody.closest('#issues-menu')?.hidden) {
-      renderIssuesQueueInto(headerBody);
-    }
-  };
+  const onChange = () => renderIssuesQueueInto(container);
 
   if (toSubmit.length) container.appendChild(buildIssueGroup('To submit', toSubmit, { collapsible: false }, onChange));
   if (submitted.length) container.appendChild(buildIssueGroup('Already opened', submitted, { collapsible: true, startCollapsed: true }, onChange));
 }
 
-// Settings panel wrapper — keeps the existing #issues-queue-list element shape.
+// Convenience wrapper — re-renders the header popover body if it's open.
+// Called by the report-modal cleanup hook + queue-mutation paths so the
+// open popover reflects fresh state without callers having to chase
+// element references.
 function renderIssuesQueue() {
-  const settingsList = document.getElementById('issues-queue-list');
-  if (settingsList) renderIssuesQueueInto(settingsList);
   const headerBody = document.getElementById('issues-menu-body');
   if (headerBody && !document.getElementById('issues-menu')?.hidden) {
     renderIssuesQueueInto(headerBody);
@@ -3835,8 +3809,6 @@ function openAllUnsubmittedIssues() {
 }
 
 function installIssuesQueueOpenAll() {
-  const settingsBtn = document.getElementById('issues-open-all');
-  settingsBtn?.addEventListener('click', openAllUnsubmittedIssues);
   const headerBtn = document.getElementById('issues-menu-open-all');
   headerBtn?.addEventListener('click', openAllUnsubmittedIssues);
 }
@@ -3917,24 +3889,27 @@ function renderExerciseCard(ex, opts = {}) {
     bmBtn.textContent = isBookmark(ex.id) ? '⭐' : '☆';
     renderSidebarProgress();
   });
-  // 🚩 Quick Flag — one-click "this exercise has a problem, write up later".
+  // 🐞 Quick Flag — one-click "this exercise has a problem, write up later".
   // Sits in the issue queue immediately; the user can fill out details or
-  // submit later via the header 🐛 popover.
+  // submit later via the header 🐛 popover. Uses 🐞 (ladybug) instead of 🚩
+  // to stay visually distinct from the quiz mode 🚩 Flag button (which marks
+  // a question for review during a quiz session — a different concept).
   const flagBtn = el('button', {
     type: 'button',
     class: 'btn-flag-toggle' + (isFlagged(ex.id) ? ' active' : ''),
     title: isFlagged(ex.id)
-      ? 'Flagged for review — click to unflag'
-      : 'Flag this exercise for later review (no form — adds it to the issue queue)',
-  }, '🚩');
+      ? 'Marked for follow-up — click to unmark (lives in the header 🐛 issue queue)'
+      : 'Mark this exercise for follow-up (no form — adds it to the header 🐛 issue queue)',
+  }, '🐞');
   flagBtn.addEventListener('click', () => {
     toggleFlagForReview(ex.id);
     const on = isFlagged(ex.id);
     flagBtn.classList.toggle('active', on);
     flagBtn.title = on
-      ? 'Flagged for review — click to unflag'
-      : 'Flag this exercise for later review (no form — adds it to the issue queue)';
+      ? 'Marked for follow-up — click to unmark (lives in the header 🐛 issue queue)'
+      : 'Mark this exercise for follow-up (no form — adds it to the header 🐛 issue queue)';
     refreshIssuesQueueCount();
+    renderIssuesQueue();
   });
   tools.append(doneBtn, bmBtn, flagBtn);
 

@@ -193,9 +193,11 @@ What gets sent on Check: `{ exercise question, reference solution, your answer }
 
 **Queue for later — three entry points.** Don't want to interrupt your study flow to file every issue immediately? Three ways into the queue:
 
-- **🚩 Flag** (next to ⭐ Bookmark on every card) — one-click "this exercise needs a closer look later" with no form at all. Just marks the entry in the queue.
+- **🐞 Mark for follow-up** (next to ⭐ Bookmark on every card) — one-click "this exercise needs a closer look later" with no form at all. Just marks the entry in the queue.
 - **🐛 Suggest a fix** + **💾 Save draft** — fill out the modal partially, save as draft (form persists; finish later).
 - **🐛 Suggest a fix** + **🚀 Open GitHub issue** — files immediately AND keeps a record in the queue under "Already opened".
+
+The 🐞 ladybug is used (not 🚩) so it's visually distinct from the in-quiz **🚩 Flag** button (which marks a question for review during a quiz session — a separate concept).
 
 **Header 🐛 N icon** opens the queue popover from any tab. Items split into two groups:
 
@@ -204,7 +206,7 @@ What gets sent on Check: `{ exercise question, reference solution, your answer }
 
 **🚀 Open all unsubmitted** at the bottom batch-opens every To-submit row in separate tabs (staggered 150 ms apart so the popup blocker plays along), marking each as submitted as it goes.
 
-Settings → 🐛 Issues shows the same list in a wider view (useful for big clean-up sessions). Queued items sync via Gist so the queue is the same across all your devices.
+Queued items sync via Gist so the queue is the same across all your devices.
 
 **Auto-PR workflows (maintainer-side, one-time setup).** Both reported `answer-fix` and `task-fix` issues can be triaged via dedicated GitHub Actions workflows — **Answer-fix → draft PR** (`.github/workflows/answer-fix-pr.yml`) for reference-solution mismatches, and **Task-fix → draft PR** (`.github/workflows/task-fix-pr.yml`) for task / docs problems. Each uses [aider](https://aider.chat) + a model of your choice (Anthropic / OpenAI / DeepSeek / Qwen / Doubao / Ollama / Copilot via GitHub Models) to edit a single H3 block of the offending exercise and open a draft PR that closes the issue. Before either can post PRs you need to flip **Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests"** once. Without that the workflow runs to completion and pushes the fix branch, but the final `gh pr create` call is rejected by GitHub — the bot posts a 🚨 comment on the issue with a one-click `pull/new/<branch>` recovery link. The default provider is `copilot` (zero-secret, uses the workflow's `GITHUB_TOKEN` via the `models: read` permission); to use the others, add the corresponding `*_API_KEY` secret. A small `.github/workflows/seed-labels.yml` workflow pre-creates all 14 issue labels both pipelines expect — it auto-fires on the first push (and again whenever a maintainer edits the seed file itself) so the SPA's pre-filled `?labels=…` resolves at issue-creation time even for the first-ever issue of a new kind. The aider prompt templates live at `.github/answer-fix/prompt.md` and `.github/task-fix/prompt.md`; both share the helper scripts under `scripts/answer-fix/` for issue-body parsing + H3 extract / splice.
 
