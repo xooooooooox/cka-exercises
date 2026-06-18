@@ -191,9 +191,17 @@ function clearLLMListeners() { LLM_LISTENERS.clear(); }
 let _quizFullscreenSticky = false;
 
 function getAnswer(exerciseId) { return storageGet(KEY.answerPrefix + exerciseId, null); }
+let _autoSyncEditLogged = false;
+function _logAutoSyncEditOnce(exId) {
+  if (_autoSyncEditLogged) return;
+  _autoSyncEditLogged = true;
+  if (!isAutoSyncEnabled()) return;
+  console.info(`[auto-sync] saw an edit on ${exId} via setAnswer — dirty flag set; next push in ~${AUTO_SYNC_DEBOUNCE_MS / 1000}s`);
+}
 function setAnswer(exerciseId, payload) {
   const stamped = Object.assign({}, payload || {}, { savedAt: new Date().toISOString() });
   storageSet(KEY.answerPrefix + exerciseId, stamped);
+  _logAutoSyncEditOnce(exerciseId);
   markSyncDirty();
 }
 
@@ -261,17 +269,32 @@ function setHelpDoc(doc) {
 function getFixDraft(id) { return storageGet(KEY.fixDraftPrefix + id, null); }
 function setFixDraft(id, payload) {
   // Drop empty drafts entirely so they don't show in Backup. A draft is empty
-  // if no type was chosen (or "other" with no additional text) and no
-  // free-text was entered.
+  // when the user has neither flagged it for review nor entered any form
+  // content — Quick Flag alone (payload.flagged: true with no type/additional)
+  // is enough to keep the entry alive so it can appear in the queue.
   const empty = !payload
-    || (!payload.additional && (!payload.type || payload.type === 'other'));
+    || (!payload.flagged
+        && !payload.additional
+        && (!payload.type || payload.type === 'other'));
   const k = KEY.fixDraftPrefix + id;
   if (empty) {
     try { localStorage.removeItem(k); } catch {}
+    stampSingleton(k);
   } else {
     storageSet(k, { ...payload, savedAt: new Date().toISOString() });
     stampSingleton(k);
   }
+}
+
+// Quick Flag: one-click "this exercise needs attention" with no form. Stores
+// a lightweight stub in cka:fix-draft:<id> so it shows up in the queue
+// alongside fully-written drafts. Toggling off drops the stub if no other
+// content is present, or just flips the flag if the user has also written
+// a partial report.
+function isFlagged(id) { return !!(getFixDraft(id)?.flagged); }
+function toggleFlagForReview(id) {
+  const cur = getFixDraft(id) || {};
+  setFixDraft(id, { ...cur, flagged: !cur.flagged });
 }
 function getTaskFixDraft(id) { return storageGet(KEY.taskFixDraftPrefix + id, null); }
 function setTaskFixDraft(id, payload) {
@@ -1909,13 +1932,29 @@ function installSyncMenu() {
       const secs = ((Date.now() - Date.parse(inFlight.startedAt)) / 1000).toFixed(1);
       text = `🔄 Auto-pushing… (${secs}s)`;
     } else if (s.armed && s.dirtyAt) {
-      const remaining = Math.max(0, AUTO_SYNC_DEBOUNCE_MS - (Date.now() - Date.parse(s.dirtyAt)));
+      const dirtyElapsed = Math.max(0, (Date.now() - Date.parse(s.dirtyAt)) / 1000);
+      const remaining = Math.max(0, AUTO_SYNC_DEBOUNCE_MS - dirtyElapsed * 1000);
       const secs = Math.ceil(remaining / 1000);
+      const editAgo = dirtyElapsed < 1 ? 'just now' : `${Math.round(dirtyElapsed)}s ago`;
       text = secs > 0
-        ? `🔄 Auto-push: on · next push in ~${secs}s`
+        ? `🔄 Auto-push: on · next push in ~${secs}s (last edit ${editAgo})`
         : '🔄 Auto-push: about to fire…';
+    } else if (s.dirtyAt) {
+      // Dirty flag set but no armed timer — this is the unusual case where
+      // beforeunload / visibilitychange left a flag without re-arming.
+      const dirtyElapsed = Math.max(0, (Date.now() - Date.parse(s.dirtyAt)) / 1000);
+      text = `🔄 Auto-push: on · waiting to fire (last edit ${Math.round(dirtyElapsed)}s ago)`;
     } else {
-      text = '🔄 Auto-push: on · idle';
+      // Idle. If we just pushed within the last 30s, mention it so the user
+      // doesn't think nothing happened.
+      const meta = storageGet(KEY.syncMeta, {}) || {};
+      const lastPush = meta.lastPushAt;
+      const recentPush = lastPush && (Date.now() - Date.parse(lastPush)) < 30_000;
+      if (recentPush) {
+        text = `✓ Auto-pushed ${humanTimeAgo(lastPush)} (caught last edit)`;
+      } else {
+        text = '🔄 Auto-push: on · idle';
+      }
     }
     const d = document.createElement('div');
     d.textContent = text;
@@ -1969,6 +2008,14 @@ function installSyncMenu() {
   pushBtn?.addEventListener('click', async () => {
     try { await Sync.runPush(); renderHeader(); }
     catch {}      // already surfaced via the subscription
+  });
+
+  // 🚀 Push now — skip the 30s auto-sync debounce. Tagged as auto in the
+  // history so it shows up in the (auto) column on the "Last push" line.
+  const pushNowBtn = document.getElementById('sync-menu-push-now');
+  pushNowBtn?.addEventListener('click', async () => {
+    try { await Sync.runPush({ origin: 'auto' }); renderHeader(); }
+    catch {}
   });
 
   pullBtn?.addEventListener('click', async () => {
@@ -2673,6 +2720,18 @@ function renderAnswerBox(ex, opts = {}) {
       document.getElementById('quiz-reveal')?.click();
       openSolutionDrawer(ex);
     });
+    // Tiny ☁ sync indicator at the right end of the quizbar — clicking opens
+    // the header sync popover so the user can confirm auto-push state without
+    // exiting fullscreen.
+    const syncDot = el('button', {
+      type: 'button',
+      class: 'quizbar-sync-dot',
+      title: 'Show sync status (auto-push, last push)',
+      'aria-label': 'Show sync status',
+    }, '☁');
+    syncDot.addEventListener('click', () => {
+      document.getElementById('sync-toggle')?.click();
+    });
     const quizbar = el('div', { class: 'answer-fullscreen-quizbar' },
       proxy('quiz-nav-toggle', '📋 Questions'),
       proxy('quiz-prev',       '← Prev'),
@@ -2683,6 +2742,7 @@ function renderAnswerBox(ex, opts = {}) {
       proxy('quiz-grade-miss', '✗ Missed',  'grade-miss'),
       proxy('quiz-skip',       '↷ Skip'),
       proxy('quiz-next',       'Next →'),
+      syncDot,
     );
     box.appendChild(quizbar);
   }
@@ -3510,160 +3570,305 @@ function openFixReportModal(ex, ctx = {}) {
     const d = collect();
     if (!requireSubmitFields(d)) { e.preventDefault(); return; }
     openBtn.href = buildIssueUrl(ex, d, mode);
-    persistDraft(d);
+    // Stamp submittedAt so the queue moves this entry to the "Already opened"
+    // group — same status the queue's 🚀 Open button writes.
+    persistDraft({ ...d, submittedAt: new Date().toISOString() });
     navigator.clipboard?.writeText(renderReportMarkdown(ex, d, buildCtx(), mode))
       .catch(() => {});
     statusEl.textContent = '✓ Body auto-copied to clipboard. Opening GitHub — paste it into the description. (Use 📋 Copy title for the title.)';
   };
 }
 
-// ---------- Issue queue (Settings → 🐛 Issues) ----------
+// ---------- Issue queue ----------
 //
-// A flat read-only view over every cka:fix-draft:* + cka:task-fix-draft:*
-// entry. The user fills out the fix-report modal, clicks 💾 Save draft —
-// which lands here — and later batch-opens the GitHub issue forms when
-// they're ready. Edit / Open / Remove are per-item; Open all walks the
-// list and window.open()'s each with a small interval to avoid the popup
-// blocker hammering all at once.
+// A flat view over every cka:fix-draft:* + cka:task-fix-draft:* entry.
+// Two surfaces share the same renderer:
+//   - Header 🐛 popover (#issues-menu-body) — quick triage; primary entry.
+//   - Settings → 🐛 Issues panel (#issues-queue-list) — full-width view.
+//
+// Items split into two groups: "To submit" (no submittedAt) and "Already
+// opened" (submittedAt was stamped when the user clicked 🚀 Open). Submitted
+// items don't disappear — they stay in the list so the user can ↻ Re-open or
+// 🗑 Remove them. Flag-only items (toggled via 🚩 on a card, no form) render
+// as lightweight cards with a "Write report" CTA.
 
-function refreshIssuesQueueCount() {
-  const badge = document.getElementById('settings-issues-count');
-  if (!badge) return;
-  const n = collectAllIssueDrafts().length;
-  badge.textContent = n > 0 ? `(${n})` : '';
+function isQueueSubmitted(item) { return !!(item.draft?.submittedAt); }
+function isQueueFlagOnly(item) {
+  const d = item.draft;
+  return !!(d?.flagged && !d.additional && (!d.type || d.type === 'other'));
 }
 
-function renderIssuesQueue() {
-  const listEl  = document.getElementById('issues-queue-list');
-  const emptyEl = document.getElementById('issues-queue-empty');
-  const actsEl  = document.getElementById('issues-queue-actions');
-  if (!listEl || !emptyEl || !actsEl) return;
+// Mark a draft as submitted by writing submittedAt. The draft stays in the
+// queue but renders in the "Already opened" group. Bumps the synced
+// timestamp so other devices see the same state after the next pull.
+function markDraftSubmitted(item) {
+  const next = { ...item.draft, submittedAt: new Date().toISOString() };
+  if (item.mode === 'task') setTaskFixDraft(item.exId, next);
+  else setFixDraft(item.exId, next);
+}
 
+function unmarkDraftSubmitted(item) {
+  const next = { ...item.draft };
+  delete next.submittedAt;
+  if (item.mode === 'task') setTaskFixDraft(item.exId, next);
+  else setFixDraft(item.exId, next);
+}
+
+// Update every count badge across the SPA so all three surfaces stay in
+// sync after any queue mutation (count badges live in Settings tab + header).
+function refreshIssuesQueueCount() {
+  const n = collectAllIssueDrafts().length;
+  const settingsBadge = document.getElementById('settings-issues-count');
+  if (settingsBadge) settingsBadge.textContent = n > 0 ? `(${n})` : '';
+  const headerBadge = document.getElementById('issues-count');
+  if (headerBadge) {
+    headerBadge.textContent = n > 0 ? String(n) : '';
+    headerBadge.hidden = n === 0;
+  }
+}
+
+// Build a single queue-item element. Wired buttons trigger queue re-renders
+// + count refresh via the supplied `onChange` callback so the caller can
+// re-render whichever surface they're on.
+function buildIssueItem(item, ex, onChange) {
+  const flagOnly = isQueueFlagOnly(item);
+  const submitted = isQueueSubmitted(item);
+  const modeLabel = item.mode === 'task' ? 'task-fix' : 'answer-fix';
+  const titleText = ex ? ex.displayTitle : `(exercise no longer in corpus: ${item.exId})`;
+  const domain    = ex ? (ex.domain || '') : '';
+  const t = item.draft.type ? getReportType(item.draft.type, item.mode) : null;
+  const kindLabel = flagOnly ? '🚩 Flagged — no details yet' : (t?.label || item.draft.type || '—');
+  const savedRel  = item.draft.savedAt ? humanTimeAgo(item.draft.savedAt) : 'just now';
+
+  const li = document.createElement('li');
+  li.className = 'issues-queue-item' + (submitted ? ' issues-queue-item--submitted' : '') + (flagOnly ? ' issues-queue-item--flagonly' : '');
+
+  const head = document.createElement('div');
+  head.className = 'issues-queue-item-head';
+  const tag = document.createElement('span');
+  tag.className = `issues-queue-tag issues-queue-tag-${flagOnly ? 'flag' : item.mode}`;
+  tag.textContent = flagOnly ? '🚩 flagged' : modeLabel;
+  const title = document.createElement('span');
+  title.className = 'issues-queue-title';
+  title.textContent = titleText;
+  head.appendChild(tag);
+  head.appendChild(title);
+  li.appendChild(head);
+
+  const meta = document.createElement('div');
+  meta.className = 'issues-queue-meta';
+  const timeLabel = submitted
+    ? `opened ${humanTimeAgo(item.draft.submittedAt)}`
+    : `queued ${savedRel}`;
+  meta.textContent = [kindLabel, domain && `· ${domain}`, `· ${timeLabel}`].filter(Boolean).join(' ');
+  li.appendChild(meta);
+
+  if (item.draft.additional) {
+    const preview = document.createElement('div');
+    preview.className = 'issues-queue-preview muted';
+    const snippet = String(item.draft.additional).trim().replace(/\s+/g, ' ').slice(0, 140);
+    preview.textContent = snippet.length === 140 ? snippet + '…' : snippet;
+    li.appendChild(preview);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'issues-queue-item-actions';
+
+  // Edit (re-opens modal with draft loaded). For flag-only, label changes
+  // to "Write report" so the CTA is obvious.
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.textContent = flagOnly ? '📝 Write report' : '✏ Edit';
+  editBtn.title = flagOnly ? 'Open the modal to fill in this flagged exercise' : 'Reopen the report modal with this draft loaded';
+  editBtn.disabled = !ex;
+  editBtn.addEventListener('click', () => {
+    if (!ex) return;
+    // Hide whichever overlay surface we're being viewed from so the modal
+    // isn't visually buried.
+    document.getElementById('settings-overlay')?.setAttribute('hidden', '');
+    document.getElementById('issues-menu')?.setAttribute('hidden', '');
+    openFixReportModal(ex, item.mode === 'task' ? { mode: 'task' } : {});
+  });
+
+  // Open (for unsubmitted) → stamp submittedAt then navigate. Re-open (for
+  // submitted) → clear submittedAt then navigate.
+  const openBtn = document.createElement('a');
+  openBtn.className = 'issues-queue-open';
+  openBtn.target = '_blank';
+  openBtn.rel = 'noopener';
+  openBtn.textContent = submitted ? '↻ Re-open' : '🚀 Open';
+  openBtn.title = submitted
+    ? 'Move back to To-submit and open the GitHub issue form again'
+    : 'Open this report on github.com/issues/new — marks as Submitted in the queue';
+  // Flag-only items have no kind chosen → buildIssueUrl would label them as
+  // "other" by default, which is OK but the maintainer's auto-PR routes off
+  // kind. Best UX: ask the user to Write report first. Disable Open.
+  if (!ex || flagOnly) {
+    openBtn.removeAttribute('href');
+    openBtn.classList.add('disabled');
+    if (flagOnly) openBtn.title = 'Click 📝 Write report first — Open is disabled until a kind is picked';
+  } else {
+    openBtn.href = buildIssueUrl(ex, item.draft, item.mode);
+  }
+  openBtn.addEventListener('click', (e) => {
+    if (openBtn.classList.contains('disabled')) { e.preventDefault(); return; }
+    if (submitted) unmarkDraftSubmitted(item);
+    else markDraftSubmitted(item);
+    // Let the browser navigate; refresh count + list when the user comes back.
+    setTimeout(onChange, 0);
+  });
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.textContent = '🗑 Remove';
+  removeBtn.title = 'Delete this draft from the queue (does NOT close any GitHub issue)';
+  removeBtn.addEventListener('click', () => {
+    if (!confirm(`Remove this queued report?\n\n${titleText}`)) return;
+    try { localStorage.removeItem(item.key); } catch {}
+    stampSingleton(item.key);  // stamp the removal so other devices won't resurrect it
+    markSyncDirty();
+    onChange();
+  });
+
+  actions.appendChild(editBtn);
+  actions.appendChild(openBtn);
+  actions.appendChild(removeBtn);
+  li.appendChild(actions);
+  return li;
+}
+
+// Build a group section (To submit / Already opened) with a collapsible header.
+function buildIssueGroup(label, items, options, onChange) {
+  const wrap = document.createElement('section');
+  wrap.className = 'issues-queue-group';
+  const head = document.createElement('div');
+  head.className = 'issues-queue-group-head';
+  head.textContent = `${label} (${items.length})`;
+  if (options?.collapsible) {
+    head.classList.add('collapsible');
+    head.dataset.collapsed = options.startCollapsed ? '1' : '0';
+    head.addEventListener('click', () => {
+      const collapsed = head.dataset.collapsed === '1' ? '0' : '1';
+      head.dataset.collapsed = collapsed;
+      list.hidden = collapsed === '1';
+    });
+  }
+  wrap.appendChild(head);
+  const list = document.createElement('ul');
+  list.className = 'issues-queue-list';
+  if (options?.collapsible && options.startCollapsed) list.hidden = true;
+  const byIdMap = State.byId || {};
+  for (const item of items) {
+    list.appendChild(buildIssueItem(item, byIdMap[item.exId] || null, onChange));
+  }
+  wrap.appendChild(list);
+  return wrap;
+}
+
+// Render queue into either the Settings panel or the header popover body.
+// Same DOM shape, different containers.
+function renderIssuesQueueInto(container) {
   refreshIssuesQueueCount();
-  const items = collectAllIssueDrafts();
+  if (!container) return;
+  container.innerHTML = '';
 
+  const items = collectAllIssueDrafts();
   if (!items.length) {
-    listEl.hidden = true;
-    listEl.innerHTML = '';
-    actsEl.hidden = true;
-    emptyEl.hidden = false;
+    const empty = document.createElement('div');
+    empty.className = 'muted issues-queue-empty';
+    empty.textContent = 'No saved reports yet. Use the 🚩 Flag button on any exercise to add a quick-note, or the 🐛 Suggest a fix link to file a detailed draft.';
+    container.appendChild(empty);
     return;
   }
-  emptyEl.hidden = true;
-  listEl.hidden = false;
-  actsEl.hidden = false;
 
-  const byIdMap = (State.byId || {});
+  const toSubmit = items.filter(it => !isQueueSubmitted(it));
+  const submitted = items.filter(it => isQueueSubmitted(it));
 
-  listEl.innerHTML = '';
-  for (const item of items) {
-    const ex = byIdMap[item.exId] || null;
-    const modeLabel = item.mode === 'task' ? 'task-fix' : 'answer-fix';
-    const t = getReportType(item.draft.type, item.mode);
-    const titleText = ex ? ex.displayTitle : `(exercise no longer in corpus: ${item.exId})`;
-    const domain    = ex ? (ex.domain || '') : '';
-    const kindLabel = t?.label || item.draft.type || '—';
-    const savedRel  = item.draft.savedAt ? humanTimeAgo(item.draft.savedAt) : 'just now';
-
-    const li = document.createElement('li');
-    li.className = 'issues-queue-item';
-    li.dataset.mode = item.mode;
-    li.dataset.exId = item.exId;
-
-    const head = document.createElement('div');
-    head.className = 'issues-queue-item-head';
-    const tag = document.createElement('span');
-    tag.className = `issues-queue-tag issues-queue-tag-${item.mode}`;
-    tag.textContent = modeLabel;
-    const title = document.createElement('span');
-    title.className = 'issues-queue-title';
-    title.textContent = titleText;
-    head.appendChild(tag);
-    head.appendChild(title);
-    li.appendChild(head);
-
-    const meta = document.createElement('div');
-    meta.className = 'issues-queue-meta';
-    meta.textContent = [kindLabel, domain && `· ${domain}`, `· queued ${savedRel}`].filter(Boolean).join(' ');
-    li.appendChild(meta);
-
-    if (item.draft.additional) {
-      const preview = document.createElement('div');
-      preview.className = 'issues-queue-preview muted';
-      const snippet = String(item.draft.additional).trim().replace(/\s+/g, ' ').slice(0, 140);
-      preview.textContent = snippet.length === 140 ? snippet + '…' : snippet;
-      li.appendChild(preview);
+  const onChange = () => {
+    renderIssuesQueueInto(container);
+    // Mirror to the other surface if it's also rendered.
+    const settingsList = document.getElementById('issues-queue-list');
+    if (settingsList && container.id !== 'issues-queue-list') {
+      renderIssuesQueueInto(settingsList);
     }
+    const headerBody = document.getElementById('issues-menu-body');
+    if (headerBody && container.id !== 'issues-menu-body' && !headerBody.closest('#issues-menu')?.hidden) {
+      renderIssuesQueueInto(headerBody);
+    }
+  };
 
-    const actions = document.createElement('div');
-    actions.className = 'issues-queue-item-actions';
+  if (toSubmit.length) container.appendChild(buildIssueGroup('To submit', toSubmit, { collapsible: false }, onChange));
+  if (submitted.length) container.appendChild(buildIssueGroup('Already opened', submitted, { collapsible: true, startCollapsed: true }, onChange));
+}
 
-    const editBtn = document.createElement('button');
-    editBtn.type = 'button';
-    editBtn.textContent = '✏ Edit';
-    editBtn.title = 'Reopen the report modal with this draft loaded';
-    editBtn.disabled = !ex;
-    editBtn.addEventListener('click', () => {
-      if (!ex) return;
-      // Close the Settings overlay so the modal isn't visually buried — it
-      // would still render on top (position:fixed), but the user expects to
-      // see only the modal while editing.
-      const settingsOverlay = document.getElementById('settings-overlay');
-      if (settingsOverlay) settingsOverlay.hidden = true;
-      openFixReportModal(ex, item.mode === 'task' ? { mode: 'task' } : {});
-    });
-
-    const openBtn = document.createElement('a');
-    openBtn.className = 'issues-queue-open';
-    openBtn.target = '_blank';
-    openBtn.rel = 'noopener';
-    openBtn.textContent = '🚀 Open';
-    openBtn.title = 'Open this report on github.com/issues/new in a new tab';
-    if (ex) openBtn.href = buildIssueUrl(ex, item.draft, item.mode);
-    else { openBtn.removeAttribute('href'); openBtn.classList.add('disabled'); }
-
-    const removeBtn = document.createElement('button');
-    removeBtn.type = 'button';
-    removeBtn.textContent = '🗑 Remove';
-    removeBtn.title = 'Delete this draft from the queue (does NOT close any GitHub issue)';
-    removeBtn.addEventListener('click', () => {
-      if (!confirm(`Remove this queued report?\n\n${titleText}`)) return;
-      try { localStorage.removeItem(item.key); } catch {}
-      // The corresponding sync keymeta entry stays — that's fine, it just
-      // means a future merge from another device that still has this draft
-      // would re-adopt it. The user can remove it on the other device too.
-      renderIssuesQueue();
-      markSyncDirty();
-    });
-
-    actions.appendChild(editBtn);
-    actions.appendChild(openBtn);
-    actions.appendChild(removeBtn);
-    li.appendChild(actions);
-
-    listEl.appendChild(li);
+// Settings panel wrapper — keeps the existing #issues-queue-list element shape.
+function renderIssuesQueue() {
+  const settingsList = document.getElementById('issues-queue-list');
+  if (settingsList) renderIssuesQueueInto(settingsList);
+  const headerBody = document.getElementById('issues-menu-body');
+  if (headerBody && !document.getElementById('issues-menu')?.hidden) {
+    renderIssuesQueueInto(headerBody);
   }
 }
 
-// Bulk-open every queued report. Spread the window.open() calls over time
-// so popup blockers (which typically allow the first one but throttle a
-// rapid burst) cooperate.
+// Bulk-open every UNSUBMITTED queued report. Spreads window.open() calls so
+// popup blockers don't reject the burst. Marks each item as submitted just
+// before opening so they immediately move to "Already opened" on next render.
+function openAllUnsubmittedIssues() {
+  const items = collectAllIssueDrafts().filter(it => !isQueueSubmitted(it) && !isQueueFlagOnly(it));
+  const byIdMap = State.byId || {};
+  const openable = items.filter(it => byIdMap[it.exId]);
+  if (!openable.length) return;
+  if (openable.length > 3 && !confirm(
+    `Open ${openable.length} GitHub issue tabs?\n\n` +
+    `Your browser may ask you to allow popups the first time.`
+  )) return;
+  openable.forEach((it, idx) => {
+    const url = buildIssueUrl(byIdMap[it.exId], it.draft, it.mode);
+    setTimeout(() => {
+      markDraftSubmitted(it);
+      try { window.open(url, '_blank', 'noopener'); } catch {}
+      // Re-render at the end so all surfaces see the latest state.
+      if (idx === openable.length - 1) setTimeout(renderIssuesQueue, 50);
+    }, idx * 150);
+  });
+}
+
 function installIssuesQueueOpenAll() {
-  const btn = document.getElementById('issues-open-all');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    const items = collectAllIssueDrafts();
-    const byIdMap = (State.byId || {});
-    const openable = items.filter(it => byIdMap[it.exId]);
-    if (!openable.length) return;
-    if (openable.length > 3 && !confirm(
-      `Open ${openable.length} GitHub issue tabs?\n\n` +
-      `Your browser may ask you to allow popups the first time.`
-    )) return;
-    openable.forEach((it, idx) => {
-      const url = buildIssueUrl(byIdMap[it.exId], it.draft, it.mode);
-      setTimeout(() => { try { window.open(url, '_blank', 'noopener'); } catch {} }, idx * 150);
-    });
+  const settingsBtn = document.getElementById('issues-open-all');
+  settingsBtn?.addEventListener('click', openAllUnsubmittedIssues);
+  const headerBtn = document.getElementById('issues-menu-open-all');
+  headerBtn?.addEventListener('click', openAllUnsubmittedIssues);
+}
+
+// Header 🐛 popover — mirrors installSyncMenu's pattern.
+function installIssuesMenu() {
+  const toggle = document.getElementById('issues-toggle');
+  const menu = document.getElementById('issues-menu');
+  if (!toggle || !menu) return;
+
+  function openMenu() {
+    renderIssuesQueueInto(document.getElementById('issues-menu-body'));
+    refreshIssuesQueueCount();
+    menu.hidden = false;
+    toggle.setAttribute('aria-expanded', 'true');
+  }
+  function closeMenu() {
+    menu.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (menu.hidden) openMenu(); else closeMenu();
+  });
+  document.addEventListener('click', (e) => {
+    if (menu.hidden) return;
+    if (menu.contains(e.target) || toggle.contains(e.target)) return;
+    closeMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !menu.hidden) closeMenu();
   });
 }
 
@@ -3712,7 +3917,26 @@ function renderExerciseCard(ex, opts = {}) {
     bmBtn.textContent = isBookmark(ex.id) ? '⭐' : '☆';
     renderSidebarProgress();
   });
-  tools.append(doneBtn, bmBtn);
+  // 🚩 Quick Flag — one-click "this exercise has a problem, write up later".
+  // Sits in the issue queue immediately; the user can fill out details or
+  // submit later via the header 🐛 popover.
+  const flagBtn = el('button', {
+    type: 'button',
+    class: 'btn-flag-toggle' + (isFlagged(ex.id) ? ' active' : ''),
+    title: isFlagged(ex.id)
+      ? 'Flagged for review — click to unflag'
+      : 'Flag this exercise for later review (no form — adds it to the issue queue)',
+  }, '🚩');
+  flagBtn.addEventListener('click', () => {
+    toggleFlagForReview(ex.id);
+    const on = isFlagged(ex.id);
+    flagBtn.classList.toggle('active', on);
+    flagBtn.title = on
+      ? 'Flagged for review — click to unflag'
+      : 'Flag this exercise for later review (no form — adds it to the issue queue)';
+    refreshIssuesQueueCount();
+  });
+  tools.append(doneBtn, bmBtn, flagBtn);
 
   const titleEl = el('h3', { class: 'exercise-title' }, ex.title);
   const header = el('div', { class: 'exercise-header' }, titleEl, tools);
@@ -6087,8 +6311,10 @@ async function init() {
   // pending dirty flag from a previous session + hooks beforeunload.
   bootAutoSync();
 
-  // Settings → 🐛 Issues — bulk-open all queued reports.
+  // Header 🐛 Issues popover + bulk-open buttons in both surfaces.
+  installIssuesMenu();
   installIssuesQueueOpenAll();
+  refreshIssuesQueueCount();
 
   // Header 🤖 LLM quick-switch popover
   installLlmMenu();

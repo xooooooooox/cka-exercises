@@ -84,9 +84,25 @@
             <button id="sync-menu-pull" type="button" title="Replace local progress with content from your Gist">⬇ Pull</button>
             <button id="sync-menu-test" type="button" title="Verify the configured PAT works against the GitHub API">Test</button>
           </div>
+          <div class="sync-menu-actions">
+            <button id="sync-menu-push-now" type="button" title="Fire auto-push immediately — skip the 30 s debounce. Equivalent to ⬆ Push but tagged as auto in the history.">🚀 Push now</button>
+          </div>
           <div id="sync-menu-status" class="muted"></div>
           <div class="sync-menu-foot muted">
             <a href="#" id="sync-menu-settings" title="Open the full Gist sync configuration in Settings">Configure in Settings →</a>
+          </div>
+        </div>
+      </div>
+      <div class="issues-menu-wrap">
+        <button id="issues-toggle" class="icon-btn" type="button" title="Issue queue — flagged exercises + saved draft reports" aria-label="Issue queue" aria-haspopup="true" aria-expanded="false">🐛<span id="issues-count" class="header-badge muted" hidden></span></button>
+        <div id="issues-menu" class="sync-menu issues-menu" hidden role="menu" aria-label="Issue queue">
+          <div class="sync-menu-header">
+            <strong>Issue queue</strong>
+            <span id="issues-menu-summary" class="muted"></span>
+          </div>
+          <div id="issues-menu-body" class="issues-menu-body"></div>
+          <div class="sync-menu-foot muted">
+            <button id="issues-menu-open-all" type="button" title="Open every queued report on github.com/issues/new (staggered 150 ms apart)">🚀 Open all unsubmitted</button>
           </div>
         </div>
       </div>

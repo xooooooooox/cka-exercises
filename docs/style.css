@@ -2087,6 +2087,97 @@ body.answer-fullscreen-active { overflow: hidden; }
   cursor: pointer;
 }
 
+/* ---------- 🚩 Quick Flag button on cards ---------- */
+.btn-flag-toggle {
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 3px 6px;
+  font-size: 14px;
+  opacity: 0.45;
+  border-radius: 4px;
+  filter: grayscale(0.85);
+}
+.btn-flag-toggle:hover { opacity: 0.9; filter: grayscale(0.3); }
+.btn-flag-toggle.active {
+  opacity: 1;
+  filter: none;
+  border-color: var(--danger);
+  background: rgba(215, 58, 74, 0.08);
+}
+
+/* ---------- Header 🐛 Issues popover (reuses .sync-menu chrome) ---------- */
+.issues-menu-wrap { position: relative; display: inline-block; }
+.issues-menu { min-width: 320px; max-width: 420px; max-height: 70vh; overflow-y: auto; }
+.header-badge {
+  display: inline-block;
+  margin-left: 2px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  vertical-align: top;
+}
+.header-badge[hidden] { display: none; }
+.issues-menu-body { font-size: 12px; }
+
+/* ---------- Issue queue groups (To submit / Already opened) ---------- */
+.issues-queue-group { margin-top: 8px; }
+.issues-queue-group:first-of-type { margin-top: 0; }
+.issues-queue-group-head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+  user-select: none;
+}
+.issues-queue-group-head.collapsible {
+  cursor: pointer;
+}
+.issues-queue-group-head.collapsible::before {
+  content: '▼ ';
+  display: inline-block;
+  font-size: 9px;
+}
+.issues-queue-group-head.collapsible[data-collapsed="1"]::before {
+  content: '▶ ';
+}
+
+/* Submitted entries are visually de-emphasised. */
+.issues-queue-item--submitted {
+  opacity: 0.7;
+  background: var(--bg);
+}
+.issues-queue-item--flagonly {
+  border-left: 3px solid var(--danger);
+}
+.issues-queue-tag-flag {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ---------- Quiz fullscreen ☁ status dot ---------- */
+.quizbar-sync-dot {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.7;
+  margin-left: 4px;
+}
+.quizbar-sync-dot:hover { opacity: 1; }
+
 /* Mobile tweaks */
 @media (max-width: 768px) {
   .provider-grid { grid-template-columns: 1fr; }
