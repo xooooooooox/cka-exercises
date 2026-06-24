@@ -364,6 +364,35 @@ pre .copy-btn.copied { color: var(--success); }
 .tree-exercise.done { color: var(--fg-muted); }
 .tree-exercise.bookmarked::after { content: "⭐"; flex-shrink: 0; }
 
+/* ---------- Browse sidebar custom hover tooltip ----------
+   The sidebar tree keeps every label single-line + ellipsis for compactness
+   (the 280 px column is intentionally narrow). On hover / focus this fixed-
+   position singleton tooltip surfaces the full text without disrupting the
+   tree's visual rhythm. Position is computed in JS (installSidebarTooltip). */
+.sidebar-tooltip {
+  position: fixed;
+  z-index: 1500;
+  max-width: 400px;
+  padding: 8px 12px;
+  background: var(--bg-elev);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  font-size: 12.5px;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 100ms ease;
+}
+.sidebar-tooltip--visible {
+  opacity: 1;
+  visibility: visible;
+}
+
 /* Main panel */
 #main { padding: 20px 24px; overflow-y: auto; max-height: calc(100vh - 110px); }
 

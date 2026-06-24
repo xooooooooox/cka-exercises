@@ -686,14 +686,18 @@ function renderSidebar(visibleExercises) {
       if (!exs) continue;
       const secEl = el('details', { class: 'tree-section', open: false });
       const secLabel = sec.kind === 'killersh' ? '🎯 ' + sec.title : `${sec.number}. ${sec.title}`;
-      secEl.appendChild(el('summary', {},
+      // data-full-title drives the custom hover tooltip (installSidebarTooltip).
+      secEl.appendChild(el('summary', { 'data-full-title': secLabel },
         el('span', { class: 'label' }, secLabel),
         el('small', {}, `${exs.length}`),
       ));
       for (const ex of exs) {
         const btn = el('button', {
           class: 'tree-exercise' + (isDone(ex.id) ? ' done' : '') + (isBookmark(ex.id) ? ' bookmarked' : ''),
-          title: ex.title,
+          // Native title= would race + double-display against the custom tooltip;
+          // aria-label keeps screen-reader announcement intact.
+          'aria-label': ex.title,
+          'data-full-title': ex.title,
           'data-id': ex.id,
         },
           el('span', { class: 'qnum' }, `Q${ex.numberInDomain}`),
@@ -708,6 +712,73 @@ function renderSidebar(visibleExercises) {
     }
     tree.appendChild(domEl);
   }
+}
+
+// ---------- Browse sidebar hover tooltip ----------
+//
+// The sidebar tree (domain → section → exercise) keeps each label single-line
+// with ellipsis truncation. Long titles (especially chadmcrowell-sourced
+// "general" exercises where the H3 IS the task body, 150–280 chars) are
+// invisible past the cut. This singleton fixed-position tooltip surfaces the
+// full title on hover / focus for any element marked with data-full-title.
+let _sidebarTooltipEl = null;
+function ensureSidebarTooltip() {
+  if (_sidebarTooltipEl) return _sidebarTooltipEl;
+  _sidebarTooltipEl = el('div', { class: 'sidebar-tooltip', role: 'tooltip', 'aria-hidden': 'true' });
+  document.body.appendChild(_sidebarTooltipEl);
+  return _sidebarTooltipEl;
+}
+function installSidebarTooltip() {
+  const tree = document.getElementById('sidebar-tree');
+  if (!tree) return;
+  const show = (target) => {
+    const text = target.dataset.fullTitle;
+    if (!text) return;
+    const tip = ensureSidebarTooltip();
+    tip.textContent = text;
+    tip.setAttribute('aria-hidden', 'false');
+    const r = target.getBoundingClientRect();
+    // Render off-screen first to measure tooltip size, then position correctly.
+    tip.style.visibility = 'hidden';
+    tip.classList.add('sidebar-tooltip--visible');
+    const tr = tip.getBoundingClientRect();
+    const margin = 8;
+    let left = r.right + 8;
+    let top  = r.top;
+    if (left + tr.width > window.innerWidth - margin) {
+      // Right overflow → flip to left side.
+      left = Math.max(margin, r.left - tr.width - 8);
+    }
+    if (top + tr.height > window.innerHeight - margin) {
+      top = Math.max(margin, window.innerHeight - margin - tr.height);
+    }
+    if (top < margin) top = margin;
+    tip.style.left = `${left}px`;
+    tip.style.top  = `${top}px`;
+    tip.style.visibility = 'visible';
+  };
+  const hide = () => {
+    if (!_sidebarTooltipEl) return;
+    _sidebarTooltipEl.classList.remove('sidebar-tooltip--visible');
+    _sidebarTooltipEl.setAttribute('aria-hidden', 'true');
+  };
+  // Event delegation — any [data-full-title] inside the tree (section summary
+  // or exercise button) triggers the tooltip.
+  tree.addEventListener('mouseover', (e) => {
+    const target = e.target.closest('[data-full-title]');
+    if (target) show(target);
+  });
+  tree.addEventListener('mouseout', (e) => {
+    const target = e.target.closest('[data-full-title]');
+    if (target) hide();
+  });
+  tree.addEventListener('focusin', (e) => {
+    const target = e.target.closest('[data-full-title]');
+    if (target) show(target);
+  });
+  tree.addEventListener('focusout', hide);
+  document.getElementById('sidebar')?.addEventListener('scroll', hide, { passive: true });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); });
 }
 
 // Short labels for the sidebar progress widget (avoid the long domain titles).
@@ -6579,6 +6650,10 @@ async function init() {
   installIssuesMenu();
   installIssuesQueueOpenAll();
   refreshIssuesQueueCount();
+
+  // Custom hover tooltip on Browse sidebar section + exercise rows
+  // (full title visible without expanding the sidebar's 280px column).
+  installSidebarTooltip();
 
   // Header 🤖 LLM quick-switch popover
   installLlmMenu();
