@@ -286,6 +286,10 @@ function setFixDraft(id, payload) {
     storageSet(k, { ...payload, savedAt: new Date().toISOString() });
     stampSingleton(k);
   }
+  // Trigger the 30s auto-push debounce. Without this, queueing a 🐞 flag /
+  // saving a draft / removing a queue entry would only ride along on the
+  // next unrelated sync-worthy edit (Done / Bookmark / Answer / quiz state).
+  markSyncDirty();
 }
 
 // Quick Flag: one-click "this exercise needs attention" with no form. Stores
@@ -427,17 +431,24 @@ function openFlagMenu(anchorBtn, ex) {
 }
 function getTaskFixDraft(id) { return storageGet(KEY.taskFixDraftPrefix + id, null); }
 function setTaskFixDraft(id, payload) {
+  // Same emptiness rule as setFixDraft — Quick Flag (`{flagged:true}` with
+  // no other content) keeps the entry alive so it shows up in the queue.
   const empty = !payload
-    || (!payload.additional && !payload.suggestedUrl
+    || (!payload.flagged
+        && !payload.additional && !payload.suggestedUrl
         && (payload.existingLinkIdx == null || payload.existingLinkIdx === '')
         && (!payload.type || payload.type === 'other'));
   const k = KEY.taskFixDraftPrefix + id;
   if (empty) {
     try { localStorage.removeItem(k); } catch {}
+    // Stamp a tombstone time so the merge engine doesn't resurrect a stale
+    // remote copy after we delete locally.
+    stampSingleton(k);
   } else {
     storageSet(k, { ...payload, savedAt: new Date().toISOString() });
     stampSingleton(k);
   }
+  markSyncDirty();
 }
 function allFixDrafts() {
   const out = {};
