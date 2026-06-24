@@ -13,6 +13,9 @@ on:
       - 'scripts/lint-exercises.mjs'
       - 'WEBAPP_GUIDE.md'
       - 'WEBAPP_GUIDE_CN.md'
+      - 'EXAM_GUIDE.md'
+      - 'EXAM_GUIDE_CN.md'
+      - 'CHANGELOG.md'
       - '.github/workflows/build-and-deploy-docs.yml'
   workflow_dispatch:
 
