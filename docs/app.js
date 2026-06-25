@@ -4156,7 +4156,10 @@ function renderExerciseCard(ex, opts = {}) {
 
   // Header
   const tools = el('div', { class: 'exercise-tools' });
-  const doneBtn = el('button', { type: 'button', title: 'Toggle done' }, isDone(ex.id) ? '✓ Done' : '☐ Done');
+  // data-action lets syncCardStateClasses find these buttons when external
+  // events (Quiz "Got it", cross-tab sync) change the underlying state
+  // without rerendering the whole card.
+  const doneBtn = el('button', { type: 'button', title: 'Toggle done', 'data-action': 'done' }, isDone(ex.id) ? '✓ Done' : '☐ Done');
   doneBtn.addEventListener('click', () => {
     setDone(ex.id, !isDone(ex.id));
     if (isDone(ex.id)) card.classList.add('done'); else card.classList.remove('done');
@@ -4166,7 +4169,7 @@ function renderExerciseCard(ex, opts = {}) {
       .querySelectorAll(`.tree-exercise[data-id="${ex.id}"]`)
       .forEach(b => b.classList.toggle('done', isDone(ex.id)));
   });
-  const bmBtn = el('button', { type: 'button', title: 'Toggle bookmark' }, isBookmark(ex.id) ? '⭐' : '☆');
+  const bmBtn = el('button', { type: 'button', title: 'Toggle bookmark', 'data-action': 'bookmark' }, isBookmark(ex.id) ? '⭐' : '☆');
   bmBtn.addEventListener('click', () => {
     setBookmark(ex.id, !isBookmark(ex.id));
     bmBtn.textContent = isBookmark(ex.id) ? '⭐' : '☆';
@@ -4300,64 +4303,142 @@ function renderExerciseCard(ex, opts = {}) {
   return card;
 }
 
-// Signature of the inputs that actually change the rendered card list.
-// When unchanged across mode switches, we can skip the expensive ~271-card
-// re-render entirely (the previous main DOM is still in place; setMode just
-// re-shows the hidden view).
-let _browseSignature = null;
-function filterSignature() {
-  const f = State.filters || {};
-  return JSON.stringify({
-    d: f.domains ? [...f.domains].sort() : [],
-    t: f.tags    ? [...f.tags].sort()    : [],
-    s: f.search || '',
-    b: !!f.onlyBookmarks,
-    u: !!f.onlyUndone,
-    r: !!f.revealSolutions,
-    // If a build pulls in new exercises (extremely rare at runtime, but
-    // happens via the 🔄 refresh path) the count changes → invalidate.
-    n: State.allExercises ? State.allExercises.length : 0,
-  });
-}
+// Browse mode incremental rendering. The OLD strategy was: every filter
+// change → main.innerHTML = '' → recreate every visible card. That's 50-200ms
+// of DOM work per keystroke + destroys CodeMirror instances + drops answer
+// drafts. NEW strategy: build all 271 cards once on first entry, then on
+// every filter change only flip card.hidden = true/false. ~1ms instead of
+// 200ms. CodeMirror + draft state preserved across filter changes.
+//
+// _browseDom caches the mounted DOM; _browseLastReveal tracks the only
+// filter whose change still requires a full rebuild (the "Reveal solutions"
+// toggle wires three intertwined per-card UI bits — text, aria-expanded,
+// class — that are awkward to flip in place; an infrequent toggle so a
+// rebuild is acceptable).
+let _browseDom = null;     // { main, cards: Map<id,el>, sectionHeaders: Map<key,el>, domainHeaders: Map<key,el> }
+let _browseLastReveal = null;
+let _browseBuiltCount = 0; // tracks State.allExercises.length used at build time, to invalidate on 🔄 refresh adding/removing exercises
 
-function renderBrowse() {
-  const sig = filterSignature();
+function buildBrowseDom() {
+  if (_browseDom) return _browseDom;
   const main = document.getElementById('main');
-  // Skip if the cached DOM is still in place AND the filter inputs haven't
-  // moved since the last successful render. Worst case (Quiz → Browse with
-  // identical filters): pure no-op, ~instant.
-  if (_browseSignature === sig && main && main.children.length > 0) {
-    return;
-  }
-  // Drop closures captured by previously-rendered answer-box hints. Each
-  // card re-subscribes on mount (see renderAnswerBox → onLLMSettingsChange).
-  clearLLMListeners();
-  const visible = applyFilters();
-  document.getElementById('filter-stats').textContent = `${visible.length} / ${State.allExercises.length} exercises`;
-  renderSidebar(visible);
-  renderSidebarProgress();
   main.innerHTML = '';
-  if (visible.length === 0) {
-    main.appendChild(el('div', { class: 'empty-state' }, 'No exercises match the current filters.'));
-    _browseSignature = sig;
-    return;
-  }
-  // Group by domain for headings
+  const cards = new Map();
+  const sectionHeaders = new Map();
+  const domainHeaders = new Map();
   let currentDomain = null, currentSection = null;
-  for (const ex of visible) {
+  for (const ex of State.allExercises) {
     if (ex.domain.key !== currentDomain) {
-      main.appendChild(el('h2', {}, `${ex.domain.title} (${ex.domain.weight})`));
+      const h2 = el('h2', {}, `${ex.domain.title} (${ex.domain.weight})`);
+      main.appendChild(h2);
+      domainHeaders.set(ex.domain.key, h2);
       currentDomain = ex.domain.key;
       currentSection = null;
     }
-    if (ex.section.number !== currentSection) {
-      const label = (ex.section.kind === 'killersh' || ex.section.kind === 'killercoda') ? '🎯 ' + ex.section.title : `§${ex.section.number} ${ex.section.title}`;
-      main.appendChild(el('h3', { class: 'muted', style: { marginTop: '12px' } }, label));
-      currentSection = ex.section.number;
+    const secKey = ex.domain.key + '::' + ex.section.number;
+    if (secKey !== currentSection) {
+      const label = (ex.section.kind === 'killersh' || ex.section.kind === 'killercoda')
+        ? '🎯 ' + ex.section.title
+        : `§${ex.section.number} ${ex.section.title}`;
+      const h3 = el('h3', { class: 'muted', style: { marginTop: '12px' } }, label);
+      main.appendChild(h3);
+      sectionHeaders.set(secKey, h3);
+      currentSection = secKey;
     }
-    main.appendChild(renderExerciseCard(ex, { openSolution: State.filters.revealSolutions }));
+    const card = renderExerciseCard(ex, { openSolution: State.filters.revealSolutions });
+    main.appendChild(card);
+    cards.set(ex.id, card);
   }
-  _browseSignature = sig;
+  _browseDom = { main, cards, sectionHeaders, domainHeaders };
+  _browseBuiltCount = State.allExercises.length;
+  return _browseDom;
+}
+
+// Sync card visual state (Done class, Done button text, Bookmark button text,
+// Flag button border) from current localStorage state. Needed because the
+// card is no longer destroyed/recreated on filter change — when external
+// writers (Quiz "Got it" → setDone, cross-tab → storage event) touch the
+// underlying state, the mounted card's visual representation can lag. Run on
+// every applyBrowseFilter so visuals never drift more than one filter
+// keystroke away from truth.
+function syncCardStateClasses(cardEl, ex) {
+  const done = isDone(ex.id);
+  cardEl.classList.toggle('done', done);
+  const doneBtn = cardEl.querySelector('button[data-action="done"]');
+  if (doneBtn) doneBtn.textContent = done ? '✓ Done' : '☐ Done';
+  const bmBtn = cardEl.querySelector('button[data-action="bookmark"]');
+  if (bmBtn) bmBtn.textContent = isBookmark(ex.id) ? '⭐' : '☆';
+  const flagBtn = cardEl.querySelector('.btn-flag-toggle');
+  if (flagBtn) applyFlagBtnState(flagBtn, ex.id);
+}
+
+function applyBrowseFilter() {
+  const dom = buildBrowseDom();
+  const visible = applyFilters();
+  const visibleIds = new Set(visible.map(ex => ex.id));
+  const visibleSections = new Set();
+  const visibleDomains = new Set();
+  for (const ex of State.allExercises) {
+    const cardEl = dom.cards.get(ex.id);
+    if (!cardEl) continue;
+    syncCardStateClasses(cardEl, ex);
+    const show = visibleIds.has(ex.id);
+    cardEl.hidden = !show;
+    if (show) {
+      visibleSections.add(ex.domain.key + '::' + ex.section.number);
+      visibleDomains.add(ex.domain.key);
+    }
+  }
+  for (const [key, h3] of dom.sectionHeaders) h3.hidden = !visibleSections.has(key);
+  for (const [key, h2] of dom.domainHeaders) h2.hidden = !visibleDomains.has(key);
+  return visible.length;
+}
+
+function renderBrowse() {
+  // revealSolutions changes the openSolution state baked into every card at
+  // construction time; flipping it cheaply on mounted cards would require
+  // updating the toggle button text + aria-expanded + .solution-open class
+  // in lockstep, which is fragile. So when (and only when) that one filter
+  // flips we invalidate the cache and rebuild.
+  const currentReveal = State.filters.revealSolutions;
+  if (_browseDom && _browseLastReveal !== currentReveal) {
+    _browseDom.main.innerHTML = '';
+    _browseDom = null;
+    clearLLMListeners();
+  }
+  _browseLastReveal = currentReveal;
+
+  // 🔄 Refresh path can swap State.allExercises. Cheap fingerprint check
+  // here invalidates the built DOM when the corpus changes.
+  if (_browseDom && State.allExercises.length !== _browseBuiltCount) {
+    _browseDom.main.innerHTML = '';
+    _browseDom = null;
+    clearLLMListeners();
+  }
+
+  buildBrowseDom();
+  const visibleCount = applyBrowseFilter();
+  document.getElementById('filter-stats').textContent =
+    `${visibleCount} / ${State.allExercises.length} exercises`;
+
+  // Sidebar tree still rebuilds (cheap — each node is a <button>; ~271 max).
+  // Optimising sidebar incrementally is a separate, lower-value task.
+  renderSidebar(applyFilters());
+  renderSidebarProgress();
+
+  // Empty-state element is a sibling of the cards — toggle visibility, don't
+  // detach/reattach.
+  let emptyState = document.getElementById('browse-empty-state');
+  if (visibleCount === 0) {
+    if (!emptyState) {
+      emptyState = el('div', { id: 'browse-empty-state', class: 'empty-state' },
+        'No exercises match the current filters.');
+      _browseDom.main.appendChild(emptyState);
+    }
+    emptyState.hidden = false;
+  } else if (emptyState) {
+    emptyState.hidden = true;
+  }
 }
 
 // ---------- Quiz mode ----------
