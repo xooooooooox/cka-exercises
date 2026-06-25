@@ -14,6 +14,16 @@ Each entry references the commit hash in parens for traceability to git history.
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [v0.1.0] - 2026-06-25
+
+### Added
 - Documentation sync discipline codified in CLAUDE.md (new `## Documentation sync discipline` section). The rule: every code change must touch any reference docs that describe the changed behaviour, file structure, or user-facing flow — in the same commit. Triggers enumerated (Repository Layout / CI workflows / SPA features / localStorage keys / Build pipeline / Release mechanism / doc-structure changes). Changelog discipline remains separate — it's a change log, not a reference. (this commit)
 - SPA version chip distinguishes **release** vs **dev** builds. `scripts/build-exercises.mjs` now stamps `channel` / `commitsAhead` / `gitSha` into `docs/version.json` via `git describe --tags --abbrev=0` + `git rev-list --count`. The header chip renders `vX.Y.Z` (default colour) when HEAD sits on a release tag with matching `package.json.version`, or `vX.Y.Z+dev.N` (subtle orange) for any deploy that isn't on a release tag — N = commits ahead of the last release. ✨ Refresh banner upgraded to show full composed labels so users see whether they're crossing a release boundary or just bumping `+dev.N`. `build-and-deploy-docs.yml` checkout gains `fetch-depth: 0` so the git fingerprint commands can resolve historical tags. (this commit)
 - App-Store-style release pipeline. `scripts/release.mjs` reads `CHANGELOG.md`'s `[Unreleased]` block, infers a semver bump from its section composition (Removed/BREAKING → minor in v0.x or major in v1+; Added/Changed → minor; Fixed-only → patch), rewrites the changelog to rename `[Unreleased]` → `[vX.Y.Z] - YYYY-MM-DD` while prepending a fresh empty `[Unreleased]`, bumps `package.json`, commits, tags, pushes, and files a GitHub Release with the freshly-named version block as release notes. Manual `--bump=major|minor|patch|auto` override + `--dry-run` flag for previewing. `.github/workflows/release.yml` exposes the same controls via `workflow_dispatch` so maintainers cut releases from the Actions UI. (this commit)
@@ -70,6 +80,7 @@ Each entry references the commit hash in parens for traceability to git history.
 
 ---
 
+[v0.1.0]: https://github.com/xooooooooox/cka-exercises/releases/tag/v0.1.0
 [da57e8f]: https://github.com/xooooooooox/cka-exercises/commit/da57e8f
 [d8e2ccc]: https://github.com/xooooooooox/cka-exercises/commit/d8e2ccc
 [cbda07e]: https://github.com/xooooooooox/cka-exercises/commit/cbda07e
