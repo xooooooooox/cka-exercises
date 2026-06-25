@@ -2562,12 +2562,26 @@ async function manualRefresh() {
     const hereLabel = composeBuildLabel(hereMeta);
     if (v?.generatedAt && v.generatedAt !== here) {
       const thereLabel = composeBuildLabel(v);
-      showRefreshToast(`✨ New version ${hereLabel} → ${thereLabel} — reloading…`, 'ok');
+      // Two-stage feedback: a brief in-page toast acknowledges the click
+      // (the user sees ~1.2s of "Updating…" before reload tears the DOM),
+      // then a sessionStorage handoff makes the NEW page bootup pop a
+      // confirmation toast — that's the one the user actually has time to
+      // read. The previous 700ms single-toast-then-reload was too short
+      // for the version delta to register before location.replace blew it
+      // away.
+      showRefreshToast(`✨ Updating to ${thereLabel}…`, 'ok');
+      try {
+        sessionStorage.setItem('cka:refresh-toast', JSON.stringify({
+          msg: `✓ Updated from ${hereLabel} to ${thereLabel}`,
+          kind: 'ok',
+          at: Date.now(),
+        }));
+      } catch {}
       setTimeout(() => {
         const u = new URL(location.href);
         u.searchParams.set('_rev', String(Date.now()));
         location.replace(u.toString());
-      }, 700);
+      }, 1200);
     } else {
       showRefreshToast(`✓ Already on ${hereLabel}`, 'ok');
       btn?.classList.remove('refreshing');
@@ -6981,6 +6995,23 @@ async function init() {
   // scripts/build-exercises.mjs from package.json). Always-visible
   // "vX.Y.Z" pill in the header right, click jumps to Help → Changelog.
   renderAppBuild();
+
+  // Pop a post-reload toast if manualRefresh stashed one before
+  // location.replace(). The pre-reload toast only had ~1.2s of screen
+  // time before the DOM was torn down; this is the message the user
+  // actually has time to read (3s auto-dismiss). Stamp guards against
+  // showing stale toasts from earlier sessions (tab restore, manual
+  // history navigation, etc).
+  try {
+    const raw = sessionStorage.getItem('cka:refresh-toast');
+    if (raw) {
+      sessionStorage.removeItem('cka:refresh-toast');
+      const payload = JSON.parse(raw);
+      if (payload && payload.msg && Date.now() - (payload.at || 0) < 30000) {
+        showRefreshToast(payload.msg, payload.kind || 'ok');
+      }
+    }
+  } catch {}
 
   // Theme
   const savedTheme = storageGet(KEY.theme, null) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
