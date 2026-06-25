@@ -39,10 +39,18 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      # IMPORTANT: checkout AND release step both use secrets.RELEASE_PAT,
+      # not the default GITHUB_TOKEN. main is protected by a Repository
+      # Rule whose bypass list only accepts Roles (Repository admin /
+      # Maintain) — github-actions[bot] doesn't match any of those, so
+      # the default token's push gets rejected with GH013. PAT path
+      # makes the push happen as the admin user instead, which is on
+      # the bypass list. See CLAUDE.md `## Release workflow →
+      # One-time setup`.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PAT }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -52,7 +60,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
       - name: Run release script
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
           FLAGS="--bump=${{ inputs.bump }}"
           if [ "${{ inputs.dry_run }}" = "true" ]; then FLAGS="$FLAGS --dry-run"; fi

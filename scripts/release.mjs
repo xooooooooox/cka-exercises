@@ -234,12 +234,12 @@ function runGitPush(args) {
     if (/GH013|protected ref|rule violations/i.test(stderr)) {
       console.error('');
       console.error('💡 Push to a protected ref was rejected by a Repository Rule.');
-      console.error('   The release workflow needs a one-time bypass:');
-      console.error('     Settings → Rules → Rulesets → (ruleset for main)');
-      console.error('     → Bypass list → Add bypass');
-      console.error('     → Repository admin (or "github-actions[bot]")');
-      console.error('     → Mode: Always → Save');
-      console.error('   See CLAUDE.md `## Release workflow → One-time setup: Repository Rule bypass`.');
+      console.error('   The release workflow needs a fine-grained PAT instead of GITHUB_TOKEN:');
+      console.error('     1. Generate a PAT scoped to this repo with Contents: Read and write.');
+      console.error('     2. Store it as repo secret RELEASE_PAT.');
+      console.error('     3. Confirm release.yml uses ${{ secrets.RELEASE_PAT }} for both');
+      console.error('        actions/checkout@v4 token and the release step GH_TOKEN.');
+      console.error('   See CLAUDE.md `## Release workflow → One-time setup: PAT for protected-main pushes`.');
       console.error('');
     }
     throw err;

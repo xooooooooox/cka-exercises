@@ -306,23 +306,36 @@ Both states are written into `docs/version.json` (`channel: "release" | "dev"`, 
 
 Practical implication for maintainers: as long as you keep merging changelog-eligible commits into main, deploys go out continuously labelled `vX.Y.Z+dev.N`. When you decide a batch is shippable (semantic milestone, end of a sprint, "I want users on a clean v0.2.0"), run the Release workflow. The next deploy then drops the `+dev.N` suffix and presents the clean release version.
 
-### One-time setup: Repository Rule bypass
+### One-time setup: PAT for protected-main pushes
 
-The release workflow pushes a `release: vX.Y.Z` commit and tag directly to `main`. If `main` is protected by a Repository Rule (Settings → Rules → Rulesets) that blocks direct pushes, the default `GITHUB_TOKEN` won't have bypass permission and the workflow will fail with `GH013: Cannot update this protected ref`.
+The release workflow pushes a `release: vX.Y.Z` commit and tag directly to `main`. If `main` is protected by a Repository Rule with an `update` rule (or similar push-blocker), the default `GITHUB_TOKEN` will be rejected with `GH013: Cannot update this protected ref`. Reason: workflows run as `github-actions[bot]`, which is **not** a Role-holder — Repository Rule bypass entries of type "Repository admin" / "Maintain" don't apply to the bot. Most GitHub plans also don't expose GitHub Actions as a bypass-able Integration in the Rulesets UI (this repo's bypass dropdown only offers Deploy keys / Repository admin / Maintain / Copilot — no GitHub Actions option).
 
-Fix it once, in the GitHub UI:
+Fix path used by this repo: **fine-grained PAT**.
 
-1. **Settings → Rules → Rulesets** — open the ruleset that covers `main`.
-2. Find the **Bypass list** section → **Add bypass**.
-3. Add **Repository admin** as a bypass actor (and / or **github-actions[bot]** if your UI lets you pick the bot as an explicit Integration entry).
-4. Set the mode to **Always** (not "For pull requests only" — release pushes aren't PRs).
-5. Save.
+1. **Generate the PAT** at github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens → **Generate new token**.
+   - Token name: `cka-exercises release`.
+   - Resource owner: your account (the repo owner — `xooooooooox`).
+   - Repository access: **Only select repositories** → `xooooooooox/cka-exercises`.
+   - Repository permissions:
+     - **Contents**: Read and write (push commit + tag)
+     - All others: default Read.
+   - Expiration: max 90 days (GitHub doesn't allow longer for fine-grained PATs).
+   - **Generate token** → copy it (shown once).
+2. **Store as repo secret** — repo Settings → Secrets and variables → Actions → New repository secret → Name `RELEASE_PAT`, value the token from step 1.
+3. `.github/workflows/release.yml` already wires `${{ secrets.RELEASE_PAT }}` into both `actions/checkout@v4` `with.token` and the release step's `env.GH_TOKEN`. Push then happens as your admin account → bypasses the Repository Rule.
 
-After this, the next `Release` workflow run will push successfully. No PAT needed, no workflow YAML change required. Humans still need a PR for ordinary direct pushes — the rule still applies to anyone outside the bypass list.
+**Rotation**: the PAT expires in 90 days. GitHub emails a reminder ~7 days before expiry. To rotate, generate a new PAT (steps 1–2) using the same secret name `RELEASE_PAT` — the workflow picks it up automatically.
 
-*Why this is safe enough:* the bypass only kicks in when the workflow runs as `github-actions[bot]` (i.e. the Release action you yourself dispatched from the Actions UI). External actors can't trigger it, and the release script itself only ever writes a single `release: vX.Y.Z` commit + tag — it doesn't have a code-modification capability.
+**Verifying which ruleset is blocking** (handy when debugging future regressions):
 
-If the bypass is missing, `scripts/release.mjs` detects the failure mode (it greps stderr for `GH013` / `protected ref` / `rule violations`) and prints a one-line hint pointing back to this section.
+```
+gh api repos/<owner>/<repo>/rulesets --jq '.[] | {id, name}'
+gh api repos/<owner>/<repo>/rulesets/<id> --jq '{name, rules: [.rules[].type], bypass_actors}'
+```
+
+The ruleset whose `rules` array contains `update` is the one rejecting normal pushes.
+
+If the PAT is missing or has wrong scope, `scripts/release.mjs` detects the rejection (stderr matches `GH013` / `protected ref` / `rule violations`) and prints a hint pointing back to this section.
 
 ## Common Tasks
 
