@@ -36,15 +36,19 @@ function parseArgs() {
 const ARGS = parseArgs();
 const OUT = path.join(ROOT, 'tools', ARGS.minor ? `kubectl-help-${ARGS.minor}.json` : 'kubectl-help.json');
 
-// Skip commands that are noisy / out of scope for CKA practice.
+// Skip commands that are genuinely off-scope for CKA practice. `options`
+// and `config` were also skipped originally with a "less exam-relevant"
+// note, but in practice both are exam-critical: `kubectl config
+// use-context` is the first action in every multi-cluster exam env
+// (killer.sh / KillerCoda / real CKA), and `kubectl options` is the
+// fastest cheatsheet for global flags (-o jsonpath / --dry-run=client /
+// -n / -A) under time pressure. Re-included both.
 const SKIP = new Set([
-  'options',
   'plugin',
   'completion',
   'version',
   'api-resources',
   'api-versions',
-  'config',  // huge subtree; less exam-relevant
 ]);
 
 function runKubectl(args) {
@@ -116,6 +120,14 @@ function main() {
 
   const commands = [];
   walk([], 1, commands);  // start at depth 1 because root has no path
+
+  // `kubectl options` is the cheatsheet of every global flag (--namespace,
+  // -o, --dry-run, --kubeconfig, …) but kubectl's own help text doesn't
+  // list it under any "*Commands:" heading — it's only referenced in the
+  // footer ("Use \"kubectl options\" for a list of global command-line
+  // options"). parseChildren() doesn't pick that up, so we inject it
+  // explicitly after the main walk. Leaf command (no subtree to recurse).
+  walk(['options'], 1, commands);
 
   // Sort: top-level alphabetically, then their subtrees stay grouped via stable sort
   commands.sort((a, b) => {
