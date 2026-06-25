@@ -74,20 +74,25 @@
 npm run serve        # 自动重新构建 docs/exercises.json 后启动 :8080
 # 打开 http://localhost:8080
 
-npm run build        # 只重新生成 docs/exercises.json
+npm run build        # 重新生成 docs/exercises.json + docs/sw.gen.js
 npm run lint         # 校验 exercises/*.md 格式
 npm run link-check   # ping 所有 kubernetes.io URL（慢 —— 约 106 个 URL）
+npm run release:dry  # 预览下一次 semver bump（不写文件、不 push）
 ```
 
 `docs/exercises.json` 是 `exercises/*.md` 的构建产物，每次 `npm run build` / `npm run serve` 以及 Pages 部署时自动重生。该文件已 gitignore，不会出现在 PR 中。
 
+版本遵循 [semver](https://semver.org/)（`vX.Y.Z`），通过 Actions UI → **Release** → **Run workflow** 手动触发（默认从 [CHANGELOG.md](CHANGELOG.md) 的 `[Unreleased]` 块自动推断 bump）。release 流水线会把 changelog 的 `[Unreleased]` 改名为 `[vX.Y.Z] - YYYY-MM-DD`、commit、打 tag、创建 [GitHub Release](https://github.com/xooooooooox/cka-exercises/releases)，部署紧随其后。完整规则见 [CLAUDE.md](CLAUDE.md) 的 `## Release workflow` 一节。
+
 ## CI
 
-六个 GitHub Actions workflow：
+八个 GitHub Actions workflow：
 
-- **`build-and-deploy-docs.yml`** —— `main` 推送时：lint、build `exercises.json`、把 `docs/` 部署到 Pages。
+- **`build-and-deploy-docs.yml`** —— `main` 推送时：lint、build `exercises.json` + `sw.gen.js` + 每版本 Tools / Nodes bundle，把 `docs/` 部署到 Pages。
 - **`lint.yml`** —— 非 main 分支推送和 PR 时：lint + 验证 build 仍可用。
 - **`link-check.yml`** —— 每周一定时 + 手动触发：ping 题目里引用的所有 kubernetes.io URL。
+- **`curriculum-watch.yml`** —— 每周一定时 + 手动触发：检测上游 CNCF curriculum PDF 是否漂移，触发时自动开 issue。
+- **`release.yml`** —— 手动触发：bump `package.json.version`、改写 `CHANGELOG.md` `[Unreleased]` → `[vX.Y.Z]`、打 tag、创建 GitHub Release。
 - **`answer-fix-pr.yml`** —— 手动触发：把指定的 `answer-fix` issue 用 aider 处理一段 H3 → 开 draft PR 关闭该 issue。
 - **`task-fix-pr.yml`** —— 手动触发：跟 `answer-fix-pr.yml` 同形态，但处理 `task-fix` issue（缺失的 docs 链接、不清晰的题干等等）。
 - **`seed-labels.yml`** —— 幂等的 label 引导。触发条件：`workflow_dispatch` + 推送到 `main` 且路径限定在它自己 —— 首次部署时自动跑一次，之后只在 seed 文件本身被改动（例如新增 `kind/*` 标签）时才再跑，常规 push 不会触发它。

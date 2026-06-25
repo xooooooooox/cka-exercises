@@ -27,7 +27,9 @@
 - **iPhone（Safari）**：打开网址 → 点 Share → **添加到主屏幕** → 命名 → 添加。点击新图标即可进入全屏（无 Safari 工具栏）。
 - **Mac（Safari 17+ / macOS Sonoma+）**：打开网址 → 菜单栏 **文件 → 添加到 Dock** → 添加。app 出现在 Dock 和启动台中，独立窗口打开。
 
-安装后**仍需联网**（每次启动会拉 `index.html` + `exercises.json`），其它行为完全一致：进度、收藏、答案、LLM 批改、☁ Gist 同步都和浏览器版一模一样。每个安装实例是独立的 profile，所以 **Mac 和 iPhone 上的进度互相独立**，除非通过 Gist Push / Pull 同步。
+安装后通过内置 **service worker**（首次访问非 localhost 时自动注册）支持冷启动离线：SPA shell 在 install 阶段预缓存，JSON 内容走 stale-while-revalidate，导航请求在断网时回退到缓存的 `index.html`。这关闭了"iPhone 主屏图标 → 白屏"在网络抖动时的体验缺口。进度、收藏、答案、LLM 批改、☁ Gist 同步都和浏览器版一模一样。每个安装实例是独立的 profile，所以 **Mac 和 iPhone 上的进度互相独立**，除非通过 Gist Push / Pull 同步。
+
+**一次性 "添加到主屏" 提示横幅**。首次访问的移动端用户（尚未进入 PWA standalone 模式）会在页面加载 8 秒后看到右下角小提示："📱 Install: Safari Share → Add to Home Screen"。点 ✕ 永久关闭；安装 PWA 后通过 `display-mode: standalone` 检测自动不再出现。
 
 ---
 
@@ -46,7 +48,12 @@
 
 模拟考场环境的随机抽题练习。
 
-**入口先看 Landing 页**。打开 🎯 Quiz 不会再一进去就甩给你一张配置表 —— 落地页会先展示：(a) 可以 ⏸ Resume 的暂停会话、(b) 已保存的 💾 Snapshots、(c) 两条入口：**▶ Start a new quiz**（进完整配置表）或一键预设（**🎲 10 random** / **🎯 17-question mock**）。
+**入口先看 Landing 页**。打开 🎯 Quiz 不会再一进去就甩给你一张配置表 —— 落地页会先展示：
+
+- ⏸ **Resume** 任何暂停的会话。
+- 💾 **Snapshots** 之前保存的快照列表。
+- **域熟练度横条** —— 五行展示每个 domain 的 `done / total · pct` + 进度条。 done % 最低的 1-2 个域（且未到 100 %）会带 `💡 weak` chip + 橙色提示，一眼看清薄弱在哪。
+- 三条入口：**▶ Start a new quiz**（进完整配置表）或**三个一键预设**：**🎲 10 random**、**🎯 17-question mock**、**🩺 Drill weak spots**（自动选上面提示的弱域，限定未完成题，10 题随机）。若全部 100 % 完成，Drill weak spots 会弹提示并中止而不是发空轮。
 
 **配置页面** —— 点 **▶ Start a new quiz** 后，选择：
 
@@ -125,7 +132,8 @@ CKA 考试跑在 kubeadm 装出来的集群上。🖥 Nodes 内置一个 CP + wo
 | ☁ Sync | 快捷 Gist Push / Pull 弹层（PAT + Gist ID 在 Settings 中配；Test 仅在 Settings → Sync 中） |
 | 🐛 N | Issue 队列弹层 —— flag 的题 + draft 报告（详见 §7）。badge `N` 显示队列长度。 |
 | 🤖 LLM | provider 快速切换 —— 弹层列出每个已配置（有 API key）的 provider，✓ 标记当前活跃。一键切换不必打开 Settings。 |
-| 🔄 刷新 | 强制重新拉取服务端最新部署（iOS PWA 缓存较激进时尤其有用）。检测到新部署时底部还会自动弹出"✨ New content available"横幅。 |
+| 🔄 刷新 | 强制重新拉取服务端最新部署（iOS PWA 缓存较激进时尤其有用）。检测到新部署时底部还会自动弹出"✨ New version available `vX.Y.Z` → `vX.Y.Z'`"横幅 —— 版本号 delta 让你一眼看清是跨过了 release 边界（如 `v0.1.0 → v0.2.0`），还是只是 dev 推送（如 `v0.1.0+dev.2 → v0.1.0+dev.5`）。 |
+| `vX.Y.Z` chip | header 右侧常驻的构建标识。tagged release 部署显示 `vX.Y.Z`（默认色）；dev build（HEAD 不在 release tag 上的任何部署）显示 `vX.Y.Z+dev.N`（橙色），N = 距上次 release tag 之后的 commit 数。hover 看完整构建时间 + git SHA；点击 → 跳到 Help → Changelog。 |
 | 🌓 主题 | 浅色 / 深色（持久化） |
 | ⌨️ Help | 快捷键速查 |
 | ⚙️ Settings | LLM 配置 / Backup / Gist sync（§4） |
@@ -319,11 +327,32 @@ Both flagged 的题在 popover 里渲染成**两条独立条目**（一条 answe
 
 ### Auto-PR 工作流（维护者一次性设置）
 
-仓库里有两个独立工作流 —— **Answer-fix → draft PR** (`.github/workflows/answer-fix-pr.yml`) 和 **Task-fix → draft PR** (`.github/workflows/task-fix-pr.yml`)，通过 [aider](https://aider.chat) + 你选的 LLM 改 H3 块、开 draft PR。**第一次跑之前** 需要先打开 **Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests"**。默认 provider 是 `copilot`（零密钥，复用 `GITHUB_TOKEN` + `models: read`）；要用其它 provider 在仓库 Secrets 里加对应的 `*_API_KEY`。`.github/workflows/seed-labels.yml` 预先创建好两条流水线需要的 14 个 issue 标签。
+仓库里有两个独立工作流 —— **Answer-fix → draft PR** (`.github/workflows/answer-fix-pr.yml`) 和 **Task-fix → draft PR** (`.github/workflows/task-fix-pr.yml`)，通过 [aider](https://aider.chat) + 你选的 LLM 改 H3 块、开 draft PR。**第一次跑之前** 需要先打开 **Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests"**。默认 provider 是 `copilot`（零密钥，复用 `GITHUB_TOKEN` + `models: read`）；要用其它 provider 在仓库 Secrets 里加对应的 `*_API_KEY`。`.github/workflows/seed-labels.yml` 预先创建好两条流水线 + curriculum watcher 需要的 15 个 issue 标签。
 
 ---
 
-## 8. 持久化机制
+## 8. 版本发布节奏 + dev build
+
+webapp 显式打了版本号标签，两种状态：
+
+- **Release build** —— chip 显示 `vX.Y.Z`（默认色）。这是维护者通过 **Actions → Release → Run workflow** 触发的发布切片（`release.yml`）。每次 release 会 bump `package.json.version`、把 changelog 的 `[Unreleased]` 重命名为 `[vX.Y.Z] - YYYY-MM-DD`、打 tag、并发布对应的 GitHub Release（release notes 来自刚刚命名好的 changelog 块）。
+- **Dev build** —— chip 显示 `vX.Y.Z+dev.N`（橙色），N = 距上次 release tag 之后的 commit 数。每次 push 到 `main` 命中文件过滤都触发部署；HEAD 不在 release tag 上的部署即为 dev build。dev build 也立刻拿到最新内容，唯一区别是 labelling。
+
+怎么判断自己在哪种：
+- 看 header chip 颜色。
+- hover chip → tooltip 显示 `Release v0.1.0 · built …` 或 `Dev build · 3 commits ahead of v0.1.0 · …`。
+- ✨ Refresh 横幅会显示版本号 delta（如 `v0.1.0+dev.2 → v0.1.0+dev.5` 或 `v0.1.0+dev.5 → v0.2.0`）。
+
+版本号推断规则（基于 CHANGELOG `[Unreleased]` 块构成）：
+- `### Removed` 或任何含 `BREAKING` 标记 → major（v0.x 阶段为 minor）。
+- `### Added` 或 `### Changed` → minor。
+- 只有 `### Fixed` → patch。
+
+维护者可通过 workflow 的 `bump=major|minor|patch` 显式覆盖；`bump=auto`（默认）按上面规则自动推断。
+
+---
+
+## 9. 持久化机制
 
 所有状态都在浏览器的 `localStorage`，前缀 `cka:`。**任何数据都不会被发送到任何服务器，除非你主动点击 Check / Test / Push / Pull。** 清除站点数据 = 全部丢失（Settings → Clear all 只会清除 LLM 设置）。
 
@@ -367,7 +396,7 @@ DevTools 中你会看到的 keys：
 
 ---
 
-## 9. 安全与隐私
+## 10. 安全与隐私
 
 这个 SPA **没有后端**。当成任何"自带 key 的 web 工具"对待。
 
@@ -385,7 +414,7 @@ DevTools 中你会看到的 keys：
 
 ---
 
-## 10. 键盘快捷键
+## 11. 键盘快捷键
 
 | 键 | 作用 |
 |---|---|
@@ -403,7 +432,7 @@ DevTools 中你会看到的 keys：
 
 ---
 
-## 11. 常见问题
+## 12. 常见问题
 
 **Q. 部署更新后我的进度会丢吗？**
 不会。`localStorage` 独立于站点静态资源。只要维护者遵循 append-only ID 规则（在 `CLAUDE.md` 里写明了），每道现有题保留 ID。

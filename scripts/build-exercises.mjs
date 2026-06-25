@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -220,9 +221,32 @@ try {
   if (pkg && typeof pkg.version === 'string') pkgVersionTag = pkg.version;
 } catch {}
 
+// Compute git fingerprint to tell "release build" (HEAD on a vX.Y.Z tag
+// matching pkg.version) from "dev build" (any other deploy). The SPA
+// chip uses this to flag dev builds with a +dev.N suffix. CI must use
+// `actions/checkout@v4` with `fetch-depth: 0` for the tag lookups to
+// resolve — without history, lastTag stays null and every build looks
+// like dev (which is a safe fallback, but defeats the purpose).
+function safeGit(args) {
+  try {
+    return execSync(`git ${args}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return '';
+  }
+}
+const lastTag = safeGit('describe --tags --abbrev=0') || null;
+const gitSha = safeGit('rev-parse --short HEAD') || '';
+const commitsAhead = lastTag
+  ? (parseInt(safeGit(`rev-list --count ${lastTag}..HEAD`), 10) || 0)
+  : 0;
+const channel = (commitsAhead === 0 && lastTag === `v${pkgVersionTag}`) ? 'release' : 'dev';
+
 const result = {
   generatedAt: new Date().toISOString(),
   version: pkgVersionTag,
+  channel,
+  commitsAhead,
+  gitSha,
   domains: DOMAINS.map(d => ({
     key: d.key,
     file: d.file,
@@ -259,7 +283,13 @@ fs.writeFileSync(OUTPUT, JSON.stringify(result, null, 2) + '\n');
 const VERSION_OUT = path.join(ROOT, 'docs', 'version.json');
 fs.writeFileSync(
   VERSION_OUT,
-  JSON.stringify({ generatedAt: result.generatedAt, version: result.version }) + '\n'
+  JSON.stringify({
+    generatedAt: result.generatedAt,
+    version: result.version,
+    channel: result.channel,
+    commitsAhead: result.commitsAhead,
+    gitSha: result.gitSha,
+  }) + '\n'
 );
 
 const totalExercises = result.domains.reduce(

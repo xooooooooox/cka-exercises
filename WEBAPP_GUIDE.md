@@ -27,7 +27,9 @@ The webapp is a basic PWA — you can install it as a real app icon on iPhone an
 - **iPhone (Safari):** open the URL → tap Share → **Add to Home Screen** → name → Add. Tap the new icon to launch into a full-screen window (no Safari chrome).
 - **Mac (Safari 17+ on macOS Sonoma+):** open the URL → menu **File → Add to Dock** → Add. The app appears in your Dock and Launchpad, opens in its own window.
 
-The installed app is **online-only** (it still fetches `index.html` + `exercises.json` on each launch) but otherwise behaves identically: progress, bookmarks, saved answers, LLM grading, and ☁ Gist sync all work the same. Each install is its own browser profile, so progress on Mac and iPhone is **separate** unless you Push / Pull via Gist.
+The installed app ships with a **service worker** (registered automatically on first visit outside `localhost`), so cold-start works offline once you've been online once: the SPA shell is precached, JSON content goes through stale-while-revalidate, and navigation requests fall back to the cached `index.html` when the network is dead. This closes the "iPhone home-screen icon → white screen" gap on flaky connections. Progress, bookmarks, saved answers, LLM grading, and ☁ Gist sync all work the same. Each install is its own browser profile, so progress on Mac and iPhone is **separate** unless you Push / Pull via Gist.
+
+**One-time install hint banner.** First-time mobile visitors who aren't already in PWA standalone mode get a small dismissable hint banner in the bottom-right corner (8 s after page load): "📱 Install: Safari Share → Add to Home Screen". Tap ✕ to dismiss permanently; the hint never reappears once you actually install the PWA (detected via `display-mode: standalone`).
 
 ---
 
@@ -46,7 +48,12 @@ The default mode. All ~271 exercises in a scrollable list.
 
 Random-draw practice under exam-like conditions.
 
-**Landing page first.** Opening the 🎯 Quiz tab no longer drops you into a config form — you land on a Quiz home that surfaces (a) any paused session you can ⏸ Resume, (b) any 💾 Snapshots you've saved, and (c) two action paths: **▶ Start a new quiz** (opens the full configure form) or a one-click quick-start (**🎲 10 random** / **🎯 17-question mock**).
+**Landing page first.** Opening the 🎯 Quiz tab no longer drops you into a config form — you land on a Quiz home that surfaces:
+
+- ⏸ **Resume** any paused session.
+- 💾 **Snapshots** you've previously saved.
+- A **per-domain progress strip** — five rows showing `done / total · pct` with a progress bar per domain. The 1-2 domains with the lowest done % (and pct < 100) get a `💡 weak` chip + subtle orange accent so you can see at a glance where you're behind.
+- Action paths: **▶ Start a new quiz** (opens the full configure form) or **three one-click quick-starts**: **🎲 10 random**, **🎯 17-question mock**, and **🩺 Drill weak spots** (auto-targets the same weak domains the strip highlights, restricted to not-yet-done exercises, 10 questions random). If you've finished every domain at 100 %, Drill weak spots alerts and aborts instead of starting an empty round.
 
 **Setup screen** — when you click **▶ Start a new quiz**, pick:
 
@@ -125,7 +132,8 @@ Bundle size is ~30 KB per version, lazy-loaded only when you first open the Node
 | ☁ Sync | Quick Gist Push / Pull popover (uses the same PAT + Gist ID configured in Settings; Test lives in Settings → Sync) |
 | 🐛 N | Issue queue popover — flagged exercises + draft reports (see §7). The badge `N` shows the queue length. |
 | 🤖 LLM | Quick provider switch — popover lists every provider you've configured (with API key) and shows the active one ✓-marked. One click flips the active provider without opening Settings. The "Using X (Y)" hint on every answer-box refreshes in place. |
-| 🔄 Refresh | Force-reload the latest deployment from the server — useful on iOS PWA standalone, where the app otherwise caches aggressively until you force-quit. A small "✨ New content available" banner also auto-appears at the bottom whenever a newer deploy is detected (compared against a tiny `version.json` fetched fresh on each launch). |
+| 🔄 Refresh | Force-reload the latest deployment from the server — useful on iOS PWA standalone, where the app otherwise caches aggressively until you force-quit. A small "✨ New version available `vX.Y.Z` → `vX.Y.Z'`" banner also auto-appears at the bottom whenever a newer deploy is detected (compared against a tiny `version.json` fetched fresh on each launch). The version delta makes it obvious whether you're crossing a release boundary (e.g. `v0.1.0 → v0.2.0`) or just picking up a dev push (e.g. `v0.1.0+dev.2 → v0.1.0+dev.5`). |
+| `vX.Y.Z` chip | Always-visible build identifier in the header right. Tagged release deploys show `vX.Y.Z` in the default colour. Dev builds (any deploy that doesn't sit exactly on a release tag) show `vX.Y.Z+dev.N` in subtle orange — N is the number of commits since the last release. Hover for full build time + git SHA. Click → jumps to Help → Changelog. |
 | 🌓 Theme toggle | Light / dark mode (persisted) |
 | ⌨️ Help | Keyboard shortcut cheatsheet |
 | ⚙️ Settings | LLM provider config, Backup, Gist sync (§4) |
@@ -319,11 +327,32 @@ The **🚀 Open GitHub issue** button pre-fills only the **title** and **labels*
 
 ### Auto-PR workflows (maintainer-side)
 
-Both reported `answer-fix` and `task-fix` issues can be triaged via dedicated GitHub Actions workflows — **Answer-fix → draft PR** (`.github/workflows/answer-fix-pr.yml`) for reference-solution mismatches, and **Task-fix → draft PR** (`.github/workflows/task-fix-pr.yml`) for task / docs problems. Each uses [aider](https://aider.chat) + a model of your choice (Anthropic / OpenAI / DeepSeek / Qwen / Doubao / Ollama / Copilot via GitHub Models) to edit a single H3 block of the offending exercise and open a draft PR that closes the issue. Before either can post PRs you need to flip **Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests"** once. The default provider is `copilot` (zero-secret, uses the workflow's `GITHUB_TOKEN` via the `models: read` permission); to use the others, add the corresponding `*_API_KEY` secret. A small `.github/workflows/seed-labels.yml` workflow pre-creates all 14 issue labels both pipelines expect.
+Both reported `answer-fix` and `task-fix` issues can be triaged via dedicated GitHub Actions workflows — **Answer-fix → draft PR** (`.github/workflows/answer-fix-pr.yml`) for reference-solution mismatches, and **Task-fix → draft PR** (`.github/workflows/task-fix-pr.yml`) for task / docs problems. Each uses [aider](https://aider.chat) + a model of your choice (Anthropic / OpenAI / DeepSeek / Qwen / Doubao / Ollama / Copilot via GitHub Models) to edit a single H3 block of the offending exercise and open a draft PR that closes the issue. Before either can post PRs you need to flip **Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests"** once. The default provider is `copilot` (zero-secret, uses the workflow's `GITHUB_TOKEN` via the `models: read` permission); to use the others, add the corresponding `*_API_KEY` secret. A small `.github/workflows/seed-labels.yml` workflow pre-creates all 15 issue labels both pipelines + the curriculum watcher expect.
 
 ---
 
-## 8. Persistence Model
+## 8. Release cadence + dev builds
+
+The webapp ships with an explicit version label. Two states matter:
+
+- **Release build** — chip shows `vX.Y.Z` in the default colour. These are the snapshots maintainers cut via the **Actions → Release → Run workflow** dispatch (the `release.yml` workflow). Each release bumps `package.json.version`, renames the changelog's `[Unreleased]` block to `[vX.Y.Z] - YYYY-MM-DD`, tags the commit, and files a GitHub Release with the freshly-named changelog block as the release notes.
+- **Dev build** — chip shows `vX.Y.Z+dev.N` in subtle orange (N = commits since the last release tag). Every push to `main` that touches SPA / exercise / doc files triggers a fresh deploy; if HEAD doesn't sit on a release tag, the deploy is labelled dev. Dev builds get all the same content updates immediately — the only difference is the labelling.
+
+How to tell which one you're on:
+- Look at the header chip colour.
+- Hover the chip → tooltip shows `Release v0.1.0 · built …` or `Dev build · 3 commits ahead of v0.1.0 · …`.
+- The ✨ Refresh banner shows the version delta when a newer build is available (`v0.1.0+dev.2 → v0.1.0+dev.5` or `v0.1.0+dev.5 → v0.2.0`).
+
+Bump inference (from CHANGELOG `[Unreleased]` section composition):
+- `### Removed` or any `BREAKING` marker → major (or minor while still in v0.x phase).
+- `### Added` or `### Changed` → minor.
+- only `### Fixed` → patch.
+
+Maintainers can override via `bump=major|minor|patch` in the workflow input; `bump=auto` (default) infers from the changelog.
+
+---
+
+## 9. Persistence Model
 
 All state is in your browser's `localStorage` under the `cka:` prefix. **Nothing is sent to any server unless you explicitly trigger Check / Test / Push / Pull.** Clearing site data wipes everything (Settings → Clear all does the same for LLM settings only).
 
@@ -367,7 +396,7 @@ Exercise IDs (e.g. `ca-1-005`) are sequence-based per section. Contributors foll
 
 ---
 
-## 9. Security & Privacy
+## 10. Security & Privacy
 
 This SPA has **no backend**. Treat it like any other BYO-key web tool.
 
@@ -385,7 +414,7 @@ This SPA has **no backend**. Treat it like any other BYO-key web tool.
 
 ---
 
-## 10. Keyboard Shortcuts
+## 11. Keyboard Shortcuts
 
 | Key | Action |
 |---|---|
@@ -403,7 +432,7 @@ Shortcuts are ignored while typing in input fields.
 
 ---
 
-## 11. FAQ
+## 12. FAQ
 
 **Q. Will my progress survive a deploy?**
 Yes. `localStorage` is independent of the site's static assets. As long as contributors follow the append-only ID rule (they do — it's documented in `CLAUDE.md`), every existing exercise keeps its ID.

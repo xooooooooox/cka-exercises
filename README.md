@@ -74,20 +74,25 @@ Requires **Node 20+** and Python 3 (for the static file server).
 npm run serve        # auto-builds docs/exercises.json then serves docs/ on :8080
 # open http://localhost:8080
 
-npm run build        # just regenerate docs/exercises.json
+npm run build        # just regenerate docs/exercises.json + docs/sw.gen.js
 npm run lint         # validate exercises/*.md format
 npm run link-check   # ping every kubernetes.io URL (slow — ~106 URLs)
+npm run release:dry  # preview the next semver bump from CHANGELOG [Unreleased] (no writes)
 ```
 
 `docs/exercises.json` is a build artifact regenerated from `exercises/*.md` on every `npm run build` / `npm run serve` and on each Pages deploy. It is gitignored, so it never appears in PRs.
 
+Releases follow [semver](https://semver.org/) (`vX.Y.Z`) and are cut from the Actions UI → **Release** → **Run workflow** (manual dispatch, defaults to auto-inferring the bump from the `[Unreleased]` block in [CHANGELOG.md](CHANGELOG.md)). The release pipeline rewrites the changelog to rename `[Unreleased]` → `[vX.Y.Z] - YYYY-MM-DD`, tags the commit, creates a [GitHub Release](https://github.com/xooooooooox/cka-exercises/releases), and a fresh deploy follows. See `## Release workflow` in [CLAUDE.md](CLAUDE.md) for the full rules.
+
 ## CI
 
-Six GitHub Actions workflows:
+Eight GitHub Actions workflows:
 
-- **`build-and-deploy-docs.yml`** — on push to `main`: lint, build `exercises.json`, deploy `docs/` to Pages.
+- **`build-and-deploy-docs.yml`** — on push to `main`: lint, build `exercises.json` + `sw.gen.js` + per-version Tools / Nodes bundles, deploy `docs/` to Pages.
 - **`lint.yml`** — on push to any non-main branch and on PRs: lint + verify the build still works.
 - **`link-check.yml`** — weekly Monday cron + manual: pings every kubernetes.io URL referenced by an exercise.
+- **`curriculum-watch.yml`** — weekly Monday cron + manual: detects when the upstream CNCF curriculum PDFs drift from baseline; files a labelled issue.
+- **`release.yml`** — manual dispatch: bumps `package.json.version`, rewrites `CHANGELOG.md` `[Unreleased]` → `[vX.Y.Z]`, tags, and files a GitHub Release.
 - **`answer-fix-pr.yml`** — manual dispatch: takes a `answer-fix`-labelled issue → runs aider against the offending exercise's H3 block → opens a draft PR that closes the issue.
 - **`task-fix-pr.yml`** — manual dispatch: same shape as `answer-fix-pr.yml` but for `task-fix`-labelled issues (missing docs links, unclear task wording, etc.).
 - **`seed-labels.yml`** — idempotent label bootstrap. Triggers on `workflow_dispatch` and on push to `main` paths-filtered to its own file — so it fires once on first deploy + automatically whenever a new label is added to the seed list, but NOT on routine pushes.

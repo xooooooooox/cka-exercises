@@ -2545,17 +2545,17 @@ async function checkForUpdate() {
     if (v.generatedAt !== State.data.generatedAt) {
       const banner = document.getElementById('update-banner');
       if (banner) banner.hidden = false;
-      // Fill in version delta (e.g. "v0.1.0 → v0.1.1") when the remote
-      // and the bundled SPA expose semver tags. Falls back silently to
-      // empty string when either side is the pre-release "0.0.0" placeholder.
+      // Version delta — show both sides as their full composed labels
+      // (e.g. "v0.1.0+dev.2 → v0.1.1") so users see when they're moving
+      // between dev builds or crossing a release boundary.
       const vSlot = document.getElementById('update-banner-versions');
       if (vSlot) {
-        const here = State.appBuild?.version || State.data.version || '';
-        const there = v.version || '';
-        if (here && there && here !== '0.0.0' && there !== '0.0.0') {
-          vSlot.innerHTML = `<strong>v${here}</strong> → <strong>v${there}</strong>`;
-        } else if (there && there !== '0.0.0') {
-          vSlot.innerHTML = `<strong>v${there}</strong>`;
+        const here = composeBuildLabel(State.appBuild || State.data);
+        const there = composeBuildLabel(v);
+        if (here && there && here !== there) {
+          vSlot.innerHTML = `<strong>${here}</strong> → <strong>${there}</strong>`;
+        } else if (there) {
+          vSlot.innerHTML = `<strong>${there}</strong>`;
         } else {
           vSlot.textContent = '';
         }
@@ -2566,19 +2566,46 @@ async function checkForUpdate() {
   }
 }
 
+// Compose the version label shown in the header chip and used by the
+// Refresh banner's "current → new" delta. Format:
+//   release build (HEAD on vX.Y.Z tag, channel === 'release')
+//     →  "vX.Y.Z"
+//   dev build (any other deploy)
+//     →  "vX.Y.Z+dev.N"   (N = commits since the last release tag)
+//   dev build, no tag yet (pre-first-release state)
+//     →  "vX.Y.Z+dev"     (no counter — no tag baseline to count from)
+function composeBuildLabel(meta) {
+  const version = (meta && meta.version) || '0.0.0';
+  const channel = (meta && meta.channel) || 'dev';
+  const ahead = (meta && meta.commitsAhead | 0) || 0;
+  if (channel === 'release') return `v${version}`;
+  if (ahead > 0) return `v${version}+dev.${ahead}`;
+  return `v${version}+dev`;
+}
+
 // Populate the always-visible header version chip from the bundled
-// version.json (loaded alongside exercises.json — `State.data.version`
-// holds it). Falls back to the pre-release "v0.0.0" placeholder when no
-// release has been cut yet. Clicking the chip opens a small details
-// popup with build time + a link into Help → Changelog.
+// version.json. State.data carries { version, channel, commitsAhead,
+// gitSha, generatedAt } — see scripts/build-exercises.mjs. Clicking the
+// chip jumps to Help → Changelog. Dev builds (commits ahead of the
+// last release tag) wear a slightly different colour to signal
+// "you're on an unreleased build" without being alarming.
 function renderAppBuild() {
   const btn = document.getElementById('app-build');
   if (!btn) return;
-  const version = State.data?.version || '0.0.0';
-  const generatedAt = State.data?.generatedAt;
-  State.appBuild = { version, generatedAt };
-  btn.textContent = `v${version}`;
-  btn.title = `Built ${generatedAt ? new Date(generatedAt).toLocaleString() : 'unknown'} · click for changelog`;
+  const meta = {
+    version: State.data?.version || '0.0.0',
+    channel: State.data?.channel || 'dev',
+    commitsAhead: State.data?.commitsAhead | 0,
+    gitSha: State.data?.gitSha || '',
+    generatedAt: State.data?.generatedAt,
+  };
+  State.appBuild = meta;
+  btn.textContent = composeBuildLabel(meta);
+  btn.classList.toggle('app-build-chip--dev', meta.channel !== 'release');
+  const built = meta.generatedAt ? new Date(meta.generatedAt).toLocaleString() : 'unknown';
+  btn.title = meta.channel === 'release'
+    ? `Release v${meta.version} · built ${built}${meta.gitSha ? ' · ' + meta.gitSha : ''} · click for changelog`
+    : `Dev build · ${meta.commitsAhead || '?'} commit(s) ahead of v${meta.version}${meta.gitSha ? ' · ' + meta.gitSha : ''} · built ${built} · click for changelog`;
   btn.hidden = false;
   btn.addEventListener('click', () => {
     // Use the existing Help-mode → Changelog tab as the canonical

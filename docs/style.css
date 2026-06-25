@@ -153,6 +153,19 @@ pre .copy-btn.copied { color: var(--success); }
 }
 .app-build-chip:hover { color: var(--fg); border-color: var(--accent); }
 .app-build-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Dev build (HEAD not on a release tag) — subtle orange so users can
+   spot at a glance whether they're on a tagged release or a build
+   between releases. Not alarming, just different. */
+.app-build-chip--dev {
+  border-color: rgba(217, 119, 0, 0.45);
+  color: rgba(217, 119, 0, 0.95);
+}
+.app-build-chip--dev:hover { color: rgba(217, 119, 0, 1); border-color: rgba(217, 119, 0, 0.8); }
+[data-theme="dark"] .app-build-chip--dev {
+  border-color: rgba(255, 184, 77, 0.5);
+  color: rgba(255, 184, 77, 0.95);
+}
+[data-theme="dark"] .app-build-chip--dev:hover { color: #ffb84d; border-color: rgba(255, 184, 77, 0.9); }
 @media (max-width: 480px) {
   .app-build-chip { font-size: 10px; padding: 1px 6px; }
 }

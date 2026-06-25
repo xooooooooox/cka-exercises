@@ -27,14 +27,35 @@ Currently 271 exercises across 5 domains. The repo has a small Node-based build 
 │   └── troubleshooting.md              # 30% —  48 exercises
 ├── docs/                               # GitHub Pages source (the SPA)
 │   ├── index.html
-│   ├── app.js                          # ~1400 LOC, no framework
+│   ├── app.js                          # ~1500 LOC, no framework
+│   ├── sync.js                         # Gist sync engine (PAT + merge-state machinery)
 │   ├── llm.js                          # LLM-as-judge grading (Anthropic / OpenAI / DeepSeek / Ollama)
-│   ├── style.css                       # light/dark theme + print, ~1000 LOC
-│   └── exercises.json                  # gitignored — generated artifact
+│   ├── sw.js                           # service worker source (templated; sw.gen.js is the built artifact)
+│   ├── style.css                       # light/dark theme + print, ~1100 LOC
+│   ├── manifest.webmanifest            # PWA manifest (installable app icon)
+│   ├── icons/                          # PWA icons (180/192/512 PNG + maskable + SVG)
+│   ├── exercises.json                  # gitignored — generated artifact
+│   ├── version.json                    # gitignored — { generatedAt, version, channel, commitsAhead, gitSha }
+│   ├── tools-versions.json             # gitignored — Tools manifest (default + per-minor entries)
+│   ├── tools-*.json                    # gitignored — per-version Tools bundle
+│   ├── nodes-*.json                    # gitignored — per-version Nodes snapshot
+│   └── sw.gen.js                       # gitignored — service worker with build version baked in
+├── tools/
+│   └── nodes/snapshot/                 # source files + versions.json for Nodes mode build
 ├── scripts/
-│   ├── build-exercises.mjs             # MD → JSON build (used by CI)
+│   ├── build-exercises.mjs             # MD → exercises.json + version.json (used by CI)
+│   ├── build-sw.mjs                    # stamps version into docs/sw.js → docs/sw.gen.js
+│   ├── build-tools-bundle.mjs          # orchestrator: per-minor Tools + Nodes bundles
+│   ├── build-kubectl-tools.mjs         # low-level: OpenAPI walk + Tools JSON per minor
+│   ├── build-kubectl-help.mjs          # low-level: kubectl -h text extraction per minor
+│   ├── build-nodes-snapshot.mjs        # Nodes mode: filesystem snapshot per minor
 │   ├── lint-exercises.mjs              # exercise-format linter (used by CI)
 │   ├── check-links.mjs                 # kubernetes.io URL ping (used by weekly CI)
+│   ├── check-curriculum.mjs            # CNCF curriculum PDF drift watcher (used by weekly CI)
+│   ├── release.mjs                     # semver bump + CHANGELOG rewrite + tag + GH Release
+│   ├── verify-quiz-order.mjs           # ad-hoc verification (quiz ordering invariants)
+│   ├── verify-llm-settings.mjs         # ad-hoc verification (LLM settings schema)
+│   ├── verify-grader-parse.mjs         # ad-hoc verification (grader parse)
 │   ├── apply-enriched-tasks.mjs        # one-shot: killer.sh task-body enrichment
 │   ├── apply-killersh-polish.mjs       # one-shot: docs hints + title rewrites
 │   ├── apply-killercoda-import.mjs     # one-shot: import KillerCoda PDFs → exercises/*.md
@@ -46,15 +67,17 @@ Currently 271 exercises across 5 domains. The repo has a small Node-based build 
     ├── answer-fix/prompt.md            # aider prompt for solution-fix issues
     ├── task-fix/prompt.md              # aider prompt for task / docs-fix issues
     └── workflows/
-        ├── build-and-deploy-docs.yml   # CI: lint + build + deploy to Pages
+        ├── build-and-deploy-docs.yml   # CI: lint + build + deploy to Pages (push to main)
         ├── lint.yml                    # PR-check: lint exercises markdown
         ├── link-check.yml              # weekly: ping every kubernetes.io URL
+        ├── curriculum-watch.yml        # weekly: CNCF curriculum PDF drift watcher
+        ├── release.yml                 # manual dispatch: bump version + tag + GH Release
         ├── answer-fix-pr.yml           # manual: answer-fix issue → draft PR (aider)
         ├── task-fix-pr.yml             # manual: task-fix issue → draft PR (aider)
         └── seed-labels.yml             # idempotent label bootstrap (auto on file edit + manual)
 ```
 
-`build-exercises.mjs`, `lint-exercises.mjs`, and `check-links.mjs` run in CI on every push. The two `apply-*.mjs` scripts are idempotent one-shots kept for provenance. `answer-fix-pr.yml` and `task-fix-pr.yml` are manual-dispatch — a maintainer triggers each from the Actions tab against a specific labelled issue. `seed-labels.yml` runs once on first deploy and again whenever its own file is edited; it pre-creates the 14 issue labels both fix workflows expect so the SPA's pre-filled `?labels=…` resolves at issue-creation time.
+`build-exercises.mjs`, `build-sw.mjs`, `lint-exercises.mjs`, and `check-links.mjs` run in CI on every push. The three `apply-*.mjs` scripts are idempotent one-shots kept for provenance. `answer-fix-pr.yml` and `task-fix-pr.yml` are manual-dispatch — a maintainer triggers each from the Actions tab against a specific labelled issue. `release.yml` is also manual-dispatch (Actions UI → Release → Run workflow); it owns `package.json.version` + `CHANGELOG.md` → `[vX.Y.Z]` rename + git tag + GH Release. `curriculum-watch.yml` runs weekly (cron) and opens a labelled issue when the upstream CNCF curriculum PDFs drift. `seed-labels.yml` runs once on first deploy and again whenever its own file is edited; it pre-creates the 15 issue labels both fix workflows + the curriculum watcher expect so the SPA's pre-filled `?labels=…` and the auto-opened curriculum issue both resolve at creation time.
 
 The split between `README.md` (engineering) and `EXAM_GUIDE.md` (study index) is intentional: anyone hitting the repo from a code/contribute angle reads README; anyone landing here to study for the CKA exam reads EXAM_GUIDE. Don't move exam-prep content (dotfiles, sync script, practice-lab links, curriculum table) back into README.
 
@@ -222,6 +245,27 @@ When the user asks for a code / doc / exercise change WITHOUT mentioning the cha
 
 Exception: pure cosmetic noise (typo in this file's own commit message, fixing a CHANGELOG entry typo within its own commit) doesn't need a changelog entry.
 
+## Documentation sync discipline
+
+Every change to the codebase MUST also update any documentation that describes the changed behaviour, file structure, or user-facing flow — **in the same commit**. CHANGELOG.md is a per-change log; this rule is about keeping the *reference* docs from going stale.
+
+Triggers (any of these → corresponding doc gets touched in the same commit):
+
+- **Code file added / deleted / renamed** → CLAUDE.md `## Repository Layout` tree.
+- **New CI workflow, or workflow scope change** → CLAUDE.md `## Repository Layout` workflows tree AND `## CI / Deployment` section.
+- **SPA user-visible feature** (new button, mode, tab, setting, shortcut, banner, popover) → WEBAPP_GUIDE.md + WEBAPP_GUIDE_CN.md.
+- **New localStorage key** → CLAUDE.md localStorage table.
+- **Build pipeline change** (new build script, package.json scripts, output artifact format) → CLAUDE.md `## Build Pipeline`.
+- **Release / version mechanism change** → CLAUDE.md `## Release workflow`.
+- **README / WEBAPP_GUIDE / EXAM_GUIDE structural change** (new section, removed section) → CLAUDE.md `## Repository Layout`.
+
+Exception (no doc sync needed):
+
+- Pure refactors / typo fixes / comment edits that change zero observable behaviour and zero files in the layout.
+- Test additions whose scope is entirely internal.
+
+When the user asks for a code / exercise change WITHOUT mentioning docs, add the sync yourself — same commit as the code. Don't wait to be reminded; missing the sync makes the next contributor work from stale knowledge.
+
 ## Release workflow
 
 The SPA carries an App-Store-style `vX.Y.Z` version label, surfaced in the header chip + the Refresh banner's version delta. The version lives in `package.json.version`; build time (`scripts/build-exercises.mjs`) stamps it into `docs/exercises.json` + `docs/version.json` + the service-worker cache key (`scripts/build-sw.mjs`).
@@ -247,6 +291,20 @@ The SPA carries an App-Store-style `vX.Y.Z` version label, surfaced in the heade
 **Local dry-run**: `npm run release:dry` (or `node scripts/release.mjs --bump=auto --dry-run`) prints the inferred version + release notes preview without touching files. Useful for sanity-checking the bump kind before clicking the Run workflow button.
 
 **Don't manually edit `package.json.version`** — `scripts/release.mjs` owns that field. If you need a version override (e.g. force a major bump for a single fix that's actually a UX regression), pass `--bump=major` instead.
+
+### Release vs Deploy — they're not the same
+
+- **Deploy** = `build-and-deploy-docs.yml` builds `docs/` and ships it to Pages. Triggered by **every** push to `main` that matches the workflow's `paths` filter (exercise / SPA / doc edits).
+- **Release** = `release.yml` (manual dispatch) bumps version + tags + writes a GH Release. Releases also produce a deploy (because the workflow's commit + push lands on main), but only releases are user-facing "vX.Y.Z" snapshots.
+
+To make the difference visible to users, the SPA's header version chip distinguishes the two:
+
+- **Release build** — chip shows `vX.Y.Z` in the default colour. Detected when HEAD is exactly on a `vX.Y.Z` tag AND `package.json.version` matches.
+- **Dev build** — chip shows `vX.Y.Z+dev.N` (N = commits since the last release tag) in a subtle orange. Any deploy whose HEAD doesn't sit on a matching release tag.
+
+Both states are written into `docs/version.json` (`channel: "release" | "dev"`, `commitsAhead`, `gitSha`) by `scripts/build-exercises.mjs` via `git describe --tags --abbrev=0` + `git rev-list --count`. **CI MUST checkout with `fetch-depth: 0`** for those git commands to resolve — `build-and-deploy-docs.yml` and `release.yml` both set this.
+
+Practical implication for maintainers: as long as you keep merging changelog-eligible commits into main, deploys go out continuously labelled `vX.Y.Z+dev.N`. When you decide a batch is shippable (semantic milestone, end of a sprint, "I want users on a clean v0.2.0"), run the Release workflow. The next deploy then drops the `+dev.N` suffix and presents the clean release version.
 
 ## Common Tasks
 
