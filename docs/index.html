@@ -72,6 +72,7 @@
     </nav>
     <div class="header-right">
       <span id="quiz-timer" hidden></span>
+      <button id="app-build" class="app-build-chip" type="button" hidden aria-label="Webapp version — click for build info"></button>
       <div class="sync-menu-wrap">
         <button id="sync-toggle" class="icon-btn" type="button" title="Sync to Gist" aria-label="Sync to Gist" aria-haspopup="true" aria-expanded="false">☁<span class="sync-dot" hidden></span></button>
         <div id="sync-menu" class="sync-menu" hidden role="menu" aria-label="Gist sync">
@@ -433,7 +434,7 @@
        generatedAt differs from the bundled exercises.json's generatedAt.
        Mainly for iOS PWA standalone where forced quit is otherwise needed. -->
   <div id="update-banner" class="update-banner" hidden role="status" aria-live="polite">
-    <span>✨ New content available.</span>
+    <span><span class="muted">✨ New version available</span> <span id="update-banner-versions"></span></span>
     <button id="update-refresh" type="button">Refresh</button>
     <button id="update-dismiss" type="button" class="muted" title="Dismiss until next launch" aria-label="Dismiss">✕</button>
   </div>

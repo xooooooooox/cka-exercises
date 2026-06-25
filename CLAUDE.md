@@ -222,6 +222,32 @@ When the user asks for a code / doc / exercise change WITHOUT mentioning the cha
 
 Exception: pure cosmetic noise (typo in this file's own commit message, fixing a CHANGELOG entry typo within its own commit) doesn't need a changelog entry.
 
+## Release workflow
+
+The SPA carries an App-Store-style `vX.Y.Z` version label, surfaced in the header chip + the Refresh banner's version delta. The version lives in `package.json.version`; build time (`scripts/build-exercises.mjs`) stamps it into `docs/exercises.json` + `docs/version.json` + the service-worker cache key (`scripts/build-sw.mjs`).
+
+**Cutting a release** (single maintainer, no CI gate beyond a manual trigger):
+
+1. Merge whatever commits the new release should include. Each commit must add a single line under `## [Unreleased]` per the changelog discipline above.
+2. Go to the **Actions** tab → **Release** → **Run workflow**. Pick `bump=auto` (recommended) or override with `major` / `minor` / `patch`. `dry_run=true` previews the result without writing files / pushing.
+3. The workflow runs `node scripts/release.mjs --bump=…` which:
+   - Reads `package.json.version` to know the current version.
+   - Parses `CHANGELOG.md`'s `[Unreleased]` block.
+   - **Infers the bump kind** from the section composition:
+     - v0.x.y phase (current): `### Removed` or any `BREAKING` marker → minor; `### Added` / `### Changed` → minor; only `### Fixed` → patch.
+     - v1.x.y+ phase: `### Removed` / BREAKING → major; `### Added` / `### Changed` → minor; only `### Fixed` → patch.
+   - Rewrites `CHANGELOG.md`: renames `## [Unreleased]` → `## [vX.Y.Z] - YYYY-MM-DD`, prepends a fresh empty `## [Unreleased]`, appends a compare-link reference at the bottom.
+   - Writes the new version into `package.json`.
+   - `git commit -m "release: vX.Y.Z"`, annotated `git tag vX.Y.Z` with the release notes as the tag body.
+   - Pushes commit + tag to `origin/main`.
+   - `gh release create vX.Y.Z --notes-file <release-notes>` files a GitHub Release.
+4. The push triggers `build-and-deploy-docs.yml`. The new `vX.Y.Z` lands in `version.json` + the SW cache key.
+5. The next visit to the SPA shows the new version chip; clients with a SW already installed get a one-shot reload via `controllerchange`.
+
+**Local dry-run**: `npm run release:dry` (or `node scripts/release.mjs --bump=auto --dry-run`) prints the inferred version + release notes preview without touching files. Useful for sanity-checking the bump kind before clicking the Run workflow button.
+
+**Don't manually edit `package.json.version`** — `scripts/release.mjs` owns that field. If you need a version override (e.g. force a major bump for a single fix that's actually a UX regression), pass `--bump=major` instead.
+
 ## Common Tasks
 
 ### Adding a new exercise

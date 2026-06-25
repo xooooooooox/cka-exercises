@@ -1,12 +1,14 @@
 {
   "name": "cka-exercises-docs",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "description": "Static practice web app build tooling for cka-exercises",
   "scripts": {
     "build": "node scripts/build-exercises.mjs && node scripts/build-sw.mjs",
     "build:sw": "node scripts/build-sw.mjs",
+    "release": "node scripts/release.mjs",
+    "release:dry": "node scripts/release.mjs --dry-run",
     "build:icons": "node scripts/build-icons.mjs",
     "build:kubectl-help": "node scripts/build-kubectl-help.mjs",
     "build:tools": "node scripts/build-kubectl-tools.mjs",

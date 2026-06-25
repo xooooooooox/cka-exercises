@@ -28,10 +28,15 @@ if (!fs.existsSync(SRC)) {
 let buildTag = 'dev';
 try {
   const v = JSON.parse(fs.readFileSync(VERSION_FILE, 'utf8'));
-  if (v && typeof v.generatedAt === 'string') {
-    // Strip everything except digits — version.json.generatedAt is an ISO
-    // string like "2026-06-25T03:30:12.447Z" → "202606250330124470000". The
-    // SW cache key includes this verbatim; anything alphanumeric works.
+  // Prefer the released semver (v0.1.0 → cka-shell-v0_1_0). When no
+  // release has been cut yet (v.version === '0.0.0' or absent), fall
+  // back to the build timestamp digits so cache keys still bump per
+  // deploy — but they'll start being semver-stable as soon as the
+  // first release lands.
+  const semver = (v && typeof v.version === 'string') ? v.version : '';
+  if (semver && semver !== '0.0.0') {
+    buildTag = semver.replace(/\./g, '_');
+  } else if (v && typeof v.generatedAt === 'string') {
     buildTag = v.generatedAt.replace(/[^0-9]/g, '');
   }
 } catch (err) {

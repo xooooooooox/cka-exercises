@@ -31,6 +31,7 @@ const State = {
   nodesByMinor: new Map(),
   nodesCurrentMinor: null,
   nodesRole: 'controlplane',
+  appBuild: null,                // { version, generatedAt } once renderAppBuild() runs
 };
 
 // ---------- Storage ----------
@@ -704,7 +705,7 @@ function renderSidebar(visibleExercises) {
     const totalEx = dom.sections.reduce((s, sec) => s + sec.exercises.length, 0);
     const doneEx = dom.sections.reduce(
       (s, sec) => s + sec.exercises.filter(e => isDone(e.id)).length, 0);
-    const domEl = el('details', { class: 'tree-domain', open: true });
+    const domEl = el('details', { class: 'tree-domain', open: true, 'data-domain': dom.key });
     domEl.appendChild(el('summary', {},
       el('span', { class: 'label' }, dom.title.replace(/ \(.+?\)/, '')),
       el('small', { class: 'muted' }, `${doneEx}/${totalEx}`),
@@ -2544,10 +2545,47 @@ async function checkForUpdate() {
     if (v.generatedAt !== State.data.generatedAt) {
       const banner = document.getElementById('update-banner');
       if (banner) banner.hidden = false;
+      // Fill in version delta (e.g. "v0.1.0 → v0.1.1") when the remote
+      // and the bundled SPA expose semver tags. Falls back silently to
+      // empty string when either side is the pre-release "0.0.0" placeholder.
+      const vSlot = document.getElementById('update-banner-versions');
+      if (vSlot) {
+        const here = State.appBuild?.version || State.data.version || '';
+        const there = v.version || '';
+        if (here && there && here !== '0.0.0' && there !== '0.0.0') {
+          vSlot.innerHTML = `<strong>v${here}</strong> → <strong>v${there}</strong>`;
+        } else if (there && there !== '0.0.0') {
+          vSlot.innerHTML = `<strong>v${there}</strong>`;
+        } else {
+          vSlot.textContent = '';
+        }
+      }
     }
   } catch {
     // Offline / CORS / fetch blocked — silently ignore.
   }
+}
+
+// Populate the always-visible header version chip from the bundled
+// version.json (loaded alongside exercises.json — `State.data.version`
+// holds it). Falls back to the pre-release "v0.0.0" placeholder when no
+// release has been cut yet. Clicking the chip opens a small details
+// popup with build time + a link into Help → Changelog.
+function renderAppBuild() {
+  const btn = document.getElementById('app-build');
+  if (!btn) return;
+  const version = State.data?.version || '0.0.0';
+  const generatedAt = State.data?.generatedAt;
+  State.appBuild = { version, generatedAt };
+  btn.textContent = `v${version}`;
+  btn.title = `Built ${generatedAt ? new Date(generatedAt).toLocaleString() : 'unknown'} · click for changelog`;
+  btn.hidden = false;
+  btn.addEventListener('click', () => {
+    // Use the existing Help-mode → Changelog tab as the canonical
+    // version-history surface — no new dialog needed.
+    setHelpDoc('changelog');
+    setMode('help');
+  });
 }
 
 // ---------- Auto-grading UI (textarea + Check + verdict) ----------
@@ -4334,6 +4372,50 @@ function renderExerciseCard(ex, opts = {}) {
 let _browseDom = null;     // { main, cards: Map<id,el>, sectionHeaders: Map<key,el>, domainHeaders: Map<key,el> }
 let _browseLastReveal = null;
 let _browseBuiltCount = 0; // tracks State.allExercises.length used at build time, to invalidate on 🔄 refresh adding/removing exercises
+let _sidebarFiltersSignature = null;  // null → first render forces a full sidebar build
+
+// Signature over the inputs that change the SET of sidebar entries (or
+// their order). Excludes done / bookmark state — those are reflected via
+// class toggles in syncSidebarStateClasses() without a full rebuild.
+function sidebarFiltersSignature() {
+  const f = State.filters;
+  return JSON.stringify([
+    [...f.domains].sort(),
+    [...f.tags].sort(),
+    f.search || '',
+    !!f.onlyBookmarks,
+    !!f.onlyUndone,
+    !!f.revealSolutions,
+  ]);
+}
+
+// Cheap pass over the existing sidebar tree to refresh done / bookmark
+// class on each entry button and recompute the per-domain done-count
+// shown in the <details><summary> header. Runs in O(visible) — a few
+// hundred class-list mutations max.
+function syncSidebarStateClasses() {
+  const tree = document.getElementById('sidebar-tree');
+  if (!tree) return;
+  const buttons = tree.querySelectorAll('.tree-exercise[data-id]');
+  for (const btn of buttons) {
+    const id = btn.dataset.id;
+    btn.classList.toggle('done', isDone(id));
+    btn.classList.toggle('bookmarked', isBookmark(id));
+  }
+  // Each tree-domain summary shows ${done}/${total} for the FULL domain
+  // (not just currently-visible entries — matches renderSidebar's choice).
+  // tree-domain elements carry data-domain to make the lookup direct.
+  for (const dom of State.data.domains) {
+    const domEl = tree.querySelector(`.tree-domain[data-domain="${dom.key}"]`);
+    if (!domEl) continue;
+    const summary = domEl.querySelector(':scope > summary > small.muted');
+    if (!summary) continue;
+    const total = dom.sections.reduce((s, sec) => s + sec.exercises.length, 0);
+    const done = dom.sections.reduce(
+      (s, sec) => s + sec.exercises.filter(e => isDone(e.id)).length, 0);
+    summary.textContent = `${done}/${total}`;
+  }
+}
 
 function buildBrowseDom() {
   if (_browseDom) return _browseDom;
@@ -4437,9 +4519,20 @@ function renderBrowse() {
   document.getElementById('filter-stats').textContent =
     `${visibleCount} / ${State.allExercises.length} exercises`;
 
-  // Sidebar tree still rebuilds (cheap — each node is a <button>; ~271 max).
-  // Optimising sidebar incrementally is a separate, lower-value task.
-  renderSidebar(applyFilters());
+  // Sidebar — only re-mount the full tree when the structural filters
+  // (domain checkboxes, tag checkboxes, search string, only-bookmarks,
+  // only-undone, reveal-solutions) actually changed. On a mode switch
+  // back from Quiz / Docs / Help / Tools / Nodes the signature is
+  // unchanged → run the cheap class-sync path instead. Avoids the
+  // 50-150 ms desktop-Chrome reflow that came with rebuilding 271
+  // <button>s inside the 280 px sidebar column on every render.
+  const sig = sidebarFiltersSignature();
+  if (sig !== _sidebarFiltersSignature) {
+    renderSidebar(applyFilters());
+    _sidebarFiltersSignature = sig;
+  } else {
+    syncSidebarStateClasses();
+  }
   renderSidebarProgress();
 
   // Empty-state element is a sibling of the cards — toggle visibility, don't
@@ -4855,30 +4948,56 @@ function pickQuizExercises(eligible, count, order) {
   return sample;
 }
 
+// Form entry point — used by the #quiz-start-btn click handler. Reads
+// all the quiz configuration radios/checkboxes and hands the resulting
+// config object to startQuizFromConfig.
 function startQuiz() {
-  const eligible = getEligibleForQuiz();
-  if (eligible.length === 0) return;
+  const filters = gatherQuizFilters();
   // Count
   const countRadio = document.querySelector('[name="quiz-count"]:checked').value;
   let count;
-  if (countRadio === 'all') count = eligible.length;
+  if (countRadio === 'all') count = Number.MAX_SAFE_INTEGER;  // clamped inside startQuizFromConfig
   else if (countRadio === 'custom') count = parseInt(document.getElementById('quiz-count-custom').value, 10);
   else count = parseInt(countRadio, 10);
-  count = Math.min(Math.max(1, count || 10), eligible.length);
-  // Order
   const order = document.querySelector('[name="quiz-order"]:checked')?.value || 'random';
+  const tmin = parseInt(document.querySelector('[name="quiz-time"]:checked').value, 10);
+  const solutions = document.querySelector('[name="quiz-solutions"]:checked').value === 'hidden' ? 'hidden' : 'visible';
+  startQuizFromConfig({ ...filters, count, order, time: tmin, solutions });
+}
+
+// Config-driven start path. Used by the form handler above AND by the
+// quick-start presets (10 random / 17-mock / drill weak). Quick-starts
+// no longer round-trip through hidden form inputs, which had a habit of
+// confusing button.click() dispatch on desktop Chrome.
+//
+// cfg: { domains:Set<string>, tags:Set<string>, onlyBookmarks:bool,
+//        onlyUndone:bool, count:number, order:'random'|'sequential',
+//        time:number (minutes; 0 = no limit),
+//        solutions:'hidden'|'visible' }
+function startQuizFromConfig(cfg) {
+  const eligible = State.allExercises.filter(ex => {
+    if (!cfg.domains.has(ex.domain.key)) return false;
+    if (!cfg.tags.has(ex.tag)) return false;
+    if (cfg.onlyBookmarks && !isBookmark(ex.id)) return false;
+    if (cfg.onlyUndone && isDone(ex.id)) return false;
+    return true;
+  });
+  if (eligible.length === 0) {
+    alert("No eligible exercises matched these filters.");
+    return;
+  }
+  const count = Math.min(Math.max(1, cfg.count || 10), eligible.length);
+  const order = cfg.order || 'random';
   storageSet(KEY.quizOrder, order);
   const picked = pickQuizExercises(eligible, count, order);
-  // Time limit
-  const tmin = parseInt(document.querySelector('[name="quiz-time"]:checked').value, 10);
+  const tmin = cfg.time | 0;
   const deadline = tmin > 0 ? Date.now() + tmin * 60 * 1000 : null;
-  // Solutions
-  const solutionsHidden = document.querySelector('[name="quiz-solutions"]:checked').value === 'hidden';
+  const solutionsHidden = cfg.solutions === 'hidden';
 
   State.quiz = {
     ids: picked.map(e => e.id),
     idx: 0,
-    status: new Map(), // id -> 'got' | 'missed' | 'skipped'
+    status: new Map(),
     flagged: new Set(),
     revealed: new Set(),
     deadline,
@@ -4888,6 +5007,7 @@ function startQuiz() {
     order,
   };
 
+  document.getElementById('quiz-home').hidden = true;
   document.getElementById('quiz-setup').hidden = true;
   document.getElementById('quiz-active').hidden = false;
   document.getElementById('quiz-summary').hidden = true;
@@ -6766,6 +6886,11 @@ async function init() {
     return;
   }
 
+  // Header version chip — populated from State.data.version (baked in by
+  // scripts/build-exercises.mjs from package.json). Always-visible
+  // "vX.Y.Z" pill in the header right, click jumps to Help → Changelog.
+  renderAppBuild();
+
   // Theme
   const savedTheme = storageGet(KEY.theme, null) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   applyTheme(savedTheme);
@@ -6902,34 +7027,30 @@ async function init() {
     showQuizHome();
   });
 
-  // Quick-start presets — prefill form fields then click the existing Start
-  // button so the existing startQuiz path (filter parsing, state hydration,
-  // timer setup) runs unchanged.
+  // Quick-start presets — build the quiz config in memory and hand it to
+  // startQuizFromConfig directly. We no longer round-trip through hidden
+  // form inputs: that had a habit of dropping clicks on desktop Chrome
+  // (drill weak in particular) and added a hidden race window between
+  // setting cb.checked = ... and quiz-start-btn.click() reading it back.
+  const ALL_TAGS = ['general', 'cka-past-exam', 'killersh-a', 'killersh-b', 'killercoda'];
   function quickStartWithCount(count) {
-    // Ensure all sources are selected (domain + tag checkboxes) so we draw
-    // from the full corpus; clear bookmark / undone filters.
-    document.querySelectorAll('[name="quiz-domain"]').forEach(cb => { cb.checked = true; });
-    document.querySelectorAll('[name="quiz-tag"]').forEach(cb => { cb.checked = true; });
-    const onlyBm = document.getElementById('quiz-only-bookmarks');
-    const onlyUd = document.getElementById('quiz-only-undone');
-    if (onlyBm) onlyBm.checked = false;
-    if (onlyUd) onlyUd.checked = false;
-    const countInput = document.querySelector(`[name="quiz-count"][value="${count}"]`);
-    if (countInput) countInput.checked = true;
-    const timeInput = document.querySelector('[name="quiz-time"][value="0"]');
-    if (timeInput) timeInput.checked = true;
-    const orderInput = document.querySelector('[name="quiz-order"][value="random"]');
-    if (orderInput) orderInput.checked = true;
-    const solInput = document.querySelector('[name="quiz-solutions"][value="hidden"]');
-    if (solInput) solInput.checked = true;
-    updateQuizEligibleCount();
-    document.getElementById('quiz-start-btn')?.click();
+    if (!State.data) return;
+    startQuizFromConfig({
+      domains: new Set(State.data.domains.map(d => d.key)),
+      tags: new Set(ALL_TAGS),
+      onlyBookmarks: false,
+      onlyUndone: false,
+      count,
+      order: 'random',
+      time: 0,
+      solutions: 'hidden',
+    });
   }
   document.getElementById('quiz-home-quick-10')?.addEventListener('click', () => quickStartWithCount(10));
   document.getElementById('quiz-home-quick-mock')?.addEventListener('click', () => quickStartWithCount(17));
 
-  // Drill weak spots — narrow domain checkboxes to the 1-2 lowest done %
-  // domains, force only-undone, then fire the standard 10-question start.
+  // Drill weak spots — narrow the corpus to the 1-2 domains with the
+  // lowest done %, restrict to not-yet-done, draw 10 random.
   function quickStartWeakSpots() {
     if (!State.data) return;
     const rows = State.data.domains.map(dom => {
@@ -6942,29 +7063,16 @@ async function init() {
       alert("All domains are 100% done 🎉 — try '🎲 10 random' or '🎯 17-question mock' for review practice.");
       return;
     }
-    const weakKeys = new Set(weak.map(w => w.key));
-    document.querySelectorAll('[name="quiz-domain"]').forEach(cb => { cb.checked = weakKeys.has(cb.value); });
-    document.querySelectorAll('[name="quiz-tag"]').forEach(cb => { cb.checked = true; });
-    const onlyBm = document.getElementById('quiz-only-bookmarks');
-    const onlyUd = document.getElementById('quiz-only-undone');
-    if (onlyBm) onlyBm.checked = false;
-    if (onlyUd) onlyUd.checked = true;
-    const countInput = document.querySelector('[name="quiz-count"][value="10"]');
-    if (countInput) countInput.checked = true;
-    const timeInput = document.querySelector('[name="quiz-time"][value="0"]');
-    if (timeInput) timeInput.checked = true;
-    const orderInput = document.querySelector('[name="quiz-order"][value="random"]');
-    if (orderInput) orderInput.checked = true;
-    const solInput = document.querySelector('[name="quiz-solutions"][value="hidden"]');
-    if (solInput) solInput.checked = true;
-    updateQuizEligibleCount();
-    const eligible = document.getElementById('quiz-eligible-count');
-    const count = eligible ? parseInt(eligible.textContent, 10) : NaN;
-    if (count === 0) {
-      alert("Weak domains have no undone exercises left — try '🎲 10 random' instead.");
-      return;
-    }
-    document.getElementById('quiz-start-btn')?.click();
+    startQuizFromConfig({
+      domains: new Set(weak.map(w => w.key)),
+      tags: new Set(ALL_TAGS),
+      onlyBookmarks: false,
+      onlyUndone: true,
+      count: 10,
+      order: 'random',
+      time: 0,
+      solutions: 'hidden',
+    });
   }
   document.getElementById('quiz-home-quick-weak')?.addEventListener('click', quickStartWeakSpots);
 

@@ -212,8 +212,17 @@ const examGuide   = fs.existsSync(examPath)      ? fs.readFileSync(examPath,    
 const examGuideCN = fs.existsSync(examCnPath)    ? fs.readFileSync(examCnPath,    'utf8') : '';
 const changelog   = fs.existsSync(changelogPath) ? fs.readFileSync(changelogPath, 'utf8') : '';
 
+// Read package.json once so both exercises.json and version.json stamp
+// the same semver tag.
+let pkgVersionTag = '0.0.0';
+try {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  if (pkg && typeof pkg.version === 'string') pkgVersionTag = pkg.version;
+} catch {}
+
 const result = {
   generatedAt: new Date().toISOString(),
+  version: pkgVersionTag,
   domains: DOMAINS.map(d => ({
     key: d.key,
     file: d.file,
@@ -248,7 +257,10 @@ fs.writeFileSync(OUTPUT, JSON.stringify(result, null, 2) + '\n');
 // reload — important on iOS PWA standalone where forced quit is otherwise
 // the only way to refresh).
 const VERSION_OUT = path.join(ROOT, 'docs', 'version.json');
-fs.writeFileSync(VERSION_OUT, JSON.stringify({ generatedAt: result.generatedAt }) + '\n');
+fs.writeFileSync(
+  VERSION_OUT,
+  JSON.stringify({ generatedAt: result.generatedAt, version: result.version }) + '\n'
+);
 
 const totalExercises = result.domains.reduce(
   (s, d) => s + d.sections.reduce((ss, sec) => ss + sec.exercises.length, 0), 0,

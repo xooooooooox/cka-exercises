@@ -134,6 +134,28 @@ pre .copy-btn.copied { color: var(--success); }
 .mode-tab { border: 1px solid transparent; background: transparent; }
 .mode-tab.active { background: var(--bg); border-color: var(--border); font-weight: 600; }
 .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* Always-visible release version chip in the header right. Plain pill,
+   monospace digits, clicks through to Help → Changelog. */
+.app-build-chip {
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elev);
+  color: var(--fg-muted);
+  cursor: pointer;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.app-build-chip:hover { color: var(--fg); border-color: var(--accent); }
+.app-build-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 480px) {
+  .app-build-chip { font-size: 10px; padding: 1px 6px; }
+}
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 32px; height: 32px;
@@ -589,6 +611,8 @@ pre .copy-btn.copied { color: var(--success); }
 
 /* Quick-start row — one-click presets sitting below the primary CTA. */
 .quiz-home-quickstart {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -596,6 +620,7 @@ pre .copy-btn.copied { color: var(--success); }
   padding: 12px 0 4px 0;
   margin-bottom: 8px;
 }
+.quiz-home-quickstart button { min-width: 0; }
 .quiz-home-quickstart > span.muted { font-size: 12px; }
 .quiz-home-quickstart button {
   padding: 6px 12px;
@@ -2793,9 +2818,8 @@ body.answer-fullscreen-active { overflow: hidden; }
    PWA standalone mode (no point urging an install you already did). */
 .install-hint {
   position: fixed;
-  left: 50%;
-  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2805,9 +2829,11 @@ body.answer-fullscreen-active { overflow: hidden; }
   border-radius: 999px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
   font-size: 12.5px;
-  z-index: 199;
+  z-index: 90;
   max-width: calc(100vw - 24px);
+  pointer-events: auto;
 }
+.install-hint .install-hint-text { pointer-events: none; }
 .install-hint[hidden] { display: none; }
 .install-hint button {
   background: transparent;
