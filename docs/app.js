@@ -384,16 +384,38 @@ function openFlagMenu(anchorBtn, ex) {
   // "🔧 Solution issue" right after the user used 🔧 to open Tools, plain
   // confusing). Stripped all icons — the row text plus the existing ✓
   // selected indicator + hover highlight carry the affordance.
+  // Radio + click-to-deselect semantics. Clicking a row makes that scope
+  // exclusive (any other scope bits get cleared). Clicking the row whose
+  // scope is already the current selection clears everything — which is
+  // also what Unflag all does, but matches the user's expectation that
+  // "second click on the same row turns it off". Previous implementation
+  // flipped each row's bit independently; from "Both" + click "Task issue"
+  // that meant "Solution issue" got left selected (only task bit toggled
+  // off), completely against the user's "pick a side" mental model.
   menu.appendChild(makeRow('Solution issue', 'solution', () => {
-    setFlaggedMode(ex.id, 'solution', !isFlagged(ex.id, 'solution'));
+    if (flaggedScope(ex.id) === 'solution') {
+      setFlaggedMode(ex.id, 'solution', false);
+    } else {
+      setFlaggedMode(ex.id, 'solution', true);
+      setFlaggedMode(ex.id, 'task', false);
+    }
   }));
   menu.appendChild(makeRow('Task issue', 'task', () => {
-    setFlaggedMode(ex.id, 'task', !isFlagged(ex.id, 'task'));
+    if (flaggedScope(ex.id) === 'task') {
+      setFlaggedMode(ex.id, 'task', false);
+    } else {
+      setFlaggedMode(ex.id, 'task', true);
+      setFlaggedMode(ex.id, 'solution', false);
+    }
   }));
   menu.appendChild(makeRow('Both', 'both', () => {
-    const wantBoth = flaggedScope(ex.id) !== 'both';
-    setFlaggedMode(ex.id, 'solution', wantBoth);
-    setFlaggedMode(ex.id, 'task', wantBoth);
+    if (flaggedScope(ex.id) === 'both') {
+      setFlaggedMode(ex.id, 'solution', false);
+      setFlaggedMode(ex.id, 'task', false);
+    } else {
+      setFlaggedMode(ex.id, 'solution', true);
+      setFlaggedMode(ex.id, 'task', true);
+    }
   }));
   menu.appendChild(el('div', { class: 'flag-menu-sep' }));
   const unflagRow = el('button', { type: 'button', class: 'flag-menu-row flag-menu-clear' }, 'Unflag all');
