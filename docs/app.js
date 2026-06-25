@@ -378,19 +378,25 @@ function openFlagMenu(anchorBtn, ex) {
     return row;
   };
 
-  menu.appendChild(makeRow('🔧 Solution issue', 'solution', () => {
+  // Pure-text labels. Previous icon set was 🔧 / 📝 / 🔧📝 / 🗑 — the
+  // first two collided with the fullscreen label-row's 🔧 Tools drawer /
+  // 📝 Task drawer buttons (clicking 🐞 from fullscreen showed
+  // "🔧 Solution issue" right after the user used 🔧 to open Tools, plain
+  // confusing). Stripped all icons — the row text plus the existing ✓
+  // selected indicator + hover highlight carry the affordance.
+  menu.appendChild(makeRow('Solution issue', 'solution', () => {
     setFlaggedMode(ex.id, 'solution', !isFlagged(ex.id, 'solution'));
   }));
-  menu.appendChild(makeRow('📝 Task issue', 'task', () => {
+  menu.appendChild(makeRow('Task issue', 'task', () => {
     setFlaggedMode(ex.id, 'task', !isFlagged(ex.id, 'task'));
   }));
-  menu.appendChild(makeRow('🔧📝 Both', 'both', () => {
+  menu.appendChild(makeRow('Both', 'both', () => {
     const wantBoth = flaggedScope(ex.id) !== 'both';
     setFlaggedMode(ex.id, 'solution', wantBoth);
     setFlaggedMode(ex.id, 'task', wantBoth);
   }));
   menu.appendChild(el('div', { class: 'flag-menu-sep' }));
-  const unflagRow = el('button', { type: 'button', class: 'flag-menu-row flag-menu-clear' }, '🗑 Unflag all');
+  const unflagRow = el('button', { type: 'button', class: 'flag-menu-row flag-menu-clear' }, 'Unflag all');
   unflagRow.addEventListener('click', (e) => {
     e.stopPropagation();
     setFlaggedMode(ex.id, 'solution', false);
@@ -2522,19 +2528,26 @@ async function manualRefresh() {
   const btn = document.getElementById('refresh-toggle');
   btn?.classList.add('refreshing');
   try {
+    const hereMeta = State.appBuild || State.data || {};
     const here = State.data?.generatedAt || '';
     const r = await fetch('version.json?_rev=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) throw new Error('version.json: HTTP ' + r.status);
     const v = await r.json();
+    // Toast labels use composeBuildLabel so they match the header chip's
+    // version format (vX.Y.Z / vX.Y.Z+dev.N) and the Refresh banner's
+    // version-delta render. "New content (built <date>)" is gone — users
+    // care about the version they're moving between, not the build time.
+    const hereLabel = composeBuildLabel(hereMeta);
     if (v?.generatedAt && v.generatedAt !== here) {
-      showRefreshToast(`✨ New content (built ${formatBuildTime(v.generatedAt)}) — reloading…`, 'ok');
+      const thereLabel = composeBuildLabel(v);
+      showRefreshToast(`✨ New version ${hereLabel} → ${thereLabel} — reloading…`, 'ok');
       setTimeout(() => {
         const u = new URL(location.href);
         u.searchParams.set('_rev', String(Date.now()));
         location.replace(u.toString());
       }, 700);
     } else {
-      showRefreshToast(`✓ Already up to date (built ${formatBuildTime(here)})`, 'ok');
+      showRefreshToast(`✓ Already on ${hereLabel}`, 'ok');
       btn?.classList.remove('refreshing');
     }
   } catch {
