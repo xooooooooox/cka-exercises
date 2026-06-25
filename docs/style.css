@@ -2348,6 +2348,15 @@ body.answer-fullscreen-active { overflow: hidden; }
   background: var(--border);
   margin: 4px 0;
 }
+@media (max-width: 480px) {
+  /* On phone-narrow viewports the 180 px min-width can crowd out the menu's
+     placement budget. Let it shrink (clamp at viewport - 16 px so there's
+     still margin on both sides) and drop the min-width floor entirely. */
+  .flag-menu {
+    max-width: calc(100vw - 16px);
+    min-width: 0;
+  }
+}
 
 /* ---------- Header 🐛 Issues popover (reuses .sync-menu chrome) ---------- */
 .issues-menu-wrap { position: relative; display: inline-block; }
