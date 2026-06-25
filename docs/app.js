@@ -536,10 +536,25 @@ function tagPill(tag) {
   return el('span', { class: `tag-pill tag-${tag}` }, TAG_LABEL[tag] || tag);
 }
 
+// Per-source markdown cache. Browse / Quiz / Docs / Help / Tools all parse the
+// SAME static markdown strings repeatedly — every search keystroke used to
+// re-parse every visible card's task + solution from scratch (~200+ marked.parse
+// calls per keystroke for common queries). Map keyed on the markdown source
+// keeps insertion order; when full we drop the oldest entry. Bounded so it
+// doesn't grow unbounded under streaming verdict markdown or other dynamic use.
+const _markdownCache = new Map();
+const MARKDOWN_CACHE_MAX = 1000;
+
 function renderMarkdown(md) {
   if (!md) return '';
+  if (_markdownCache.has(md)) return _markdownCache.get(md);
   // marked v12 — safe defaults; we don't have user-supplied HTML to worry about.
-  return marked.parse(md, { gfm: true, breaks: false });
+  const html = marked.parse(md, { gfm: true, breaks: false });
+  if (_markdownCache.size >= MARKDOWN_CACHE_MAX) {
+    _markdownCache.delete(_markdownCache.keys().next().value);
+  }
+  _markdownCache.set(md, html);
+  return html;
 }
 
 function attachCopyButtons(container) {
@@ -630,7 +645,21 @@ function renderFilterBar() {
   });
   const search = document.getElementById('filter-search');
   search.value = State.filters.search;
-  search.addEventListener('input', () => { State.filters.search = search.value; saveFilters(); renderBrowse(); });
+  // 200 ms trailing debounce. Without this every keystroke triggered the full
+  // renderBrowse() pipeline (sidebar tree rebuild + main panel clear + marked.parse
+  // per visible card), which on a query matching 100+ exercises blocked the main
+  // thread long enough that even Backspace felt unresponsive.
+  let _searchDebounceTimer = null;
+  const SEARCH_DEBOUNCE_MS = 200;
+  search.addEventListener('input', () => {
+    if (_searchDebounceTimer) clearTimeout(_searchDebounceTimer);
+    _searchDebounceTimer = setTimeout(() => {
+      _searchDebounceTimer = null;
+      State.filters.search = search.value;
+      saveFilters();
+      renderBrowse();
+    }, SEARCH_DEBOUNCE_MS);
+  });
 
   // Restore the visual state of the toggle checkboxes from State.filters —
   // these were previously only restored for the search input, so reloading
