@@ -2786,6 +2786,42 @@ body.answer-fullscreen-active { overflow: hidden; }
   .update-banner { font-size: 12px; padding: 6px 12px; gap: 6px; }
 }
 @media print { .update-banner { display: none !important; } }
+
+/* Install-to-home-screen hint banner — same visual family as the
+   .update-banner but stacked further off the bottom edge so they
+   don't collide if both appear in the same session. Hidden in
+   PWA standalone mode (no point urging an install you already did). */
+.install-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 7px 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  font-size: 12.5px;
+  z-index: 199;
+  max-width: calc(100vw - 24px);
+}
+.install-hint[hidden] { display: none; }
+.install-hint button {
+  background: transparent;
+  border: none;
+  color: var(--fg-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+.install-hint button:hover { background: var(--bg-code); color: var(--fg); }
+@media (display-mode: standalone) { .install-hint { display: none !important; } }
+@media print { .install-hint { display: none !important; } }
 @media print { .app-footer { display: none; } }
 
 /* ============================================================ */

@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Static practice web app build tooling for cka-exercises",
   "scripts": {
-    "build": "node scripts/build-exercises.mjs",
+    "build": "node scripts/build-exercises.mjs && node scripts/build-sw.mjs",
+    "build:sw": "node scripts/build-sw.mjs",
     "build:icons": "node scripts/build-icons.mjs",
     "build:kubectl-help": "node scripts/build-kubectl-help.mjs",
     "build:tools": "node scripts/build-kubectl-tools.mjs",
@@ -15,7 +16,7 @@
     "verify:llm-settings": "node scripts/verify-llm-settings.mjs",
     "verify:grader-parse": "node scripts/verify-grader-parse.mjs",
     "link-check": "node scripts/check-links.mjs",
-    "preserve": "node scripts/build-exercises.mjs && node scripts/build-tools-bundle.mjs --minors=1.35",
+    "preserve": "node scripts/build-exercises.mjs && node scripts/build-sw.mjs && node scripts/build-tools-bundle.mjs --minors=1.35",
     "serve": "python3 -m http.server 8080 --directory docs"
   },
   "devDependencies": {

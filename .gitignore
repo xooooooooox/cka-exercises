@@ -8,5 +8,6 @@ docs/exercises.json
 docs/version.json
 docs/tools*.json
 docs/nodes*.json
+docs/sw.gen.js
 tools/kubectl-help*.json
 tools/.bin/

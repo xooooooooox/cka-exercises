@@ -438,6 +438,14 @@
     <button id="update-dismiss" type="button" class="muted" title="Dismiss until next launch" aria-label="Dismiss">✕</button>
   </div>
 
+  <!-- Install hint — one-time dismissable banner for users on mobile
+       browsers who haven't yet added the SPA to their home screen.
+       Hidden in standalone mode (already installed) and after dismiss. -->
+  <div id="install-hint" class="install-hint" hidden role="dialog" aria-label="Install hint">
+    <span class="install-hint-text">📱 Install: Safari Share → "Add to Home Screen"</span>
+    <button id="install-hint-dismiss" type="button" aria-label="Dismiss">✕</button>
+  </div>
+
   <footer class="app-footer">
     © 2026 <a href="https://github.com/xooooooooox" target="_blank" rel="noopener">xooooooooox</a>
     · <a href="https://github.com/xooooooooox/cka-exercises/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a>

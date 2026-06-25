@@ -10,6 +10,7 @@ on:
       - 'scripts/build-kubectl-tools.mjs'
       - 'scripts/build-kubectl-help.mjs'
       - 'scripts/build-tools-bundle.mjs'
+      - 'scripts/build-sw.mjs'
       - 'scripts/lint-exercises.mjs'
       - 'WEBAPP_GUIDE.md'
       - 'WEBAPP_GUIDE_CN.md'
@@ -49,6 +50,8 @@ jobs:
         run: node scripts/lint-exercises.mjs
       - name: Build exercises.json
         run: node scripts/build-exercises.mjs
+      - name: Build service worker
+        run: node scripts/build-sw.mjs
       # Builds docs/tools-versions.json + docs/tools-<minor>.json for each
       # supported kubernetes minor. Orchestrator downloads pinned kubectl
       # binaries via dl.k8s.io, walks help text, fetches OpenAPI per minor.

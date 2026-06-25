@@ -183,6 +183,7 @@ State management is in module-scope `State` object; no framework. Persistence vi
 | `cka:docs:lastUrl` | last-selected leaf in Docs tab (auto-restore)    |
 | `cka:llm:settings` | LLM grading config — v2 per-provider shape (providers + active + autoDoneThreshold) |
 | `cka:llm:privacyAck` | `true` after the first-use privacy dialog dismissal |
+| `cka:install:dismissed` | `true` after the user dismisses the install-to-home-screen hint banner (suppresses it on future visits) |
 | `cka:answer:<id>` | per-exercise saved answer + last verdict (with provider/model/usage pinned at grade-time) |
 | `cka:gist:token` | GitHub PAT (never exported, never round-tripped through gist) |
 | `cka:gist:id`    | Gist ID used by Push / Pull |

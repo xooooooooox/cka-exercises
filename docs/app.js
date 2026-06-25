@@ -808,6 +808,22 @@ function installSidebarTooltip() {
   tree.addEventListener('focusout', hide);
   document.getElementById('sidebar')?.addEventListener('scroll', hide, { passive: true });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hide(); });
+
+  // Touch support: long-press (600ms) on a [data-full-title] entry shows the
+  // tooltip. Touch devices have no hover, so without this iPhone / iPad
+  // users can't see the full title of a clipped row at all.
+  let lpTimer = null;
+  let lpTarget = null;
+  const clearLp = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } lpTarget = null; };
+  tree.addEventListener('touchstart', (e) => {
+    const target = e.target.closest('[data-full-title]');
+    if (!target) return;
+    lpTarget = target;
+    lpTimer = setTimeout(() => { lpTimer = null; if (lpTarget) show(lpTarget); }, 600);
+  }, { passive: true });
+  tree.addEventListener('touchmove', clearLp, { passive: true });
+  tree.addEventListener('touchend', () => { clearLp(); setTimeout(hide, 1500); }, { passive: true });
+  tree.addEventListener('touchcancel', () => { clearLp(); hide(); }, { passive: true });
 }
 
 // Short labels for the sidebar progress widget (avoid the long domain titles).
@@ -6951,6 +6967,49 @@ async function init() {
     document.getElementById('quiz-start-btn')?.click();
   }
   document.getElementById('quiz-home-quick-weak')?.addEventListener('click', quickStartWeakSpots);
+
+  // Service worker — offline support for iOS PWA standalone (cold-start
+  // when offline would otherwise produce a white screen). Skip on
+  // localhost so `npm run serve` development isn't pinned to stale cache.
+  if ('serviceWorker' in navigator && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.gen.js').catch(() => {});
+    });
+    let _reloadingForSW = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (_reloadingForSW) return;
+      _reloadingForSW = true;
+      window.location.reload();
+    });
+  }
+
+  // Install hint — dismissable one-time banner on iOS / Android browsers
+  // where the user could "Add to Home Screen" but hasn't yet. Suppressed
+  // in standalone mode (already installed) and after dismissal.
+  installInstallHint();
+}
+
+function installInstallHint() {
+  const banner = document.getElementById('install-hint');
+  if (!banner) return;
+  const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+                       || window.navigator.standalone === true;
+  if (isStandalone) return;
+  if (localStorage.getItem('cka:install:dismissed') === 'true') return;
+  const ua = navigator.userAgent || '';
+  const isIos = /iPhone|iPad|iPod/i.test(ua);
+  const textEl = banner.querySelector('.install-hint-text');
+  if (textEl) {
+    textEl.textContent = isIos
+      ? '📱 Install: Safari Share → "Add to Home Screen"'
+      : '📱 Install: open browser menu → "Add to Home screen"';
+  }
+  setTimeout(() => { banner.hidden = false; }, 8000);
+  const dismiss = document.getElementById('install-hint-dismiss');
+  dismiss?.addEventListener('click', () => {
+    banner.hidden = true;
+    try { localStorage.setItem('cka:install:dismissed', 'true'); } catch {}
+  });
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
