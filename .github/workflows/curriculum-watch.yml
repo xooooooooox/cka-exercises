@@ -1,0 +1,44 @@
+name: Watch CKA curriculum
+
+# Weekly check of github.com/cncf/curriculum for new CKA_Curriculum_v*.pdf
+# versions or content drift in the known v1.32-v1.35 PDFs. Files a labelled
+# GitHub issue when something changes; idempotent via a signature hidden
+# in the issue body.
+#
+# Why this exists:
+#   The CNCF historically bumps the curriculum version label per kubernetes
+#   minor (v1.32 → v1.33 → v1.34 → v1.35) without changing the PDF bytes —
+#   all four currently MD5-match d28372581378e1ff3aa49670a9c7781f. EXAM_GUIDE
+#   records this fact manually; the day CNCF actually changes the syllabus
+#   (or drops a v1.36 / v1.37), we want to find out without someone manually
+#   checking the upstream repo.
+#
+# Watch script: scripts/check-curriculum.mjs. Open an issue manually any time
+# with workflow_dispatch.
+
+on:
+  schedule:
+    - cron: '0 13 * * 1'     # every Mon 13:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: curriculum-watch
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run curriculum watcher
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/check-curriculum.mjs --mode=notify

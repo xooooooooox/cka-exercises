@@ -64,4 +64,6 @@ jobs:
           create "kind/typo-task"            "Typo / formatting issue in the task body"         "fbca04"
           # ── shared ──────────────────────────────────────────────────────
           create "kind/other"                "Other (described in issue body)"                  "fbca04"
-          echo "✓ Seeded 14 labels."
+          # ── curriculum watcher ─────────────────────────────────────────
+          create "curriculum-watch"          "Auto-filed by .github/workflows/curriculum-watch.yml" "1d76db"
+          echo "✓ Seeded 15 labels."
