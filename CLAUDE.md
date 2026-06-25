@@ -306,6 +306,24 @@ Both states are written into `docs/version.json` (`channel: "release" | "dev"`, 
 
 Practical implication for maintainers: as long as you keep merging changelog-eligible commits into main, deploys go out continuously labelled `vX.Y.Z+dev.N`. When you decide a batch is shippable (semantic milestone, end of a sprint, "I want users on a clean v0.2.0"), run the Release workflow. The next deploy then drops the `+dev.N` suffix and presents the clean release version.
 
+### One-time setup: Repository Rule bypass
+
+The release workflow pushes a `release: vX.Y.Z` commit and tag directly to `main`. If `main` is protected by a Repository Rule (Settings → Rules → Rulesets) that blocks direct pushes, the default `GITHUB_TOKEN` won't have bypass permission and the workflow will fail with `GH013: Cannot update this protected ref`.
+
+Fix it once, in the GitHub UI:
+
+1. **Settings → Rules → Rulesets** — open the ruleset that covers `main`.
+2. Find the **Bypass list** section → **Add bypass**.
+3. Add **Repository admin** as a bypass actor (and / or **github-actions[bot]** if your UI lets you pick the bot as an explicit Integration entry).
+4. Set the mode to **Always** (not "For pull requests only" — release pushes aren't PRs).
+5. Save.
+
+After this, the next `Release` workflow run will push successfully. No PAT needed, no workflow YAML change required. Humans still need a PR for ordinary direct pushes — the rule still applies to anyone outside the bypass list.
+
+*Why this is safe enough:* the bypass only kicks in when the workflow runs as `github-actions[bot]` (i.e. the Release action you yourself dispatched from the Actions UI). External actors can't trigger it, and the release script itself only ever writes a single `release: vX.Y.Z` commit + tag — it doesn't have a code-modification capability.
+
+If the bypass is missing, `scripts/release.mjs` detects the failure mode (it greps stderr for `GH013` / `protected ref` / `rule violations`) and prints a one-line hint pointing back to this section.
+
 ## Common Tasks
 
 ### Adding a new exercise

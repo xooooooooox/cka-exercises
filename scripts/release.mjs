@@ -221,6 +221,31 @@ function run(cmd, args, opts = {}) {
   return r.stdout || '';
 }
 
+// Wrapper around `git push …` that, on rejection by a protected branch's
+// Repository Rule, prints an actionable hint pointing at the one-time
+// bypass setup in CLAUDE.md. Without this hint the failure log shows the
+// raw `GH013` line and the next maintainer wastes 15 minutes figuring
+// out which knob to flip.
+function runGitPush(args) {
+  try {
+    return run('git', ['push', ...args]);
+  } catch (err) {
+    const stderr = String(err.stderr || err.message || '');
+    if (/GH013|protected ref|rule violations/i.test(stderr)) {
+      console.error('');
+      console.error('💡 Push to a protected ref was rejected by a Repository Rule.');
+      console.error('   The release workflow needs a one-time bypass:');
+      console.error('     Settings → Rules → Rulesets → (ruleset for main)');
+      console.error('     → Bypass list → Add bypass');
+      console.error('     → Repository admin (or "github-actions[bot]")');
+      console.error('     → Mode: Always → Save');
+      console.error('   See CLAUDE.md `## Release workflow → One-time setup: Repository Rule bypass`.');
+      console.error('');
+    }
+    throw err;
+  }
+}
+
 function findPreviousTag() {
   try {
     const out = run('git', ['tag', '--list', 'v*', '--sort=-version:refname']);
@@ -289,8 +314,8 @@ async function main() {
   }
 
   // Push commit + tag.
-  run('git', ['push', 'origin', 'HEAD']);
-  run('git', ['push', 'origin', newTag]);
+  runGitPush(['origin', 'HEAD']);
+  runGitPush(['origin', newTag]);
 
   // GH Release.
   const notesFile = path.join(ROOT, '.release-notes.tmp');
