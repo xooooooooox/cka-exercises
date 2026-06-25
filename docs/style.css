@@ -282,6 +282,67 @@ pre .copy-btn.copied { color: var(--success); }
 .prog-row.complete .prog-bar-fill { background: var(--success); }
 .prog-row.complete .prog-name { color: var(--success); }
 
+/* Quiz-home per-domain proficiency strip — same prog-bar visuals as
+   sidebar but laid out wider and with a 💡 weak hint chip. */
+.quiz-proficiency {
+  margin: 14px 0 10px;
+  padding: 12px 14px;
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.quiz-prof-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.quiz-prof-row { padding: 4px 0; }
+.quiz-prof-row + .quiz-prof-row { margin-top: 2px; }
+.quiz-prof-row .quiz-prof-label {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px;
+  margin-bottom: 3px;
+  flex-wrap: wrap;
+}
+.quiz-prof-row .quiz-prof-name { font-weight: 500; color: var(--fg); flex: 1 1 auto; }
+.quiz-prof-row .quiz-prof-weight { font-size: 10px; opacity: 0.7; }
+.quiz-prof-row .quiz-prof-count {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--fg-muted);
+}
+.quiz-prof-row .quiz-prof-weak-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 140, 0, 0.15);
+  color: #d97700;
+  border: 1px solid rgba(255, 140, 0, 0.35);
+}
+[data-theme="dark"] .quiz-prof-row .quiz-prof-weak-tag {
+  background: rgba(255, 170, 60, 0.15);
+  color: #ffb84d;
+  border-color: rgba(255, 170, 60, 0.4);
+}
+.quiz-prof-row .prog-bar {
+  height: 5px;
+  background: var(--bg);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.quiz-prof-row .prog-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width .25s, background-color .25s;
+  border-radius: 999px;
+}
+.quiz-prof-row.complete .prog-bar-fill { background: var(--success); }
+.quiz-prof-row.complete .quiz-prof-name { color: var(--success); }
+.quiz-prof-row.weak .quiz-prof-name { color: #d97700; }
+[data-theme="dark"] .quiz-prof-row.weak .quiz-prof-name { color: #ffb84d; }
+
 .prog-divider {
   height: 1px;
   background: var(--border);

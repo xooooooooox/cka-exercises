@@ -4540,6 +4540,43 @@ function showQuizHome() {
   document.getElementById('quiz-active').hidden = true;
   const sum = document.getElementById('quiz-summary'); if (sum) sum.hidden = true;
   renderQuizResumePanel(document.getElementById('quiz-home-resume'));
+  renderQuizHomeProficiency();
+}
+
+// Per-domain proficiency strip on the Quiz landing page. Mirrors the
+// sidebar's prog-row / prog-bar layout but renders inside #quiz-home so the
+// user sees per-domain done % before deciding which preset to fire. Top-2
+// domains (by lowest pct, pct < 100) get a 💡 weak hint and a `weak` class
+// so the drill-weak-spots CTA's target is obvious.
+function renderQuizHomeProficiency() {
+  const container = document.getElementById('quiz-home-proficiency');
+  if (!container || !State.data) return;
+  container.innerHTML = '';
+  const rows = State.data.domains.map(dom => {
+    const total = dom.sections.reduce((s, sec) => s + sec.exercises.length, 0);
+    const done = dom.sections.reduce((s, sec) => s + sec.exercises.filter(e => isDone(e.id)).length, 0);
+    const pct = total ? (done / total) * 100 : 0;
+    return { dom, total, done, pct };
+  });
+  const weakKeys = new Set(
+    rows.filter(r => r.pct < 100).sort((a, b) => a.pct - b.pct).slice(0, 2).map(r => r.dom.key)
+  );
+  container.appendChild(el('div', { class: 'quiz-prof-title muted' }, 'Per-domain progress'));
+  for (const { dom, total, done, pct } of rows) {
+    const isWeak = weakKeys.has(dom.key);
+    const row = el('div', { class: 'quiz-prof-row' + (done === total ? ' complete' : '') + (isWeak ? ' weak' : '') });
+    row.appendChild(el('div', { class: 'quiz-prof-label' },
+      el('span', { class: 'quiz-prof-name' }, PROGRESS_SHORT_LABEL[dom.key] || dom.key),
+      el('span', { class: 'quiz-prof-weight muted' }, dom.weight),
+      el('span', { class: 'quiz-prof-count' }, `${done} / ${total} · ${Math.round(pct)}%`),
+      isWeak ? el('span', { class: 'quiz-prof-weak-tag', title: 'Drill weak spots targets this domain' }, '💡 weak') : null,
+    ));
+    const bar = el('div', { class: 'prog-bar' });
+    bar.appendChild(el('div', { class: 'prog-bar-fill', style: { width: `${pct}%` } }));
+    row.appendChild(bar);
+    container.appendChild(row);
+  }
+  container.hidden = false;
 }
 
 // Open the full configure form (used by the "▶ Start a new quiz" CTA on home).
@@ -6874,6 +6911,46 @@ async function init() {
   }
   document.getElementById('quiz-home-quick-10')?.addEventListener('click', () => quickStartWithCount(10));
   document.getElementById('quiz-home-quick-mock')?.addEventListener('click', () => quickStartWithCount(17));
+
+  // Drill weak spots — narrow domain checkboxes to the 1-2 lowest done %
+  // domains, force only-undone, then fire the standard 10-question start.
+  function quickStartWeakSpots() {
+    if (!State.data) return;
+    const rows = State.data.domains.map(dom => {
+      const total = dom.sections.reduce((s, sec) => s + sec.exercises.length, 0);
+      const done = dom.sections.reduce((s, sec) => s + sec.exercises.filter(e => isDone(e.id)).length, 0);
+      return { key: dom.key, pct: total ? (done / total) * 100 : 0 };
+    });
+    const weak = rows.filter(r => r.pct < 100).sort((a, b) => a.pct - b.pct).slice(0, 2);
+    if (weak.length === 0) {
+      alert("All domains are 100% done 🎉 — try '🎲 10 random' or '🎯 17-question mock' for review practice.");
+      return;
+    }
+    const weakKeys = new Set(weak.map(w => w.key));
+    document.querySelectorAll('[name="quiz-domain"]').forEach(cb => { cb.checked = weakKeys.has(cb.value); });
+    document.querySelectorAll('[name="quiz-tag"]').forEach(cb => { cb.checked = true; });
+    const onlyBm = document.getElementById('quiz-only-bookmarks');
+    const onlyUd = document.getElementById('quiz-only-undone');
+    if (onlyBm) onlyBm.checked = false;
+    if (onlyUd) onlyUd.checked = true;
+    const countInput = document.querySelector('[name="quiz-count"][value="10"]');
+    if (countInput) countInput.checked = true;
+    const timeInput = document.querySelector('[name="quiz-time"][value="0"]');
+    if (timeInput) timeInput.checked = true;
+    const orderInput = document.querySelector('[name="quiz-order"][value="random"]');
+    if (orderInput) orderInput.checked = true;
+    const solInput = document.querySelector('[name="quiz-solutions"][value="hidden"]');
+    if (solInput) solInput.checked = true;
+    updateQuizEligibleCount();
+    const eligible = document.getElementById('quiz-eligible-count');
+    const count = eligible ? parseInt(eligible.textContent, 10) : NaN;
+    if (count === 0) {
+      alert("Weak domains have no undone exercises left — try '🎲 10 random' instead.");
+      return;
+    }
+    document.getElementById('quiz-start-btn')?.click();
+  }
+  document.getElementById('quiz-home-quick-weak')?.addEventListener('click', quickStartWeakSpots);
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
