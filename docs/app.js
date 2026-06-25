@@ -399,36 +399,43 @@ function openFlagMenu(anchorBtn, ex) {
   });
   menu.appendChild(unflagRow);
 
-  // Position the menu relative to the anchor button. Right-align the menu's
-  // right edge with the button's right edge — for a 🐞 button in a card's
-  // top-right action row this means the menu drops DOWN-LEFT of the button
-  // (standard "top-right action menu" pattern à la GitHub / VS Code). The
-  // previous left-anchored placement could fall back to x≈8 (viewport left
-  // edge) whenever rect.left was 0 / negative (hidden / detached / off-screen
-  // anchor), which is exactly what the user saw.
+  // Right-align the menu's right edge with the anchor's right edge — for a
+  // 🐞 button in a card's top-right action row this means the menu drops
+  // DOWN-LEFT of the button (standard "top-right action menu" pattern à la
+  // GitHub / VS Code). Mirrors the position+measure+show pattern that
+  // installSidebarTooltip uses; measuring AFTER setting position:fixed is
+  // load-bearing — a default-flow .flag-menu's getBoundingClientRect()
+  // reports width ≈ viewport (because it's display:block under body), which
+  // would drive `left = rect.right - menuW` into a huge negative → clamped
+  // to 8 → menu nailed to viewport's left edge. That was the actual root
+  // cause of the misplaced menu the user kept hitting.
   document.body.appendChild(menu);
   const rect = anchorBtn.getBoundingClientRect();
-  // Guard: a zero-rect anchor (display:none, detached, etc.) can't host a
-  // menu meaningfully. Suppress + warn rather than placing the menu in the
-  // top-left corner.
   if (rect.width === 0 && rect.height === 0) {
     console.warn('openFlagMenu: anchor button has zero bounding rect (display:none or detached?) — aborting menu open', anchorBtn);
     try { menu.remove(); } catch {}
     return;
   }
+  // Stage 1: take the menu out of normal flow + hide it so it measures
+  // its real intrinsic size (capped by CSS min-width: 180px) without
+  // flashing at (0,0) first.
+  menu.style.position = 'fixed';
+  menu.style.visibility = 'hidden';
+  menu.style.left = '0px';
+  menu.style.top = '0px';
   const menuRect = menu.getBoundingClientRect();
   const menuW = menuRect.width || 200;
   const menuH = menuRect.height || 0;
+  // Stage 2: compute the real position from accurate dimensions.
   let left = rect.right - menuW;
   left = Math.max(8, Math.min(left, window.innerWidth - menuW - 8));
   let top = rect.bottom + 6;
-  // Flip above the anchor if there isn't enough room below (and there is room above).
   if (top + menuH > window.innerHeight - 8 && rect.top - menuH - 6 > 8) {
     top = rect.top - menuH - 6;
   }
-  menu.style.position = 'fixed';
   menu.style.top = `${top}px`;
   menu.style.left = `${left}px`;
+  menu.style.visibility = '';
 
   refreshIndicators();
   _activeFlagMenu = menu;

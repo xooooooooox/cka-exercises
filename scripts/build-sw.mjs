@@ -28,15 +28,23 @@ if (!fs.existsSync(SRC)) {
 let buildTag = 'dev';
 try {
   const v = JSON.parse(fs.readFileSync(VERSION_FILE, 'utf8'));
-  // Prefer the released semver (v0.1.0 → cka-shell-v0_1_0). When no
-  // release has been cut yet (v.version === '0.0.0' or absent), fall
-  // back to the build timestamp digits so cache keys still bump per
-  // deploy — but they'll start being semver-stable as soon as the
-  // first release lands.
-  const semver = (v && typeof v.version === 'string') ? v.version : '';
-  if (semver && semver !== '0.0.0') {
-    buildTag = semver.replace(/\./g, '_');
+  // Cache key layout: <semver>_<gitSha>. Every commit bumps gitSha →
+  // new cache key → SW.activate clears the previous cache →
+  // controllerchange fires → SPA soft-reloads with fresh app.js.
+  //
+  // Previous approach (semver only) was broken for dev builds: after
+  // v0.1.0 was tagged, every subsequent post-release commit kept the
+  // same `0_1_0` cache key, so SW never invalidated and users kept
+  // serving stale shell forever. With gitSha appended, every deploy
+  // gets a unique key while the semver prefix stays human-readable in
+  // DevTools' Application → Cache Storage listing.
+  const semver = (v && typeof v.version === 'string') ? v.version : '0.0.0';
+  const gitSha = (v && typeof v.gitSha === 'string') ? v.gitSha : '';
+  if (gitSha) {
+    buildTag = `${semver.replace(/\./g, '_')}_${gitSha}`;
   } else if (v && typeof v.generatedAt === 'string') {
+    // Fallback when building outside a git checkout (no gitSha
+    // available) — timestamp digits keep cache keys per-deploy unique.
     buildTag = v.generatedAt.replace(/[^0-9]/g, '');
   }
 } catch (err) {
