@@ -2247,8 +2247,12 @@ function installSyncMenu() {
   // unreliable on mobile Safari.
   _openSyncMenuExternal = openMenu;
 
-  toggle.addEventListener('click', (e) => {
-    e.stopPropagation();
+  // No stopPropagation: clicks on this toggle must bubble to document so the
+  // OTHER header popovers' click-outside dismiss handlers can fire and close
+  // themselves. Our own document handler (right below) early-returns when
+  // target is inside toggle/menu, so this popover never accidentally
+  // self-closes from its own toggle click.
+  toggle.addEventListener('click', () => {
     if (menu.hidden) openMenu(); else closeMenu();
   });
 
@@ -2368,8 +2372,9 @@ function installLlmMenu() {
     statusEl.textContent = '';
   }
 
-  toggle.addEventListener('click', (e) => {
-    e.stopPropagation();
+  // No stopPropagation — see installSyncMenu's matching toggle handler for
+  // the rationale (lets sibling popovers' click-outside handlers close them).
+  toggle.addEventListener('click', () => {
     if (menu.hidden) openMenu(); else closeMenu();
   });
 
@@ -4107,8 +4112,9 @@ function installIssuesMenu() {
     toggle.setAttribute('aria-expanded', 'false');
   }
 
-  toggle.addEventListener('click', (e) => {
-    e.stopPropagation();
+  // No stopPropagation — see installSyncMenu's matching toggle handler for
+  // the rationale (lets sibling popovers' click-outside handlers close them).
+  toggle.addEventListener('click', () => {
     if (menu.hidden) openMenu(); else closeMenu();
   });
   document.addEventListener('click', (e) => {
