@@ -14,6 +14,8 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 ## [Unreleased]
 
 ### Fixed
+- **Modal close `✕` button stays reachable when the user has scrolled** — every overlay's `<header>` is now `position: sticky` at the top of the scrolling card, so the close button no longer scrolls away with the title. Previously a long Settings / Report / Quiz-nav modal required scrolling back to the top to find the close button. (this commit)
+- **Modal close `✕` button is a proper 36×36 tap target** with a hover / focus state — was a tiny text-only glyph with no border, easy to mis-tap on phone widths. Applies to every modal sharing the `.overlay-close` class. (this commit)
 - **Active LLM provider row showed `★ Active ★ active`** — the previous JS still wrote `★ active` into `.provider-badge.textContent` while the new CSS pill added `★ Active` via `::before`, so both rendered side by side. JS now leaves the badge empty and CSS owns all of the visual. (this commit)
 
 ### Changed

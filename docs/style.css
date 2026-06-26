@@ -1149,8 +1149,20 @@ footer { padding: 12px 20px; border-top: 1px solid var(--border); background: va
   padding: 20px 24px;
 }
 .overlay-card header {
+  /* Pin the header to the top of the scrolling card so the close button
+     stays reachable even after the user has scrolled to the bottom of a
+     long modal (Settings / Report / etc.). The negative top + horizontal
+     margins extend the sticky band out to the card's edges so the bg
+     hides scrolling content underneath the title, then padding restores
+     the internal layout. */
+  position: sticky;
+  top: -20px;
+  margin: -20px -24px 12px;
+  padding: 16px 24px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  z-index: 1;
   display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 12px;
 }
 .overlay-card h2 { margin: 0; font-size: 18px; }
 
@@ -1812,16 +1824,34 @@ body.answer-fullscreen-active { overflow: hidden; }
 
 /* Report-overlay modal */
 #report-overlay .overlay-card { max-width: 640px; }
+/* Close button — square 36x36 tap target meeting touch-friendly sizing
+   (was a tiny text-only ✕ with no border and barely any padding, easy
+   to mis-tap on phones). Background + border appear on hover/focus so
+   the affordance is obvious. */
 .overlay-close {
   background: transparent;
-  border: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 18px;
   color: var(--fg-muted);
   cursor: pointer;
-  padding: 0 4px;
+  padding: 0;
   line-height: 1;
 }
-.overlay-close:hover { color: var(--fg); }
+.overlay-close:hover,
+.overlay-close:focus-visible {
+  color: var(--fg);
+  background: var(--bg-elev);
+  border-color: var(--border);
+}
+.overlay-close:active {
+  background: color-mix(in srgb, var(--bg-elev) 80%, var(--fg));
+}
 .report-context {
   background: var(--bg-elev);
   border: 1px solid var(--border);
