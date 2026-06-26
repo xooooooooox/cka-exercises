@@ -240,35 +240,43 @@
         <label><input type="checkbox" id="quiz-only-undone"> Only not-yet-done</label>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="segmented-fieldset">
         <legend>Count</legend>
-        <label><input type="radio" name="quiz-count" value="5"> 5</label>
-        <label><input type="radio" name="quiz-count" value="10" checked> 10</label>
-        <label><input type="radio" name="quiz-count" value="17"> 17 (full mock)</label>
-        <label><input type="radio" name="quiz-count" value="all"> All (eligible after filters)</label>
-        <label><input type="radio" name="quiz-count" value="custom"> Custom: <input type="number" id="quiz-count-custom" min="1" max="500" value="20" style="width:5em"></label>
+        <div class="segmented">
+          <label class="segmented-chip"><input type="radio" name="quiz-count" value="5"><span>5</span></label>
+          <label class="segmented-chip"><input type="radio" name="quiz-count" value="10" checked><span>10</span></label>
+          <label class="segmented-chip"><input type="radio" name="quiz-count" value="17"><span>17 <small>full mock</small></span></label>
+          <label class="segmented-chip" title="All exercises matching the source filters above"><input type="radio" name="quiz-count" value="all"><span>All</span></label>
+          <label class="segmented-chip segmented-chip--with-input"><input type="radio" name="quiz-count" value="custom"><span>Custom</span><input type="number" id="quiz-count-custom" min="1" max="500" value="20"></label>
+        </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="segmented-fieldset">
         <legend>Time limit</legend>
-        <label><input type="radio" name="quiz-time" value="0" checked> No limit</label>
-        <label><input type="radio" name="quiz-time" value="30"> 30 min</label>
-        <label><input type="radio" name="quiz-time" value="60"> 60 min</label>
-        <label><input type="radio" name="quiz-time" value="120"> 120 min</label>
+        <div class="segmented">
+          <label class="segmented-chip"><input type="radio" name="quiz-time" value="0" checked><span>No limit</span></label>
+          <label class="segmented-chip"><input type="radio" name="quiz-time" value="30"><span>30 min</span></label>
+          <label class="segmented-chip"><input type="radio" name="quiz-time" value="60"><span>60 min</span></label>
+          <label class="segmented-chip"><input type="radio" name="quiz-time" value="120"><span>120 min</span></label>
+        </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="segmented-fieldset">
         <legend>Order</legend>
-        <label><input type="radio" name="quiz-order" value="random" checked> 🎲 Random</label>
-        <label><input type="radio" name="quiz-order" value="sequential"> ↑ Sequential (by question number)</label>
-        <label><input type="radio" name="quiz-order" value="tag"> 🏷 By source tag (general → past exam → killer.sh A → B → killercoda)</label>
-        <label><input type="radio" name="quiz-order" value="section"> 📑 By section (§1 → §2 → …)</label>
+        <div class="segmented">
+          <label class="segmented-chip" title="Uniform shuffle"><input type="radio" name="quiz-order" value="random" checked><span>🎲 Random</span></label>
+          <label class="segmented-chip" title="By question number, in source order"><input type="radio" name="quiz-order" value="sequential"><span>↑ Sequential</span></label>
+          <label class="segmented-chip" title="Grouped by tag (general → past exam → killer.sh A → B → killercoda)"><input type="radio" name="quiz-order" value="tag"><span>🏷 By tag</span></label>
+          <label class="segmented-chip" title="Grouped by curriculum section (§1 → §2 → …)"><input type="radio" name="quiz-order" value="section"><span>📑 By section</span></label>
+        </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="segmented-fieldset">
         <legend>Solutions</legend>
-        <label><input type="radio" name="quiz-solutions" value="hidden" checked> Hidden until I click Reveal</label>
-        <label><input type="radio" name="quiz-solutions" value="visible"> Always visible</label>
+        <div class="segmented">
+          <label class="segmented-chip"><input type="radio" name="quiz-solutions" value="hidden" checked><span>Hidden until Reveal</span></label>
+          <label class="segmented-chip"><input type="radio" name="quiz-solutions" value="visible"><span>Always visible</span></label>
+        </div>
       </fieldset>
 
       <div class="quiz-actions">

@@ -604,6 +604,76 @@ pre .copy-btn.copied { color: var(--success); }
   padding: 10px 14px; margin-bottom: 14px;
 }
 .quiz-screen legend { padding: 0 8px; font-weight: 600; }
+
+/* Segmented chip groups — used by Quiz setup's Count / Time limit /
+   Order / Solutions fieldsets. Each chip wraps a hidden radio + a
+   visible <span>; the `:has(input:checked)` selector picks up the
+   selected state without any JS. flex-wrap lets long groups
+   gracefully break onto the next row on narrow viewports. */
+.segmented-fieldset {
+  /* Slightly tighter than the legacy fieldset since chips need no extra
+     vertical breathing room. */
+  padding: 8px 12px 12px !important;
+}
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.segmented-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 13px;
+  color: var(--fg);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.segmented-chip input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.segmented-chip:has(input:checked) {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+.segmented-chip:has(input:checked) small { color: var(--accent-fg); opacity: 0.85; }
+.segmented-chip:hover:not(:has(input:checked)) {
+  background: var(--bg-elev);
+}
+.segmented-chip small {
+  font-size: 11px;
+  color: var(--fg-muted);
+  margin-left: 2px;
+}
+.segmented-chip--with-input {
+  padding-right: 6px;
+}
+.segmented-chip--with-input input[type="number"] {
+  width: 4em;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+  margin-left: 4px;
+}
+.segmented-chip--with-input:has(input[type="radio"]:checked) input[type="number"] {
+  background: var(--bg);
+  color: var(--fg);
+  border-color: var(--bg);
+}
+
 .quiz-actions { display: flex; gap: 12px; align-items: center; margin-top: 16px; }
 
 /* ---------- Quiz mode landing page ---------- */
@@ -1824,20 +1894,19 @@ body.answer-fullscreen-active { overflow: hidden; }
 
 /* Report-overlay modal */
 #report-overlay .overlay-card { max-width: 640px; }
-/* Close button — square 36x36 tap target meeting touch-friendly sizing
-   (was a tiny text-only ✕ with no border and barely any padding, easy
-   to mis-tap on phones). Background + border appear on hover/focus so
-   the affordance is obvious. */
+/* Close button — square 36x36 tap target, visible at rest (the previous
+   version had transparent bg + transparent border so it only appeared
+   on hover; mobile has no hover and the button read as a plain glyph). */
 .overlay-close {
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
   width: 36px;
   height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 20px;
   color: var(--fg-muted);
   cursor: pointer;
   padding: 0;
@@ -1845,12 +1914,12 @@ body.answer-fullscreen-active { overflow: hidden; }
 }
 .overlay-close:hover,
 .overlay-close:focus-visible {
+  background: var(--bg);
+  border-color: var(--accent);
   color: var(--fg);
-  background: var(--bg-elev);
-  border-color: var(--border);
 }
 .overlay-close:active {
-  background: color-mix(in srgb, var(--bg-elev) 80%, var(--fg));
+  background: color-mix(in srgb, var(--bg-elev) 70%, var(--fg));
 }
 .report-context {
   background: var(--bg-elev);
