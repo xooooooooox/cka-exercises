@@ -14,6 +14,7 @@ Each entry references the commit hash in parens for traceability to git history.
 ## [Unreleased]
 
 ### Added
+- README's `📸 Screenshots / 截图` section now uses real iPhone 17 Pro captures for the three mobile shots (`mobile-browse.png` / `mobile-quiz.png` / `mobile-docs.png`); converted from JPEG → PNG via `sips -s format png` so `file` reports the actual format. Desktop screenshots remain 1×1 placeholders pending capture. `assets/screenshots/README.md` capture-spec line updated to reflect iPhone 17 Pro (CSS 402×874 → native 804×1748) as the actual mobile reference device. (commit `18dfa45`)
 
 ### Changed
 
