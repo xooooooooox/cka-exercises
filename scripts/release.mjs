@@ -167,16 +167,13 @@ function renderReleaseNotes(sections) {
 
 function rewriteChangelog(parsed, newVersionTag, date, prevVersionTag) {
   const releasedHeader = `## [${newVersionTag}] - ${date}`;
+  // Fresh [Unreleased] is just the heading + blank line. Per CLAUDE.md
+  // `## Changelog discipline` ("omit empty category sub-sections"), the
+  // ### Added / Changed / Fixed / Removed headings only appear when an
+  // entry of that category actually lands — the first matching commit
+  // adds the heading along with its entry.
   const freshUnreleased = [
     '## [Unreleased]',
-    '',
-    '### Added',
-    '',
-    '### Changed',
-    '',
-    '### Fixed',
-    '',
-    '### Removed',
     '',
   ];
   // Walk unreleasedLines and replace `## [Unreleased]` with the release header.

@@ -13,13 +13,8 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 
 ## [Unreleased]
 
-### Added
-
 ### Changed
-
-### Fixed
-
-### Removed
+- **`scripts/release.mjs` no longer seeds an empty 4-heading `[Unreleased]` template** after a release — the fresh block is just the `## [Unreleased]` line. Matches the new "omit empty sub-sections" rule from CLAUDE.md `## Changelog discipline`; the first commit of each kind adds its `### Added / Changed / Fixed / Removed` heading along with its entry. (this commit)
 
 ## [v0.3.0] - 2026-06-26
 
