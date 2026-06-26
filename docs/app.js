@@ -2063,8 +2063,29 @@ async function maybeAutoPull() {
     // doGistPull already stamps lastSyncedGistUpdatedAt internally;
     // mergePayload applies the remote payload to local state.
     withSyncDirtySuppressed(() => mergePayload(remotePayload, { source: 'auto-pull' }));
-    showRefreshToast('✨ Synced changes from another device', 'ok');
     notifyAutoSyncState();
+    // Reload so already-mounted surfaces pick up the merged state. Cards
+    // under iteration A's incremental render are built once at the
+    // initial Browse paint; the LLM verdict slot reads saved.verdict at
+    // that single moment via renderVerdict(...) inside renderAnswerBox.
+    // Done/Bookmark classes on cards + sidebar tree have the same
+    // mount-time-only binding. Without a reload, an auto-pull would
+    // silently land verdict (and other merged state) into localStorage
+    // but the UI wouldn't show it — exactly the symptom the user saw
+    // ("answer text synced but check result didn't"). The answer text
+    // looked synced only because CodeMirror lazy-inits on focus and
+    // reads localStorage at that moment, masking the larger issue.
+    // Mirrors manual ⬇ Pull's 500 ms reload (line 2166); toast survives
+    // the reload via the same sessionStorage handoff used by the header
+    // 🔄 button's manualRefresh path.
+    try {
+      sessionStorage.setItem('cka:refresh-toast', JSON.stringify({
+        msg: '✨ Synced changes from another device',
+        kind: 'ok',
+        at: Date.now(),
+      }));
+    } catch {}
+    setTimeout(() => { location.reload(); }, 500);
   } catch (e) {
     console.warn('[auto-pull] pull failed:', e.message);
   }
