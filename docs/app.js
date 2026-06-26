@@ -3235,6 +3235,11 @@ function renderAnswerBox(ex, opts = {}) {
       // Quiz mode hook: feed verdict into the quiz status
       if (State.mode === 'quiz' && State.quiz && opts.fromQuiz) {
         State.quiz.status.set(ex.id, v.correct ? 'got' : (v.verdict === 'partial' ? 'partial' : 'missed'));
+        // Reflect the new status on the grade-row highlight immediately so
+        // the user sees which bucket Check put them in (answers the
+        // "Partial 80/100, which button?" question — already marked, tap
+        // Next or override).
+        syncQuizGradeButtons();
       }
     } catch (e) {
       verdictSlot.innerHTML = '';
@@ -3310,8 +3315,9 @@ function renderAnswerBox(ex, opts = {}) {
       proxy('quiz-flag',       '🚩 Flag'),
       revealProxy,
       el('span', { class: 'qbar-spacer' }),
-      proxy('quiz-grade-got',  '✓ Got it',  'grade-got'),
-      proxy('quiz-grade-miss', '✗ Missed',  'grade-miss'),
+      proxy('quiz-grade-got',     '✓ Got it',  'grade-got'),
+      proxy('quiz-grade-partial', '◐ Partial', 'grade-partial'),
+      proxy('quiz-grade-miss',    '✗ Missed',  'grade-miss'),
       proxy('quiz-skip',       '↷ Skip'),
       proxy('quiz-next',       'Next →'),
       syncDot,
@@ -5550,6 +5556,9 @@ function renderQuizCard() {
   // Keep the nav drawer in sync if it's open (covers the keyboard-shortcut
   // flow where grading happens while the drawer is briefly visible).
   if (_quizNavOpen) renderQuizNavGrid();
+  // Refresh the grade-row highlight so the current quiz status is always
+  // visible after a (re-)render.
+  syncQuizGradeButtons();
 }
 
 function quizNext() {
@@ -5575,6 +5584,24 @@ function quizGrade(verdict) {
   State.quiz.status.set(id, verdict);
   if (verdict === 'got') setDone(id, true);
   quizNext();
+}
+
+// Highlight the Got it / Partial / Missed button that matches the current
+// question's status, so the user can tell at a glance which bucket they
+// landed in after LLM Check (which writes one of got/partial/missed
+// internally via line 3237). Without this the user sees a "Partial 80/100"
+// verdict but no indication that the quiz already recorded it — the bug
+// behind "which button do I click for Partial?".
+function syncQuizGradeButtons() {
+  const ids = ['quiz-grade-got', 'quiz-grade-partial', 'quiz-grade-miss'];
+  ids.forEach(elId => document.getElementById(elId)?.classList.remove('is-current'));
+  const q = State.quiz;
+  if (!q) return;
+  const exId = q.ids[q.idx];
+  const s = q.status.get(exId);   // 'got' | 'partial' | 'missed' | 'skipped' | undefined
+  if (s === 'got')     document.getElementById('quiz-grade-got')?.classList.add('is-current');
+  if (s === 'partial') document.getElementById('quiz-grade-partial')?.classList.add('is-current');
+  if (s === 'missed')  document.getElementById('quiz-grade-miss')?.classList.add('is-current');
 }
 
 function quizSkip() {
@@ -5731,7 +5758,7 @@ function finishQuiz() {
     const label = el('li', {});
     const a = el('a', { href: '#browse/' + id, onclick: (e) => { e.preventDefault(); location.hash = '#browse/' + id; } }, ex.title);
     label.append(
-      el('span', { class: `status-${verdict}` }, verdict === 'got' ? '✓' : verdict === 'missed' ? '✗' : '↷'),
+      el('span', { class: `status-${verdict}` }, verdict === 'got' ? '✓' : verdict === 'partial' ? '◐' : verdict === 'missed' ? '✗' : '↷'),
       ' ',
       a,
       ' ',
@@ -7526,6 +7553,7 @@ async function init() {
   document.getElementById('quiz-next').addEventListener('click', quizNext);
   document.getElementById('quiz-prev').addEventListener('click', quizPrev);
   document.getElementById('quiz-grade-got').addEventListener('click', () => quizGrade('got'));
+  document.getElementById('quiz-grade-partial').addEventListener('click', () => quizGrade('partial'));
   document.getElementById('quiz-grade-miss').addEventListener('click', () => quizGrade('missed'));
   document.getElementById('quiz-skip').addEventListener('click', quizSkip);
   document.getElementById('quiz-flag').addEventListener('click', quizFlag);

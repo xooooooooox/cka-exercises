@@ -285,13 +285,20 @@
         <button id="quiz-nav-toggle" type="button" title="Jump to any question / see status of all questions">📋 Questions</button>
       </div>
       <div id="quiz-card"></div>
+      <!-- Grade row — the three mutually-exclusive scoring states.
+           syncQuizGradeButtons() in app.js adds .is-current to whichever
+           one matches State.quiz.status, so after LLM Check (which writes
+           got/partial/missed internally) the user immediately sees which
+           bucket they landed in and can tap Next, or override here. -->
+      <div class="quiz-grades">
+        <button id="quiz-grade-got" type="button" class="grade-got" title="Self-grade correct + mark this exercise Done globally">✓ Got it</button>
+        <button id="quiz-grade-partial" type="button" class="grade-partial" title="Self-grade partial credit; doesn't toggle the global Done mark">◐ Partial</button>
+        <button id="quiz-grade-miss" type="button" class="grade-miss" title="Self-grade incorrect; doesn't change the global Done mark">✗ Missed</button>
+      </div>
       <div class="quiz-controls">
         <button id="quiz-prev" type="button" title="Go to the previous question (does not change grades)">← Prev</button>
         <button id="quiz-flag" type="button" title="Mark this question to revisit in the end-of-session summary">🚩 Flag</button>
         <button id="quiz-reveal" type="button" title="Show the reference solution; unlocks self-grading">👁 Reveal solution</button>
-        <span class="spacer"></span>
-        <button id="quiz-grade-got" type="button" class="grade-got" title="Self-grade correct + mark this exercise Done globally">✓ Got it</button>
-        <button id="quiz-grade-miss" type="button" class="grade-miss" title="Self-grade incorrect; clears any existing Done mark on this exercise">✗ Missed</button>
         <button id="quiz-skip" type="button" title="Move on without grading (counted as ungraded in the summary)">↷ Skip</button>
         <button id="quiz-next" type="button" title="Go to the next question (does not change grades)">Next →</button>
       </div>

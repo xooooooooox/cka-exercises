@@ -84,6 +84,7 @@ a.primary {
 a.primary:hover { filter: brightness(1.1); text-decoration: none; }
 button.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
 button.grade-got { color: var(--success); border-color: var(--success); }
+button.grade-partial { color: var(--warning); border-color: var(--warning); }
 button.grade-miss { color: var(--danger); border-color: var(--danger); }
 
 input[type="search"], input[type="number"] {
@@ -667,6 +668,39 @@ pre .copy-btn.copied { color: var(--success); }
 #quiz-nav-toggle { white-space: nowrap; }
 .quiz-controls { display: flex; gap: 8px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
 .quiz-controls .spacer { flex: 1; }
+/* Grade row — three mutually-exclusive scoring buttons. Visually heavier
+   than .quiz-controls (the row below it with Prev/Flag/Reveal/Skip/Next)
+   since marking the question is the primary post-Check action. The
+   `.is-current` modifier (set by syncQuizGradeButtons in app.js) fills the
+   matching button so the user can see at a glance which bucket Check put
+   them in — answers the "Partial 80/100, which button do I click?" UX
+   question by showing them they're already marked. */
+.quiz-grades {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+.quiz-grades button {
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.quiz-grades .grade-got.is-current {
+  background: var(--success);
+  color: #fff;
+  border-color: var(--success);
+}
+.quiz-grades .grade-partial.is-current {
+  background: var(--warning);
+  color: #fff;
+  border-color: var(--warning);
+}
+.quiz-grades .grade-miss.is-current {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
 .quiz-end-row { margin-top: 14px; text-align: right; }
 
 /* Quiz navigator drawer (📋 Questions) — reuses .overlay + .overlay-card. */
@@ -2992,13 +3026,18 @@ body.answer-fullscreen-active { overflow: hidden; }
   #app-header { gap: 8px; padding-left: 12px; padding-right: 12px; }
   #quiz-timer { font-size: 12px; padding: 3px 7px; }
 
-  /* Quiz controls: 4 columns × 2 rows */
+  /* Quiz utility row: 5 columns (Prev / Flag / Reveal / Skip / Next).
+     The 3 grade buttons live in their own .quiz-grades row above. */
   .quiz-controls {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 6px;
   }
   .quiz-controls .spacer { display: none; }
+  .quiz-grades button {
+    padding: 9px 6px;
+    font-size: 13px;
+  }
   .quiz-controls button {
     padding: 8px 4px;
     font-size: 12px;
