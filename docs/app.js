@@ -3882,6 +3882,37 @@ function renderReportRadioRows(groupEl, types, name) {
   }
 }
 
+// Render an inline help block describing the currently-selected issue
+// type. Pulls whatsWrong + suggested from REPORT_TYPES / TASK_REPORT_TYPES
+// (the same fields rendered into the GitHub issue body) so the picker
+// affordance and the eventual GitHub issue stay in lock-step. The `other`
+// type has whatsWrong=null; show a generic fallback for that case.
+function renderReportTypeHelp(helpEl, type) {
+  if (!helpEl) return;
+  helpEl.innerHTML = '';
+  if (!type) {
+    helpEl.hidden = true;
+    return;
+  }
+  helpEl.hidden = false;
+  if (!type.whatsWrong && !type.suggested) {
+    helpEl.appendChild(el('p', { class: 'report-type-help-body muted' },
+      "Pick this if none of the above fits. Describe what's wrong in the " +
+      "Additional context box — it's required for this type."));
+    return;
+  }
+  if (type.whatsWrong) {
+    helpEl.appendChild(el('div', { class: 'report-type-help-row' },
+      el('strong', {}, "What this means: "),
+      type.whatsWrong));
+  }
+  if (type.suggested) {
+    helpEl.appendChild(el('div', { class: 'report-type-help-row' },
+      el('strong', {}, "Suggested fix: "),
+      type.suggested));
+  }
+}
+
 function openFixReportModal(ex, ctx = {}) {
   const overlay = document.getElementById('report-overlay');
   if (!overlay) return;
@@ -3925,9 +3956,16 @@ function openFixReportModal(ex, ctx = {}) {
   renderReportRadioRows(solutionRadioGroup, REPORT_TYPES, 'report-type');
   renderReportRadioRows(taskRadioGroup, TASK_REPORT_TYPES, 'report-task-type');
 
+  // Inline help blocks (one per mode) — pick up references for the
+  // selection-change handler below.
+  const solutionHelpEl = $('report-type-help');
+  const taskHelpEl = $('report-task-type-help');
+
   // Swap radio groups based on mode; pick from the visible group only.
   solutionRadioGroup.hidden = (mode === 'task');
   taskRadioGroup.hidden = (mode !== 'task');
+  if (solutionHelpEl) solutionHelpEl.hidden = (mode === 'task');
+  if (taskHelpEl) taskHelpEl.hidden = (mode !== 'task');
   const radios = (mode === 'task' ? taskRadioGroup : solutionRadioGroup).querySelectorAll('input[type="radio"]');
 
   // Header rename.
@@ -4085,7 +4123,23 @@ function openFixReportModal(ex, ctx = {}) {
     openBtn.href = buildIssueUrl(ex, collect(), mode);
     titlePreview.value = buildIssueTitle(ex, mode);
   };
-  const onTypeChange = () => { syncTaskSubBlocks(); syncHref(); };
+  // Refresh the inline "What this means / Suggested fix" block under the
+  // radio group whenever the selection changes. Pulls whatsWrong +
+  // suggested from the same REPORT_TYPES / TASK_REPORT_TYPES entry that
+  // drives the GitHub issue body — so the in-modal preview and the
+  // submitted issue stay in sync without a second template.
+  const syncTypeHelp = () => {
+    const helpEl = mode === 'task' ? taskHelpEl : solutionHelpEl;
+    if (!helpEl) return;
+    const checked = (mode === 'task' ? taskRadioGroup : solutionRadioGroup)
+      .querySelector('input[type="radio"]:checked');
+    const t = checked ? getReportType(checked.value, mode) : null;
+    renderReportTypeHelp(helpEl, t);
+  };
+  const onTypeChange = () => { syncTaskSubBlocks(); syncTypeHelp(); syncHref(); };
+  // Initial paint — render the help block for whatever radio was just
+  // pre-selected (auto-detect / saved draft / 'other' fallback).
+  syncTypeHelp();
 
   const cleanup = () => {
     overlay.hidden = true;

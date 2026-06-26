@@ -1829,6 +1829,26 @@ body.answer-fullscreen-active { overflow: hidden; }
   cursor: pointer;
 }
 .report-type-group label:hover { background: var(--bg-elev); color: var(--fg); }
+
+/* Inline help block right under the radio group — shows the currently-
+   selected type's whatsWrong + suggested so the user knows what they're
+   picking without context-switching into Help mode. Updated live on
+   selection change by renderReportTypeHelp. */
+.report-type-help {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--fg);
+}
+.report-type-help[hidden] { display: none; }
+.report-type-help .report-type-help-row + .report-type-help-row { margin-top: 6px; }
+.report-type-help .report-type-help-row strong { color: var(--fg); }
+.report-type-help .report-type-help-body { margin: 0; color: var(--fg-muted); }
 .report-type-group input[type="radio"] {
   margin-top: 2px;
   accent-color: var(--accent);

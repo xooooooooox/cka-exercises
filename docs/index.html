@@ -697,7 +697,13 @@
            rows here — they would drift out of sync with the JS catalogue
            and we'd lose any new types added there. -->
       <div id="report-type-group" class="report-type-group solution-mode-only" role="radiogroup" aria-label="Issue type"></div>
+      <!-- Help block re-rendered by renderReportTypeHelp on every radio
+           change. Surfaces the selected type's whatsWrong + suggested so
+           the user doesn't have to context-switch into Help mode to know
+           what they're picking. -->
+      <div id="report-type-help" class="report-type-help solution-mode-only" aria-live="polite"></div>
       <div id="report-task-type-group" class="report-type-group task-mode-only" role="radiogroup" aria-label="Task issue type" hidden></div>
+      <div id="report-task-type-help" class="report-type-help task-mode-only" aria-live="polite" hidden></div>
       <div id="report-suggested-url-block" class="report-suggested-url-block task-mode-only" hidden>
         <label class="report-field-label" for="report-suggested-url">Suggested kubernetes.io URL</label>
         <input id="report-suggested-url" type="url" placeholder="https://kubernetes.io/docs/…" autocomplete="off">
