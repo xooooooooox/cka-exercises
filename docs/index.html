@@ -434,9 +434,11 @@
        generatedAt differs from the bundled exercises.json's generatedAt.
        Mainly for iOS PWA standalone where forced quit is otherwise needed. -->
   <div id="update-banner" class="update-banner" hidden role="status" aria-live="polite">
-    <span><span class="muted">✨ New version available</span> <span id="update-banner-versions"></span></span>
-    <button id="update-refresh" type="button">Refresh</button>
-    <button id="update-dismiss" type="button" class="muted" title="Dismiss until next launch" aria-label="Dismiss">✕</button>
+    <span class="update-banner-message"><span class="muted">✨ New version available</span> <span id="update-banner-versions"></span></span>
+    <span class="update-banner-actions">
+      <button id="update-refresh" type="button">Refresh</button>
+      <button id="update-dismiss" type="button" class="muted" title="Dismiss until next launch" aria-label="Dismiss">✕</button>
+    </span>
   </div>
 
   <!-- Install hint — one-time dismissable banner for users on mobile

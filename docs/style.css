@@ -2870,8 +2870,34 @@ body.answer-fullscreen-active { overflow: hidden; }
   border-color: transparent;
   padding: 0 4px;
 }
+.update-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+/* Keep each version token (e.g. `v0.1.0+dev.17`) on one line — without
+   this the browser breaks at `+` and `.` symbols, fragmenting the
+   delta into "v0.1.0" / "+dev" / "17" on narrow viewports. */
+#update-banner-versions strong {
+  white-space: nowrap;
+}
 @media (max-width: 480px) {
-  .update-banner { font-size: 12px; padding: 6px 12px; gap: 6px; }
+  /* On phone widths the pill layout can't fit one row anymore — stack
+     the message + actions, switch to a rounded rectangle. Each version
+     token still stays nowrap (rule above), so a long delta may push
+     the right-hand version to a new line of its own, but never breaks
+     mid-token. */
+  .update-banner {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    border-radius: 12px;
+    font-size: 12px;
+    padding: 8px 12px;
+    gap: 6px;
+  }
+  .update-banner-actions { justify-content: center; }
 }
 @media print { .update-banner { display: none !important; } }
 
