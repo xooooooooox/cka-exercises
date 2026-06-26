@@ -2408,9 +2408,12 @@ body.answer-fullscreen-active { overflow: hidden; }
   opacity: 0.7;
   background: var(--bg);
 }
-.issues-queue-item--flagonly {
-  border-left: 3px solid var(--danger);
-}
+/* Left-border carries the scope cue (task = blue, solution = red) — applies
+   to both flag-only and fully-filled drafts so the visual scope marker stays
+   consistent. Previously `--flagonly` always painted red, which made the
+   two entries that "Both" scope produces indistinguishable. */
+.issues-queue-item[data-mode="task"]     { border-left: 3px solid var(--accent); }
+.issues-queue-item[data-mode="solution"] { border-left: 3px solid #d73a4a; }
 .issues-queue-tag-flag {
   border-color: var(--danger);
   color: var(--danger);

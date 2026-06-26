@@ -4143,20 +4143,37 @@ function buildIssueItem(item, ex, onChange) {
   const flagOnly = isQueueFlagOnly(item);
   const submitted = isQueueSubmitted(item);
   const modeLabel = item.mode === 'task' ? 'task-fix' : 'answer-fix';
+  const scopeWord = item.mode === 'task' ? 'task' : 'solution';
   const titleText = ex ? ex.displayTitle : `(exercise no longer in corpus: ${item.exId})`;
-  const domain    = ex ? (ex.domain || '') : '';
+  // PROGRESS_SHORT_LABEL gives "Cluster Arch" / "Scheduling" / etc. ex.domain
+  // is the full domain object {key,title,weight,sections,...}, not a string —
+  // template-interpolating it as `${domain}` used to yield "[object Object]"
+  // in the meta line. Pre-bdd9c1a that was masked because the Map-vs-object
+  // bug left ex=null; once ex resolved properly, the [object Object] leak
+  // became visible.
+  const domain = ex
+    ? (PROGRESS_SHORT_LABEL[ex.domain?.key] || ex.domain?.key || '')
+    : '';
   const t = item.draft.type ? getReportType(item.draft.type, item.mode) : null;
   const kindLabel = flagOnly ? '🐞 Flagged — no details yet' : (t?.label || item.draft.type || '—');
   const savedRel  = item.draft.savedAt ? humanTimeAgo(item.draft.savedAt) : 'just now';
 
   const li = document.createElement('li');
   li.className = 'issues-queue-item' + (submitted ? ' issues-queue-item--submitted' : '') + (flagOnly ? ' issues-queue-item--flagonly' : '');
+  // Scope marker for the CSS attribute-selector left-border rule. Both
+  // flag-only and fully-filled drafts get this so the visual scope cue is
+  // consistent across "to submit" / "already opened" states.
+  li.dataset.mode = item.mode;
 
   const head = document.createElement('div');
   head.className = 'issues-queue-item-head';
   const tag = document.createElement('span');
-  tag.className = `issues-queue-tag issues-queue-tag-${flagOnly ? 'flag' : item.mode}`;
-  tag.textContent = flagOnly ? '🐞 flagged' : modeLabel;
+  // Use the scope-colored tag class for both flag-only and full drafts so
+  // task entries are always blue + solution entries always red. The legacy
+  // `issues-queue-tag-flag` (uniform red) made Both-scope flags
+  // indistinguishable — same icon, same text, same color.
+  tag.className = `issues-queue-tag issues-queue-tag-${item.mode === 'task' ? 'task' : 'solution'}`;
+  tag.textContent = flagOnly ? `🐞 FLAGGED · ${scopeWord}` : modeLabel;
   const title = document.createElement('span');
   title.className = 'issues-queue-title';
   title.textContent = titleText;
