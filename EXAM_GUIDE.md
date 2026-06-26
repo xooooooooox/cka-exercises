@@ -128,18 +128,7 @@ The webapp has three modes:
 
 Progress persists in `localStorage`. Press <kbd>?</kbd> in the webapp to see keyboard shortcuts.
 
-### ✏️ Automatic LLM grading
-
-The webapp can grade your answers automatically using an LLM as judge. Click ⚙️ in the header to configure:
-
-1. Pick a provider — **Anthropic**, **OpenAI**, **DeepSeek**, **Qwen (千问)**, **Doubao (豆包)**, **GLM (智谱 BigModel)**, or **Ollama** (local)
-2. Paste your API key (skip for Ollama)
-3. Click **Test** — confirms the key works and populates the Model dropdown with the live model list from that provider
-4. Pick a model (or type a custom id); set "auto-mark Done when score ≥ N"
-
-Then type your answer in the **✏️ Your answer** box on any exercise card and click **✓ Check**. The grader returns a verdict ("Correct" / "Partial" / "Not yet"), a score 0–100, a summary, and bullet lists of what you got right and what you missed. Your typed answers persist per exercise.
-
-> The grader is intentionally lenient about which approach you took — kubectl imperative, declarative YAML, helm, or kustomize all pass if they accomplish the task. Privacy: your answer + the task + the reference solution are sent to the provider you chose (or stay on `localhost` for Ollama). Nothing else is sent.
+The webapp also has built-in **LLM auto-grading** (Anthropic / OpenAI / DeepSeek / Qwen / Doubao / GLM / Ollama) — see [WEBAPP_GUIDE.md § 5](WEBAPP_GUIDE.md#5--auto-grading-llm) for setup + privacy.
 
 ---
 

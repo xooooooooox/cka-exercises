@@ -218,9 +218,11 @@ When the user asks for a code / exercise change WITHOUT mentioning docs, add the
 
 ## Release workflow
 
-The SPA carries an App-Store-style `vX.Y.Z` version label, surfaced in the header chip + the Refresh banner's version delta. The version lives in `package.json.version`; build time (`scripts/build-exercises.mjs`) stamps it into `docs/exercises.json` + `docs/version.json` + the service-worker cache key (`scripts/build-sw.mjs`).
+The SPA carries an App-Store-style `vX.Y.Z` version label, surfaced in the header chip + the Refresh banner's version delta. The version lives in `package.json.version`; build time (`scripts/build-exercises.mjs`) stamps it into `docs/exercises.json` + `docs/version.json` + the service-worker cache key (`scripts/build-sw.mjs`). The `+dev.N` suffix in dev-build labels is SemVer build metadata (§10 — does not affect precedence); we use it informationally. The SPA's update detection compares `generatedAt` / `gitSha` rather than SemVer precedence, so the "build metadata MUST be ignored" rule doesn't conflict with anything.
 
-**Cutting a release** (single maintainer, no CI gate beyond a manual trigger):
+### Cutting a release
+
+Single maintainer, no CI gate beyond a manual trigger:
 
 1. Merge whatever commits the new release should include. Each commit must add a single line under `## [Unreleased]` per the changelog discipline above.
 2. Go to the **Actions** tab → **Release** → **Run workflow**. Pick `bump=auto` (recommended) or override with `major` / `minor` / `patch`. `dry_run=true` previews the result without writing files / pushing.
@@ -329,7 +331,7 @@ The build script keys off `## <N>. <Title>` and `## Killer.sh Mock Exam Question
 
 `scripts/k8s-docs-map.json` maps short page titles to `{ breadcrumb, url }`. Add an entry there and re-run `scripts/apply-killersh-polish.mjs` (or just edit markdown directly).
 
-## When Adding or Editing Solutions
+### Solution editing checklist
 
 - Always include the kubernetes.io docs link.
 - Place exercises under the correct curriculum sub-topic.
@@ -347,13 +349,15 @@ The build script keys off `## <N>. <Title>` and `## Killer.sh Mock Exam Question
 
 Pages source must be set to "GitHub Actions" in the repo settings.
 
-## Things to be aware of
+## Notes
+
+### Things to be aware of
 
 - `docs/exercises.json` is **gitignored** (it's a build artifact). Don't commit it.
 - The killer.sh PDFs in `assets/killer-sh/` are user-provided after CKA registration; the KillerCoda PDFs in `assets/killercoda/` are similarly sourced. Both ship with the repo for now but might be removed if licensing concerns arise.
 - Killercoda's `sachin/CKA` course is referenced from the README but its content requires login and isn't reproducible here.
 
-## Out of scope
+### Out of scope
 
 - Hosting kubernetes.io article content (we only link out).
 - Verifying that documentation links return 200 (no broken-link checker yet — would be a good addition).

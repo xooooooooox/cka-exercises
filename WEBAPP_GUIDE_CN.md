@@ -10,7 +10,7 @@
 
 ---
 
-## 1. 快速开始
+## 1. 🚀 快速开始
 
 1. 打开 <https://xooooooooox.github.io/cka-exercises/>
 2. 顶部选模式：**📚 Browse**、**🎯 Quiz** 或 **📖 Docs**
@@ -33,7 +33,7 @@
 
 ---
 
-## 2. 三种模式
+## 2. 🗂 各种模式
 
 ### 📚 Browse
 
@@ -120,9 +120,19 @@ CKA 考试跑在 kubeadm 装出来的集群上。🖥 Nodes 内置一个 CP + wo
 
 每个版本 bundle ~30 KB，懒加载。
 
+### ❓ Help
+
+打包好的参考文档，SPA 内可读，无需联网。
+
+- **📖 Webapp 指南** —— 本文档。
+- **🎯 备考索引** —— EXAM_GUIDE.md（CKA 考点、考前 dotfiles、练习实验室、参考链接）。
+- **📜 Changelog** —— CHANGELOG.md 内嵌渲染。
+
+内容上方的语言切换器在有 CN 翻译的文档间切 EN ⇄ 中文。Changelog 只有英文版本。
+
 ---
 
-## 3. 顶栏控件
+## 3. 🎛 顶栏控件
 
 | 控件 | 作用 |
 |---|---|
@@ -144,9 +154,17 @@ CKA 考试跑在 kubeadm 装出来的集群上。🖥 Nodes 内置一个 CP + wo
 
 Settings 对话框分三个子标签 —— 一次只显示一个保持紧凑。最后打开的标签通过 `cka:settings:lastTab` 记住。
 
-- **🤖 LLM** —— 选 provider，填 API key，Test 验证，选 model，设自动 Done 阈值。具体批改行为见 §5。
-- **💾 Backup** —— 把本地进度导出 / 导入为 JSON 文件。API key 会被擦除。
-- **☁ Sync** —— 填 GitHub PAT + (可选) Gist ID。开 / 关 30s 自动 Push。回滚 pre-pull backup。具体同步逻辑见 §6。
+### 🤖 LLM
+
+选 provider，填 API key，Test 验证，选 model，设自动 Done 阈值。具体批改行为见 §5。
+
+### 💾 Backup
+
+把本地进度导出 / 导入为 JSON 文件。导出时 API key 会被擦除。
+
+### ☁ Sync
+
+填 GitHub PAT + (可选) Gist ID。开 / 关 30s 自动 Push。回滚 pre-pull backup。具体同步逻辑见 §6。
 
 Header 上有 ☁ 和 🤖 两个常用入口的快捷弹层 —— Settings 用于首次配置，日常用 header 弹层就够了。
 
@@ -335,33 +353,7 @@ Both flagged 的题在 popover 里渲染成**两条独立条目**（一条 answe
 
 ---
 
-## 8. Emoji 语义表
-
-SPA 中每个 emoji 都有一个固定的 UI 语义 —— 同一个 emoji 在多个 surface 出现时含义不变。
-
-| Emoji | 语义 | 出现位置 |
-|-------|------|---------|
-| 📚 | Browse 模式 | mode tab（顶栏 + 手机底部栏）|
-| 🎯 | Quiz 模式 | mode tab |
-| 📖 | Docs 模式 | mode tab |
-| ❓ | Help 模式 | mode tab |
-| 🔧 | Tools 模式 / Tools 抽屉（同语义） | mode tab + 全屏答题框 label 行 |
-| 🖥 | Nodes 模式 | mode tab |
-| 📝 | Task 抽屉 | 全屏答题框 label 行 |
-| 🐞 | Flag-scope 切换按钮 | Browse 卡片 + 全屏 quizbar |
-| 🐛 | 内联问题链接 / Issues 队列入口 | "Suggest a fix" 链接 / 顶栏弹窗 |
-| 🚩 | Quiz "标记此题待复盘" | active quiz session |
-| 🔄 | Refresh | 顶栏 + 更新提示横幅 |
-| ☁ | Sync（Gist） | 顶栏 + 全屏 quizbar |
-| 🤖 | LLM picker | 顶栏 |
-| 📋 | Quiz Questions 抽屉 / Copy | quiz nav + 报告 modal |
-| 📊 | Outline 抽屉 | 手机端 filter toolbar |
-| ↑ | 回到顶部 | Browse 浮动按钮 |
-| ⭐ | 收藏 | Browse 卡片 |
-
----
-
-## 9. 版本发布节奏 + dev build
+## 8. 🚢 版本发布节奏 + dev build
 
 webapp 显式打了版本号标签，两种状态：
 
@@ -382,7 +374,7 @@ webapp 显式打了版本号标签，两种状态：
 
 ---
 
-## 10. 持久化机制
+## 9. 💾 持久化机制
 
 所有状态都在浏览器的 `localStorage`，前缀 `cka:`。**任何数据都不会被发送到任何服务器，除非你主动点击 Check / Test / Push / Pull。** 清除站点数据 = 全部丢失（Settings → Clear all 只会清除 LLM 设置）。
 
@@ -420,13 +412,11 @@ DevTools 中你会看到的 keys：
 
 题目 ID（如 `ca-1-005`）按 section 顺序生成。维护者遵循 **append-only** 规则（见 `CLAUDE.md`）—— 添加新题不会让现有 ID 偏移，不会破坏已有用户的进度。
 
-### GitHub Pages 更新时会怎样？
-
-`docs/exercises.json` 可能会重新生成 —— 只要维护者只 append，每道现有题保留 ID，你的 Done / Bookmark / Answer 都不会丢。
+**GitHub Pages 更新时**：`docs/exercises.json` 可能会重新生成 —— 只要维护者只 append，每道现有题保留 ID，你的 Done / Bookmark / Answer 都不会丢。
 
 ---
 
-## 11. 安全与隐私
+## 10. 🔒 安全与隐私
 
 这个 SPA **没有后端**。当成任何"自带 key 的 web 工具"对待。
 
@@ -444,7 +434,7 @@ DevTools 中你会看到的 keys：
 
 ---
 
-## 12. 键盘快捷键
+## 11. ⌨ 键盘快捷键
 
 | 键 | 作用 |
 |---|---|
@@ -462,7 +452,7 @@ DevTools 中你会看到的 keys：
 
 ---
 
-## 13. 常见问题
+## 12. 💬 常见问题
 
 **Q. 部署更新后我的进度会丢吗？**
 不会。`localStorage` 独立于站点静态资源。只要维护者遵循 append-only ID 规则（在 `CLAUDE.md` 里写明了），每道现有题保留 ID。
@@ -481,3 +471,29 @@ DevTools 中你会看到的 keys：
 
 **Q. 哪里报 bug / 建议加新题？**
 卡片上点 **🐞 Quick Flag** 入队，等准备好的时候从 header 🐛 弹层批量去 GitHub 开 issue（§7）。或直接 <https://github.com/xooooooooox/cka-exercises/issues>。
+
+---
+
+## 13. 🎨 Emoji 语义表
+
+SPA 中每个 emoji 都有一个固定的 UI 语义 —— 同一个 emoji 在多个 surface 出现时含义不变。
+
+| Emoji | 语义 | 出现位置 |
+|-------|------|---------|
+| 📚 | Browse 模式 | mode tab（顶栏 + 手机底部栏）|
+| 🎯 | Quiz 模式 | mode tab |
+| 📖 | Docs 模式 | mode tab |
+| ❓ | Help 模式 | mode tab |
+| 🔧 | Tools 模式 / Tools 抽屉（同语义） | mode tab + 全屏答题框 label 行 |
+| 🖥 | Nodes 模式 | mode tab |
+| 📝 | Task 抽屉 | 全屏答题框 label 行 |
+| 🐞 | Flag-scope 切换按钮 | Browse 卡片 + 全屏 quizbar |
+| 🐛 | 内联问题链接 / Issues 队列入口 | "Suggest a fix" 链接 / 顶栏弹窗 |
+| 🚩 | Quiz "标记此题待复盘" | active quiz session |
+| 🔄 | Refresh | 顶栏 + 更新提示横幅 |
+| ☁ | Sync（Gist） | 顶栏 + 全屏 quizbar |
+| 🤖 | LLM picker | 顶栏 |
+| 📋 | Quiz Questions 抽屉 / Copy | quiz nav + 报告 modal |
+| 📊 | Outline 抽屉 | 手机端 filter toolbar |
+| ↑ | 回到顶部 | Browse 浮动按钮 |
+| ⭐ | 收藏 | Browse 卡片 |

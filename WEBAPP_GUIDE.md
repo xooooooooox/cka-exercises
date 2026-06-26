@@ -10,7 +10,7 @@ A guided tour of the static SPA at <https://xooooooooox.github.io/cka-exercises/
 
 ---
 
-## 1. Quick Start
+## 1. 🚀 Quick Start
 
 1. Open <https://xooooooooox.github.io/cka-exercises/>.
 2. Pick a mode in the header: **📚 Browse**, **🎯 Quiz**, or **📖 Docs**.
@@ -33,7 +33,7 @@ The installed app ships with a **service worker** (registered automatically on f
 
 ---
 
-## 2. The Three Modes
+## 2. 🗂 The Modes
 
 ### 📚 Browse
 
@@ -120,9 +120,19 @@ The exam runs on a kubeadm-installed cluster. The 🖥 Nodes tab ships a curated
 
 Bundle size is ~30 KB per version, lazy-loaded only when you first open the Nodes tab.
 
+### ❓ Help
+
+Bundled reference docs — readable inside the SPA, no network round trip.
+
+- **📖 Webapp Guide** — this document.
+- **🎯 Study Index** — EXAM_GUIDE.md (CKA curriculum, pre-exam dotfiles, practice labs, references).
+- **📜 Changelog** — CHANGELOG.md rendered inline.
+
+A language switcher above the content swaps EN ⇄ 中文 for guides that have a CN translation. The Changelog is EN-only.
+
 ---
 
-## 3. Header Controls
+## 3. 🎛 Header Controls
 
 | Control | Purpose |
 |---|---|
@@ -144,9 +154,17 @@ Bundle size is ~30 KB per version, lazy-loaded only when you first open the Node
 
 The Settings dialog is split into three sub-tabs — only one visible at a time so the dialog stays compact. The last-opened tab is remembered via `cka:settings:lastTab`.
 
-- **🤖 LLM** — pick provider, paste API key, test it, pick a model, set the auto-Done threshold. See §5 for what the grader actually does with these settings.
-- **💾 Backup** — Export / Import your local progress as a JSON file. API keys are scrubbed.
-- **☁ Sync** — paste a GitHub PAT + (optional) Gist ID. Enable / disable the 30 s auto-push toggle. Restore from pre-pull backup. See §6 for how sync works.
+### 🤖 LLM
+
+Pick provider, paste API key, test it, pick a model, set the auto-Done threshold. See §5 for what the grader actually does with these settings.
+
+### 💾 Backup
+
+Export / Import your local progress as a JSON file. API keys are scrubbed on export.
+
+### ☁ Sync
+
+Paste a GitHub PAT + (optional) Gist ID. Enable / disable the 30 s auto-push toggle. Restore from pre-pull backup. See §6 for how sync works.
 
 The header has shortcut entry points for sync (☁) and LLM provider switching (🤖) — Settings is for first-time setup, the header popovers handle day-to-day use.
 
@@ -335,33 +353,7 @@ Both reported `answer-fix` and `task-fix` issues can be triaged via dedicated Gi
 
 ---
 
-## 8. Emoji glossary
-
-The SPA uses these emoji as UI signals. Each has one assigned semantic — the same emoji on multiple surfaces always means the same thing.
-
-| Emoji | Semantic | Where it appears |
-|-------|----------|------------------|
-| 📚 | Browse mode | mode tab (header + mobile bottom bar) |
-| 🎯 | Quiz mode | mode tab |
-| 📖 | Docs mode | mode tab |
-| ❓ | Help mode | mode tab |
-| 🔧 | Tools mode / Tools drawer (same semantic) | mode tab + fullscreen answer-box label row |
-| 🖥 | Nodes mode | mode tab |
-| 📝 | Task drawer | fullscreen answer-box label row |
-| 🐞 | Flag-scope toggle button | Browse card + fullscreen quizbar |
-| 🐛 | Inline issue link / Issues queue header | "Suggest a fix" link / header popover |
-| 🚩 | Quiz "Flag this question" | active quiz session |
-| 🔄 | Refresh | header + update banner |
-| ☁ | Sync (Gist) | header + fullscreen quizbar |
-| 🤖 | LLM picker | header |
-| 📋 | Quiz Questions drawer / Copy | quiz nav + report modal |
-| 📊 | Outline drawer | mobile filter toolbar |
-| ↑ | Back to top | Browse floating button |
-| ⭐ | Bookmark | Browse card |
-
----
-
-## 9. Release cadence + dev builds
+## 8. 🚢 Release cadence + dev builds
 
 The webapp ships with an explicit version label. Two states matter:
 
@@ -382,7 +374,7 @@ Maintainers can override via `bump=major|minor|patch` in the workflow input; `bu
 
 ---
 
-## 10. Persistence Model
+## 9. 💾 Persistence Model
 
 All state is in your browser's `localStorage` under the `cka:` prefix. **Nothing is sent to any server unless you explicitly trigger Check / Test / Push / Pull.** Clearing site data wipes everything (Settings → Clear all does the same for LLM settings only).
 
@@ -420,13 +412,11 @@ Keys you'll see in DevTools:
 
 Exercise IDs (e.g. `ca-1-005`) are sequence-based per section. Contributors follow an **append-only** rule documented in `CLAUDE.md` so adding new exercises doesn't shift IDs and break existing users' progress.
 
-### What happens on a GitHub Pages update
-
-`docs/exercises.json` may regenerate — but as long as contributors only append, every existing exercise keeps its ID and your Done/Bookmark/Answer state survives.
+**On a GitHub Pages update**: `docs/exercises.json` may regenerate — but as long as contributors only append, every existing exercise keeps its ID and your Done/Bookmark/Answer state survives.
 
 ---
 
-## 11. Security & Privacy
+## 10. 🔒 Security & Privacy
 
 This SPA has **no backend**. Treat it like any other BYO-key web tool.
 
@@ -444,7 +434,7 @@ This SPA has **no backend**. Treat it like any other BYO-key web tool.
 
 ---
 
-## 12. Keyboard Shortcuts
+## 11. ⌨ Keyboard Shortcuts
 
 | Key | Action |
 |---|---|
@@ -462,7 +452,7 @@ Shortcuts are ignored while typing in input fields.
 
 ---
 
-## 13. FAQ
+## 12. 💬 FAQ
 
 **Q. Will my progress survive a deploy?**
 Yes. `localStorage` is independent of the site's static assets. As long as contributors follow the append-only ID rule (they do — it's documented in `CLAUDE.md`), every existing exercise keeps its ID.
@@ -481,3 +471,29 @@ No — by design. The Export and Gist Push payloads strip the API key. Add it on
 
 **Q. Where do I file a bug / suggest an exercise?**
 Use **🐞 Quick Flag** on the card to queue it, then file from the header 🐛 popover when you're ready (§7). Or directly at <https://github.com/xooooooooox/cka-exercises/issues>.
+
+---
+
+## 13. 🎨 Emoji glossary
+
+The SPA uses these emoji as UI signals. Each has one assigned semantic — the same emoji on multiple surfaces always means the same thing.
+
+| Emoji | Semantic | Where it appears |
+|-------|----------|------------------|
+| 📚 | Browse mode | mode tab (header + mobile bottom bar) |
+| 🎯 | Quiz mode | mode tab |
+| 📖 | Docs mode | mode tab |
+| ❓ | Help mode | mode tab |
+| 🔧 | Tools mode / Tools drawer (same semantic) | mode tab + fullscreen answer-box label row |
+| 🖥 | Nodes mode | mode tab |
+| 📝 | Task drawer | fullscreen answer-box label row |
+| 🐞 | Flag-scope toggle button | Browse card + fullscreen quizbar |
+| 🐛 | Inline issue link / Issues queue header | "Suggest a fix" link / header popover |
+| 🚩 | Quiz "Flag this question" | active quiz session |
+| 🔄 | Refresh | header + update banner |
+| ☁ | Sync (Gist) | header + fullscreen quizbar |
+| 🤖 | LLM picker | header |
+| 📋 | Quiz Questions drawer / Copy | quiz nav + report modal |
+| 📊 | Outline drawer | mobile filter toolbar |
+| ↑ | Back to top | Browse floating button |
+| ⭐ | Bookmark | Browse card |
