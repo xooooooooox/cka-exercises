@@ -3659,10 +3659,14 @@ const REPORT_TYPES = [
 // Task-mode issue catalog. Same shape as REPORT_TYPES; routed via mode='task'
 // to a separate label namespace (`task-fix,kind/...`) so the maintainer can
 // triage task/docs issues separately from reference-solution mismatches.
+// Labels symmetric with REPORT_TYPES — subject-less ("Task ..." is in the
+// modal header), each option leads with the fault. whatsWrong / suggested
+// keep their "Task ..." subject because those are the full descriptions
+// shown in the inline help block + the GitHub issue body.
 const TASK_REPORT_TYPES = [
   {
     id: 'missing-docs-link',
-    label: 'Task is missing a relevant kubernetes.io docs link',
+    label: 'Missing a relevant docs link',
     ghLabel: 'kind/missing-docs-link',
     whatsWrong:
       'The task references concepts or commands whose canonical kubernetes.io ' +
@@ -3673,7 +3677,7 @@ const TASK_REPORT_TYPES = [
   },
   {
     id: 'incorrect-docs-link',
-    label: 'An existing docs link points to the wrong kubernetes.io page',
+    label: 'Docs link points to the wrong page',
     ghLabel: 'kind/incorrect-docs-link',
     whatsWrong:
       "A current breadcrumb on the task doesn't match the kubernetes.io page " +
@@ -3682,7 +3686,7 @@ const TASK_REPORT_TYPES = [
   },
   {
     id: 'outdated-breadcrumb',
-    label: "Docs link's breadcrumb text drifted from kubernetes.io",
+    label: 'Docs-link breadcrumb is stale',
     ghLabel: 'kind/outdated-breadcrumb',
     whatsWrong:
       "The breadcrumb label on the link is stale relative to kubernetes.io's " +
@@ -3691,7 +3695,7 @@ const TASK_REPORT_TYPES = [
   },
   {
     id: 'unclear-task',
-    label: 'Task wording is ambiguous or unclear',
+    label: 'Wording is ambiguous or unclear',
     ghLabel: 'kind/unclear-task',
     whatsWrong:
       'The task statement is open to multiple correct interpretations, so the ' +
@@ -3702,7 +3706,7 @@ const TASK_REPORT_TYPES = [
   },
   {
     id: 'factual-error',
-    label: 'Task contains a factual error about Kubernetes behaviour',
+    label: 'Factual error about Kubernetes',
     ghLabel: 'kind/factual-error',
     whatsWrong:
       'The task asserts something that is wrong or out-of-date about Kubernetes ' +
@@ -3712,7 +3716,7 @@ const TASK_REPORT_TYPES = [
   },
   {
     id: 'typo',
-    label: 'Typo / formatting issue in the task body',
+    label: 'Typo / formatting in the task body',
     ghLabel: 'kind/typo-task',
     whatsWrong:
       'There is a typo or formatting issue in the task body or its docs-link block.',
