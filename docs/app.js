@@ -2689,7 +2689,10 @@ function installBackToTop() {
       _backToTopTicking = false;
     });
   };
-  window.addEventListener('scroll', onScroll, { passive: true });
+  // Only #main scrolls when the user drags through the card list (the
+  // body's overflow is not what moves the corpus). Skip window scroll —
+  // iOS address-bar events fire on window but don't represent card-list
+  // position, and using them mistakenly kept the button visible at top.
   document.getElementById('main')?.addEventListener('scroll', onScroll, { passive: true });
   syncBackToTopVisibility();
 }
@@ -2701,9 +2704,16 @@ function syncBackToTopVisibility() {
     btn.hidden = true;
     return;
   }
-  const mainTop = document.getElementById('main')?.scrollTop || 0;
-  const winTop = window.scrollY || document.scrollingElement?.scrollTop || 0;
-  btn.hidden = Math.max(mainTop, winTop) < _BACK_TO_TOP_THRESHOLD;
+  // Use #main.scrollTop exclusively — it's the actual cards-scrolling
+  // container. Earlier version mixed in window.scrollY hoping to catch
+  // iOS body-scroll, but address-bar transitions can leave a lingering
+  // window.scrollY > 0 even when the cards are visibly at the top, so
+  // Math.max(mainTop, winTop) would falsely keep the button visible.
+  // For the CLICK action we still scroll both #main and window — that's
+  // a safe over-reach. For the visibility threshold, just #main.
+  const main = document.getElementById('main');
+  const top = main ? main.scrollTop : 0;
+  btn.hidden = top < _BACK_TO_TOP_THRESHOLD;
 }
 
 // Click handler for both the header 🔄 button and the in-banner Refresh button.
