@@ -4266,9 +4266,14 @@ function buildIssueGroup(label, items, options, onChange) {
   const list = document.createElement('ul');
   list.className = 'issues-queue-list';
   if (options?.collapsible && options.startCollapsed) list.hidden = true;
-  const byIdMap = State.byId || {};
+  // State.byId is a Map — must use .get(), not bracket notation. Previous
+  // `byIdMap[item.exId]` always returned undefined, which made
+  // `editBtn.disabled = !ex` true and the openBtn's `if (!ex || flagOnly)`
+  // also bail out. The user reported "only Remove is clickable" because
+  // both 📝 Write report and 🚀 Open were stuck disabled regardless of the
+  // exercise's actual presence in the corpus.
   for (const item of items) {
-    list.appendChild(buildIssueItem(item, byIdMap[item.exId] || null, onChange));
+    list.appendChild(buildIssueItem(item, State.byId.get(item.exId) || null, onChange));
   }
   wrap.appendChild(list);
   return wrap;
@@ -4315,15 +4320,18 @@ function renderIssuesQueue() {
 // before opening so they immediately move to "Already opened" on next render.
 function openAllUnsubmittedIssues() {
   const items = collectAllIssueDrafts().filter(it => !isQueueSubmitted(it) && !isQueueFlagOnly(it));
-  const byIdMap = State.byId || {};
-  const openable = items.filter(it => byIdMap[it.exId]);
+  // State.byId is a Map — must use .get(). Bracket access was the same
+  // regression that broke the per-item buttons; here it silently filtered
+  // EVERY item out (byIdMap[exId] always undefined → openable.length === 0
+  // → early return), so "🚀 Open all unsubmitted" was effectively a no-op.
+  const openable = items.filter(it => State.byId.get(it.exId));
   if (!openable.length) return;
   if (openable.length > 3 && !confirm(
     `Open ${openable.length} GitHub issue tabs?\n\n` +
     `Your browser may ask you to allow popups the first time.`
   )) return;
   openable.forEach((it, idx) => {
-    const url = buildIssueUrl(byIdMap[it.exId], it.draft, it.mode);
+    const url = buildIssueUrl(State.byId.get(it.exId), it.draft, it.mode);
     setTimeout(() => {
       markDraftSubmitted(it);
       try { window.open(url, '_blank', 'noopener'); } catch {}
