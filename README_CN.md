@@ -37,54 +37,41 @@
   <img src="assets/screenshots/mobile-docs.png" width="240" alt="iPhone 上的 Docs 树，分类可折叠。">
 </p>
 
-> `assets/screenshots/` 下目前是 1×1 占位图，等真实截图提交后替换 —— 抓图规范与每个文件应展示的画面见 [`assets/screenshots/README.md`](assets/screenshots/README.md)。
-
 ## 项目结构
 
 ```
 .
 ├── README.md / README_CN.md           # 本文件 —— 工程 README
 ├── EXAM_GUIDE.md / EXAM_GUIDE_CN.md   # 面向 CKA 考生的备考索引
+├── WEBAPP_GUIDE.md / WEBAPP_GUIDE_CN.md # webapp 使用指南
+├── CHANGELOG.md                       # 全部仓库变更；Help mode 内可读
 ├── CLAUDE.md                          # Claude Code 的仓库指引
-├── package.json                       # npm run build / lint / link-check / serve
+├── package.json                       # npm run build / lint / serve / link-check / release
 ├── assets/
 │   ├── killer-sh/                     # killer.sh Simulator A/B PDF
-│   └── killercoda/                    # KillerCoda CKA 模拟考 PDF（按 domain 拆分）
+│   ├── killercoda/                    # KillerCoda CKA 模拟考 PDF（按 domain 拆分）
+│   └── screenshots/                   # README 截图（电脑端 + 手机端）
 ├── docs/                              # 练习 SPA（GitHub Pages 源目录）
-│   ├── index.html
-│   ├── app.js
-│   ├── style.css
-│   └── exercises.json                 # gitignore —— 由 scripts/build-exercises.mjs 生成
+│   ├── index.html / app.js / style.css
+│   ├── llm.js / sync.js               # LLM 评分 + Gist 同步引擎
+│   ├── sw.js                          # service worker 源（sw.gen.js 是构建产物）
+│   ├── manifest.webmanifest + icons/  # PWA 安装 + app 图标
+│   └── *.json / sw.gen.js             # gitignored —— 构建产物（exercises / version / tools / nodes）
 ├── exercises/                         # 源 markdown —— 每个 CKA 考点一个文件
 │   ├── cluster-architecture.md        # 25% — 114 道题
 │   ├── scheduling.md                  # 15% —  49 道题
 │   ├── networking.md                  # 20% —  32 道题
 │   ├── storage.md                     # 10% —  28 道题
 │   └── troubleshooting.md             # 30% —  48 道题
-├── scripts/
-│   ├── build-exercises.mjs            # MD → JSON 转换（每次构建 / Pages 部署都会运行）
-│   ├── lint-exercises.mjs             # 校验 exercises markdown 格式
-│   ├── check-links.mjs                # ping 所有 kubernetes.io URL
-│   ├── apply-enriched-tasks.mjs       # 一次性脚本: 从 PDF Q&A 补全 killer.sh task body
-│   ├── apply-killersh-polish.mjs      # 一次性脚本: 给 killer.sh 加 docs 链接 + 重写标题
-│   ├── apply-killercoda-import.mjs    # 一次性脚本: 把 KillerCoda 模拟考 PDF 导入 exercises/*.md
-│   ├── k8s-docs-map.json              # kubernetes.io 面包屑 → URL 查找表（polish 脚本使用）
-│   └── answer-fix/                    # answer-fix-pr.yml + task-fix-pr.yml 共用的 aider 助手
-│       ├── extract-context.mjs        # issue 正文 → env + prompt
-│       └── h3-range.mjs               # 抽取 / splice 单个 H3 块
+├── tools/
+│   └── nodes/snapshot/                # Nodes 模式文件系统快照源 + versions.json
+├── scripts/                           # build / lint / release / verify / 一次性 enrichment 脚本
 └── .github/
-    ├── answer-fix/prompt.md           # 参考解答类 issue 的 aider 提示词
-    ├── task-fix/prompt.md             # task / docs 链接类 issue 的 aider 提示词
-    └── workflows/
-        ├── build-and-deploy-docs.yml  # CI: lint + build + 部署到 Pages
-        ├── lint.yml                   # PR 检查: lint exercises markdown
-        ├── link-check.yml             # 每周一次: ping 所有 kubernetes.io URL
-        ├── answer-fix-pr.yml          # 手动触发: answer-fix issue → draft PR (aider)
-        ├── task-fix-pr.yml            # 手动触发: task-fix issue → draft PR (aider)
-        └── seed-labels.yml            # 幂等 label 引导（首次部署 + 文件被编辑时自动跑）
+    ├── answer-fix/prompt.md / task-fix/prompt.md  # 修复 PR 工作流的 aider 提示词
+    └── workflows/                     # build-and-deploy / lint / link-check / curriculum-watch / release / fix-PR / seed-labels
 ```
 
-两个 `apply-*.mjs` 是幂等的一次性脚本，保留作为 killer.sh 数据加工的可追溯记录。CI 中只运行 `build-exercises.mjs` 和 `lint-exercises.mjs`。
+`CLAUDE.md` 包含完整的逐文件清单，供贡献者参考。`scripts/` 下的 `apply-*.mjs` 是幂等的一次性脚本，保留作为可追溯记录。CI 中只运行 `build-exercises.mjs` / `build-sw.mjs` / `lint-exercises.mjs` / `check-links.mjs`。
 
 ## 本地运行
 

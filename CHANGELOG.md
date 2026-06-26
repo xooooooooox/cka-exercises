@@ -17,11 +17,14 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 - **Real iPhone 17 Pro mobile screenshots** in `assets/screenshots/` replace the placeholder PNGs for `mobile-browse` / `mobile-quiz` / `mobile-docs`; desktop placeholders still pending. (`18dfa45`)
 
 ### Changed
-- **CHANGELOG rewritten for readability** — every historical entry compressed to a bold-lead one-liner; `## Repository conventions` in CLAUDE.md grows a **Documentation language** rule (everything English except `_CN`-suffixed files); `## Changelog discipline` spells out the new entry format. (this commit)
+- **CHANGELOG rewritten for readability** — every historical entry compressed to a bold-lead one-liner; `## Repository conventions` in CLAUDE.md grows a **Documentation language** rule (everything English except `_CN`-suffixed files); `## Changelog discipline` spells out the new entry format. (`2c0bdbd`)
+- **README Project Structure refreshed** to include `WEBAPP_GUIDE*`, `CHANGELOG.md`, `assets/screenshots/`, the `tools/` directory, and the full set of `docs/` / `scripts/` / workflow files; points readers at CLAUDE.md for the comprehensive inventory. (this commit)
+- **CLAUDE.md adds `Prose concision` rule** under `## Repository conventions` — docs explain non-obvious things only; no how-to-cp / how-to-git boilerplate, no closing lines that restate the heading. (this commit)
 
 ### Fixed
 
 ### Removed
+- **Placeholder explainer note** stripped from README + README_CN (`> Images at assets/screenshots/ are 1×1 placeholders…`) and the `## Replacing a placeholder` boilerplate section from `assets/screenshots/README.md` — both fell into the kind of obvious-step padding the new Prose concision rule now forbids. (this commit)
 
 ## [v0.2.0] - 2026-06-26
 

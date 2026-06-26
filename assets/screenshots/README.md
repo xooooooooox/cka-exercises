@@ -36,13 +36,3 @@ without also updating both README files.
 | `mobile-quiz.png`    | Quiz on iPhone with the `◐ Partial` grade button highlighted (post-Check state)              |
 | `mobile-docs.png`    | Docs tree on iPhone, or the `📊 Outline` drawer open                                          |
 
-## Replacing a placeholder
-
-```bash
-# After capturing the screenshot at the right viewport size:
-cp ~/Desktop/my-capture.png assets/screenshots/desktop-browse.png
-git add assets/screenshots/desktop-browse.png
-git commit -m "docs(readme): real desktop Browse screenshot"
-```
-
-The README references don't change — same filename, just new bytes.
