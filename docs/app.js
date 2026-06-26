@@ -4187,19 +4187,35 @@ function openFixReportModal(ex, ctx = {}) {
       .querySelector('input[type="radio"]:checked');
     const t = checked ? getReportType(checked.value, mode) : null;
     const isRequired = !!(t && t.whatsWrong === null);
-    if (!addlState) return;
+    // Order matters: update textarea attrs FIRST (they're keyed off `addl`,
+    // which is independent of the state span). If the state span is missing
+    // for any reason — stale SW cache served an older index.html, an
+    // extension stripped IDs, etc. — the textarea's placeholder + aria-
+    // required still tell the user this field is required for 'Other'.
+    // Earlier version returned early when addlState was null, leaving the
+    // textarea unchanged and the user mystified about the required state.
     if (isRequired) {
-      addlState.textContent = '* required';
-      addlState.classList.add('is-required');
-      addlState.classList.remove('muted');
-      addl.setAttribute('aria-required', 'true');
-      addl.placeholder = "Describe what's wrong — at least a short sentence so the maintainer can act on it.";
+      if (addl) {
+        addl.setAttribute('aria-required', 'true');
+        addl.placeholder = "Describe what's wrong — at least a short sentence so the maintainer can act on it.";
+      }
+      if (addlState) {
+        addlState.textContent = '* required';
+        addlState.classList.add('is-required');
+        addlState.classList.remove('muted');
+      } else {
+        console.warn('[report-modal] #report-additional-state span missing — cannot show inline required indicator. textarea placeholder + aria-required are still active.');
+      }
     } else {
-      addlState.textContent = '(optional)';
-      addlState.classList.remove('is-required');
-      addlState.classList.add('muted');
-      addl.removeAttribute('aria-required');
-      addl.placeholder = 'Anything else the maintainer should know — exact line, observed behaviour, your k8s version, etc.';
+      if (addl) {
+        addl.removeAttribute('aria-required');
+        addl.placeholder = 'Anything else the maintainer should know — exact line, observed behaviour, your k8s version, etc.';
+      }
+      if (addlState) {
+        addlState.textContent = '(optional)';
+        addlState.classList.remove('is-required');
+        addlState.classList.add('muted');
+      }
     }
   };
   const onTypeChange = () => { syncTaskSubBlocks(); syncTypeHelp(); syncAdditionalContextState(); syncHref(); };
