@@ -4213,7 +4213,25 @@ function buildIssueItem(item, ex, onChange) {
     // isn't visually buried.
     document.getElementById('settings-overlay')?.setAttribute('hidden', '');
     document.getElementById('issues-menu')?.setAttribute('hidden', '');
-    openFixReportModal(ex, item.mode === 'task' ? { mode: 'task' } : {});
+    // Pull the latest answer + verdict from localStorage so the modal
+    // mirrors what the verdict-card's "Suggest a fix" link does. Without
+    // this the queue's entry point opened with an empty ctx — verdict
+    // panel hidden, issue body missing answer/verdict context — even
+    // when the user had Checked between flagging and opening the report.
+    // task mode skips the injection (entry A doesn't pass it either, and
+    // the modal hides verdictBlock unconditionally for task scope).
+    let ctx;
+    if (item.mode === 'task') {
+      ctx = { mode: 'task' };
+    } else {
+      ctx = {};
+      const saved = getAnswer(ex.id);
+      if (saved) {
+        if (saved.text) ctx.answer = saved.text;
+        if (saved.verdict) ctx.verdict = saved.verdict;
+      }
+    }
+    openFixReportModal(ex, ctx);
   });
 
   // Open (for unsubmitted) → stamp submittedAt then navigate. Re-open (for
