@@ -19,7 +19,7 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 ### Changed
 - **CHANGELOG rewritten for readability** — every historical entry compressed to a bold-lead one-liner; `## Repository conventions` in CLAUDE.md grows a **Documentation language** rule (everything English except `_CN`-suffixed files); `## Changelog discipline` spells out the new entry format. (`2c0bdbd`)
 - **README Project Structure refreshed** to include `WEBAPP_GUIDE*`, `CHANGELOG.md`, `assets/screenshots/`, the `tools/` directory, and the full set of `docs/` / `scripts/` / workflow files; points readers at CLAUDE.md for the comprehensive inventory. (this commit)
-- **CLAUDE.md adds `Prose concision` rule** under `## Repository conventions` — docs explain non-obvious things only; no how-to-cp / how-to-git boilerplate, no closing lines that restate the heading. (this commit)
+- **CLAUDE.md adds `Prose concision` rule** under `## Repository conventions` — calibrate doc density to the specific reader's context; the same sentence can be essential in one doc and padding in another. ((`569bc4c`, refined this commit))
 
 ### Fixed
 
