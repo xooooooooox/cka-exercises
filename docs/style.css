@@ -2702,7 +2702,25 @@ body.answer-fullscreen-active { overflow: hidden; }
 }
 .help-toc ul { list-style: none; padding: 0; margin: 0; }
 .help-toc li { margin: 4px 0; }
-.help-toc li.h3 { padding-left: 14px; font-size: 12px; }
+.help-toc li:not(.h3) > a { font-weight: 600; }
+.help-toc li.h3 {
+  /* h3 entries nest under their h2 with a visible indent + a left guide
+     line, instead of the previous 14px padding which left them visually
+     aligned with the h2 emoji and looked like siblings. */
+  padding-left: 26px;
+  font-size: 12px;
+  position: relative;
+}
+.help-toc li.h3::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+.help-toc li.h3 > a { color: var(--fg-muted); }
 .help-toc a { color: var(--fg-muted); text-decoration: none; display: block; padding: 3px 6px; border-radius: 4px; line-height: 1.3; }
 .help-toc a:hover { color: var(--fg); background: var(--bg-elev); }
 .help-toc a.active { color: var(--accent); background: var(--bg-elev); font-weight: 600; }

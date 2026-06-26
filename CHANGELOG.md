@@ -29,6 +29,7 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 - **WEBAPP_GUIDE §10 (now §9) Persistence Model** orphaned `### What happens on a GitHub Pages update` flattened to inline `**…**` paragraph emphasis (its parent section had no other `###` siblings, so an isolated subsection broke the visual rhythm). EN + CN mirrored. (this commit)
 
 ### Fixed
+- **Help-mode TOC h2/h3 hierarchy is now visually clear** — h3 entries indent 26px under their h2 (was 14px, which made them visually flush with the h2 emoji), get a `1px` left guide line, and render in muted color. h2 entries gain a `font-weight: 600` so the parent/child distinction is unambiguous at a glance. (this commit)
 - **CHANGELOG entries cleaned** to comply with `## Changelog discipline` — fixed double-parens around one commit hash, compressed the two entries that exceeded ~180 chars (over-prescriptive kind, back-to-top fix) to one-sentence form. (this commit)
 
 ### Removed
