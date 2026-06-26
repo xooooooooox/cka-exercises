@@ -12,9 +12,11 @@ without also updating both README files.
 - **Format**: PNG, no transparency, no rounded-corner masks
 - **Desktop viewport**: 1440×900 recommended (resize browser; full
   window capture, not just the viewport tab content)
-- **Mobile viewport**: iPhone 14 / Pixel 6 simulator size — 393×852
-  recommended (or any iOS Safari capture; the `<img width="240">` in
-  the README normalises the rendered width)
+- **Mobile viewport**: iPhone 17 Pro (CSS 402×874 → native 804×1748 PNG
+  at 2× device pixel ratio) is what the currently-committed mobile
+  shots use. Any modern iOS Safari capture works — the `<img width="240">`
+  in the README normalises the rendered width regardless of source
+  resolution.
 - **Theme**: light theme by default. If you want one variant per
   device showing dark, add `-dark` to the filename and a second
   reference in the README.
