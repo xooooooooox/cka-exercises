@@ -2673,7 +2673,9 @@ function maybeCheckForUpdate() {
 //
 // Click target: scrolls BOTH #main and window — covers either scroller.
 const _BACK_TO_TOP_THRESHOLD = 150;
+const _BACK_TO_TOP_IDLE_MS = 2000;
 let _backToTopTicking = false;
+let _backToTopIdleTimer = null;
 function installBackToTop() {
   const btn = document.getElementById('scroll-top-btn');
   if (!btn) return;
@@ -2685,7 +2687,15 @@ function installBackToTop() {
     if (_backToTopTicking) return;
     _backToTopTicking = true;
     requestAnimationFrame(() => {
-      syncBackToTopVisibility();
+      // On every scroll: re-evaluate visibility (which is now also
+      // gated on "actively scrolling"). Reset the idle timer so the
+      // button hides ~2s after the last scroll event.
+      syncBackToTopVisibility({ activeScroll: true });
+      if (_backToTopIdleTimer) clearTimeout(_backToTopIdleTimer);
+      _backToTopIdleTimer = setTimeout(() => {
+        const b = document.getElementById('scroll-top-btn');
+        if (b) b.hidden = true;
+      }, _BACK_TO_TOP_IDLE_MS);
       _backToTopTicking = false;
     });
   };
@@ -2697,20 +2707,21 @@ function installBackToTop() {
   syncBackToTopVisibility();
 }
 
-function syncBackToTopVisibility() {
+// Visibility rule: only visible during ACTIVE scroll past the threshold.
+// Without `opts.activeScroll`, this is a "mode changed / initial paint"
+// call and defaults to hidden (no scroll-in-progress signal). Idle
+// auto-hide is handled by the timer in installBackToTop's onScroll.
+function syncBackToTopVisibility(opts = {}) {
   const btn = document.getElementById('scroll-top-btn');
   if (!btn) return;
   if (State.mode !== 'browse') {
     btn.hidden = true;
     return;
   }
-  // Use #main.scrollTop exclusively — it's the actual cards-scrolling
-  // container. Earlier version mixed in window.scrollY hoping to catch
-  // iOS body-scroll, but address-bar transitions can leave a lingering
-  // window.scrollY > 0 even when the cards are visibly at the top, so
-  // Math.max(mainTop, winTop) would falsely keep the button visible.
-  // For the CLICK action we still scroll both #main and window — that's
-  // a safe over-reach. For the visibility threshold, just #main.
+  if (!opts.activeScroll) {
+    btn.hidden = true;
+    return;
+  }
   const main = document.getElementById('main');
   const top = main ? main.scrollTop : 0;
   btn.hidden = top < _BACK_TO_TOP_THRESHOLD;
