@@ -2691,15 +2691,33 @@ function installBackToTop() {
     document.getElementById('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
-  // Also wire a scroll listener for IMMEDIATE response — the 200ms poll
-  // is fine for idle detection but might leave a perceptible delay
-  // between "user starts scrolling" and "button appears". The listener
-  // calls the same evaluator; phantom events are harmless because the
-  // evaluator only updates the timestamp when scrollTop actually moves.
-  document.getElementById('main')?.addEventListener('scroll', evaluateBackToTop, { passive: true });
-  if (_backToTopPollTimer) clearInterval(_backToTopPollTimer);
-  _backToTopPollTimer = setInterval(evaluateBackToTop, 200);
+  // Scroll listener triggers immediate evaluation + starts the poll if
+  // the button became visible. The poll then runs at 200ms ticks ONLY
+  // while the button is visible — once hidden it stops itself, so
+  // there's zero ongoing cost when the user is parked and reading.
+  // Phantom iOS scroll events that don't move scrollTop are no-ops in
+  // the evaluator and don't restart the poll.
+  document.getElementById('main')?.addEventListener('scroll', onBackToTopScroll, { passive: true });
   evaluateBackToTop();
+}
+
+function onBackToTopScroll() {
+  evaluateBackToTop();
+  startBackToTopPoll();
+}
+
+function startBackToTopPoll() {
+  if (_backToTopPollTimer) return;
+  _backToTopPollTimer = setInterval(() => {
+    evaluateBackToTop();
+    // Self-stop once the button is hidden — nothing to track until
+    // the next real scroll event re-arms us.
+    const btn = document.getElementById('scroll-top-btn');
+    if (btn && btn.hidden) {
+      clearInterval(_backToTopPollTimer);
+      _backToTopPollTimer = null;
+    }
+  }, 200);
 }
 
 function evaluateBackToTop() {
