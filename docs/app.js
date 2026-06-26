@@ -1077,14 +1077,13 @@ function installSettingsOverlay() {
         : !!slot.apiKey;
       card.classList.toggle('configured', hasConfig);
       card.classList.toggle('active', p === v2.active);
+      // Badge content is now driven entirely by CSS — `::before` paints
+      // "★ Active" on `.provider-card.active .provider-badge`. The earlier
+      // JS-driven textContent ("★ active" / "✓") was duplicating that
+      // pill, producing "★ Active ★ active" on the active row. Clear it
+      // and let CSS own the rendering.
       const badge = card.querySelector('.provider-badge');
-      if (badge) {
-        badge.textContent = (p === v2.active && hasConfig) ? '★ active'
-                          : (p === v2.active)             ? '★'
-                          : hasConfig                     ? '✓'
-                          : '';
-        badge.classList.toggle('is-active', p === v2.active);
-      }
+      if (badge) badge.textContent = '';
       if (hasConfig) configured++;
     }
     if (providersCount) {

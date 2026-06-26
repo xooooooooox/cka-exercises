@@ -13,6 +13,9 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 
 ## [Unreleased]
 
+### Fixed
+- **Active LLM provider row showed `★ Active ★ active`** — the previous JS still wrote `★ active` into `.provider-badge.textContent` while the new CSS pill added `★ Active` via `::before`, so both rendered side by side. JS now leaves the badge empty and CSS owns all of the visual. (this commit)
+
 ### Changed
 - **Settings → LLM provider list interaction unified** — Save is now strictly persist-only (was secretly setting active too), switching the active provider lives on a per-row `⚡ Use` button + a context-aware `⚡ Save & use` action; visual hierarchy redone so Active (gold left bar + ★ Active pill), Configured (small green dot top-right), and Selected-for-editing (subtle outline) are three independent signals that no longer overlap. (this commit)
 - **`scripts/release.mjs` no longer seeds an empty 4-heading `[Unreleased]` template** after a release — the fresh block is just the `## [Unreleased]` line. Matches the new "omit empty sub-sections" rule from CLAUDE.md `## Changelog discipline`; the first commit of each kind adds its `### Added / Changed / Fixed / Removed` heading along with its entry. (this commit)
