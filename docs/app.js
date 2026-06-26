@@ -2653,35 +2653,33 @@ function maybeCheckForUpdate() {
   checkForUpdate();
 }
 
-// Floating back-to-top button — Browse mode only, threshold ~600px.
-// CRITICAL: the actual scroll container is #main (style.css:494 sets
-// `overflow-y: auto; max-height: calc(100vh - 110px)`), NOT window.
-// Listening on window or calling window.scrollTo did nothing because
-// the body itself never scrolls. First version of this feature was
-// broken for exactly that reason — fixed by using #main throughout.
+// Floating back-to-top button. Visibility is purely mode-driven: visible
+// whenever Browse is the active mode, hidden everywhere else. No scroll
+// threshold — user explicitly asked for the lowest-friction discovery
+// (no waiting until they've scrolled N px). Dropping the scroll listener
+// + per-mode-tab-click setTimeout(update) was also the most likely
+// suspect for the mode-switch jank reported alongside this fix.
+//
+// Click target: scrolls BOTH the #main container and the window. On
+// desktop #main is the actual scroller (style.css:494 sets overflow-y:
+// auto + max-height: calc(100vh - 110px)); on iOS Safari the body can
+// be the scroller while the address bar is collapsing/expanding. Both
+// calls are safe no-ops when the corresponding container is already
+// at the top.
 function installBackToTop() {
   const btn = document.getElementById('scroll-top-btn');
-  const main = document.getElementById('main');
-  if (!btn || !main) return;
+  if (!btn) return;
   btn.addEventListener('click', () => {
-    main.scrollTo({ top: 0, behavior: 'smooth' });
+    document.getElementById('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
-  let _ticking = false;
-  const update = () => {
-    if (_ticking) return;
-    _ticking = true;
-    requestAnimationFrame(() => {
-      const show = State.mode === 'browse' && main.scrollTop > 600;
-      btn.hidden = !show;
-      _ticking = false;
-    });
-  };
-  main.addEventListener('scroll', update, { passive: true });
-  // Re-evaluate on mode change — switching INTO browse while already
-  // scrolled deep should surface the button immediately.
-  document.querySelectorAll('.mode-tab').forEach(t =>
-    t.addEventListener('click', () => setTimeout(update, 0))
-  );
+  syncBackToTopVisibility();
+}
+
+function syncBackToTopVisibility() {
+  const btn = document.getElementById('scroll-top-btn');
+  if (!btn) return;
+  btn.hidden = (State.mode !== 'browse');
 }
 
 // Click handler for both the header 🔄 button and the in-banner Refresh button.
@@ -6136,6 +6134,9 @@ function setMode(mode, opts = {}) {
   }
   // Update URL hash to reflect the new mode (unless we came from a hash event)
   if (opts.source !== 'hash') updateHash(mode);
+  // Back-to-top button visibility is purely mode-driven (shown in Browse,
+  // hidden everywhere else).
+  syncBackToTopVisibility();
 }
 
 // ---------- Help view ----------

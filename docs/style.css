@@ -2961,11 +2961,6 @@ body.answer-fullscreen-active { overflow: hidden; }
 }
 .scroll-top-btn:hover, .scroll-top-btn:active { opacity: 1; }
 .scroll-top-btn[hidden] { display: none; }
-@media (min-width: 1024px) {
-  /* Desktop has the always-visible sidebar tree — back-to-top button
-     adds noise without enough benefit; hide it. */
-  .scroll-top-btn { display: none !important; }
-}
 @media print { .scroll-top-btn { display: none !important; } }
 
 /* Install-to-home-screen hint banner — same visual family as the
@@ -3076,8 +3071,11 @@ body.answer-fullscreen-active { overflow: hidden; }
   .quiz-resume-active .resume-actions { width: 100%; }
   .quiz-resume-active .resume-actions button { flex: 1; }
 
-  /* Footer text scales down */
-  .app-footer { font-size: 11px; padding: 12px 12px; }
+  /* Footer hidden on mobile — body normal-flow + body-level rubber-band
+     scroll would otherwise expose it under the fixed .mobile-mode-tabs
+     bar at random scroll positions (license / source links remain
+     reachable from Help mode / GitHub repo link in the header chips). */
+  .app-footer { display: none; }
 }
 
 /* ============================================================ */
