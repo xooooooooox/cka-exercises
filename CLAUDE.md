@@ -225,9 +225,40 @@ State management is in module-scope `State` object; no framework. Persistence vi
 
 ## Repository conventions
 
+### External standards we follow
+
+Don't reinvent — link out, treat as binding:
+
+- **Commit messages** — [Conventional Commits](https://www.conventionalcommits.org/) (`type(scope): subject`) plus [Chris Beams's 7 rules](https://cbeams.com/posts/git-commit/) for the rest: subject ≤50 chars, imperative mood, blank line between subject and body, body wrapped at 72, body explains *why* not *what*. Allowed types in this repo: `feat / fix / docs / style / refactor / perf / test / chore / ci / build / ux / release`.
+- **Versioning** — [Semantic Versioning 2.0.0](https://semver.org/). Owned by `scripts/release.mjs`; manual edits to `package.json.version` always go through that script.
+- **Changelog** — [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Category split (Added / Changed / Fixed / Removed) and `[Unreleased]` → `[vX.Y.Z]` renaming come from the spec; per-entry format is constrained further by `## Changelog discipline` below.
+- **Technical prose voice** — [Google Developer Documentation Style Guide](https://developers.google.com/style). US English spelling (`color` / `behavior` / `favorite`), second-person active voice in how-to / reference, ≤25-word sentences as a soft target.
+- **Documentation type identification** — [Diátaxis framework](https://diataxis.fr/). When adding a new doc or section, classify it as tutorial / how-to / reference / explanation before drafting — the four shapes have structurally different prose, and conflating them produces docs that satisfy nobody. Existing docs map roughly: `README.md` = explanation + reference, `EXAM_GUIDE.md` = reference, `WEBAPP_GUIDE.md` = how-to + reference, `CHANGELOG.md` = reference, inline Help mode pages = how-to.
+
+### Repo-specific rules
+
 - **Documentation language**: all committed prose in this repo defaults to **English** — `CHANGELOG.md`, `CLAUDE.md`, `README.md`, `EXAM_GUIDE.md`, `WEBAPP_GUIDE.md`, every script under `scripts/`, every `.github/` workflow + aider prompt, every source-code comment, every git commit message. Files with a `_CN` suffix (`README_CN.md`, `EXAM_GUIDE_CN.md`, `WEBAPP_GUIDE_CN.md`) are Chinese translations of their English counterparts — kept in lockstep with the English version, and the only place committed Chinese prose lands. Exercise titles + solutions are English; legacy in-corpus Chinese comments are tolerated but new entries default to English. Interactive chat / plan files under `~/.claude/plans/` / ad-hoc Q&A is session-scoped and may be in any language — it's not committed.
-- **Prose concision — calibrate to the reader's context**: every doc sits in a specific context (a project README aimed at someone already inside the repo, a contributing guide aimed at first-time submitters, a deep-folder README aimed at someone editing those files). The same sentence can be essential in one context and pure padding in another. A `cp … && git add && git commit` example belongs in a contributing guide for newcomers; the same block in a per-folder README aimed at someone already in the codebase is noise. Closing lines that restate the heading, and "this is a placeholder until X" pointers when the placeholder state is visually obvious, are usually padding in *most* contexts but can be the right call elsewhere. Before writing a sentence, ask: who is reading this, what do they already know from being here, what does this add. If removing it loses information the reader needed, keep it; if not, cut. A sentence beats a paragraph; a bullet list beats a sentence when items are parallel. Same calibration applies to CHANGELOG entries (see `## Changelog discipline` below for the length target there).
-- **Solution code**: kubectl-driven, exam-focused. Use the `k` alias shorthand. Include short comments at decision points.
+- **Prose concision — calibrate to the reader's context**: every doc sits in a specific context. The same sentence can be essential in one doc and pure padding in another. A `cp … && git add && git commit` example belongs in a contributing guide for newcomers; the same block in a per-folder README aimed at someone already in the codebase is noise. Closing lines that restate the heading, and "this is a placeholder until X" pointers when the placeholder state is visually obvious, are usually padding in *most* contexts but can be the right call elsewhere. Before writing a sentence, ask: who is reading this, what do they already know from being here, what does this add. If removing it loses information the reader needed, keep it; if not, cut.
+- **Code comments — explain WHY, never WHAT**: default to no comments. Add one only when *why* is non-obvious: a hidden constraint, a subtle invariant, a workaround for a specific bug, behavior that would surprise a reader. Don't narrate *what* the code does (well-named identifiers handle that). Don't reference the current task / fix / caller — that belongs in the commit message and rots as the codebase evolves. No JSDoc / multi-paragraph block comments unless documenting a public API for external consumers (this repo currently has none).
+- **Emoji UI semantics — single fixed registry**: each emoji in the SPA UI has one assigned meaning across all surfaces. Reusing an emoji for a different semantic risks the icon-collision class of bug that triggered the `🔧 Tools / 🔧 Solution issue` fix during the v0.2.0 cycle. Current registry:
+
+  | Emoji | Meaning | Where it appears |
+  |-------|---------|------------------|
+  | 🐞 | Flag-scope toggle button | Browse card + fullscreen quizbar |
+  | 🐛 | Inline issue link / Issues queue header | "Suggest a fix" / header popover |
+  | 🔧 | Tools drawer | fullscreen answer-box label row |
+  | 📝 | Task drawer | fullscreen answer-box label row |
+  | 🚩 | Quiz "Flag this question" | active quiz session |
+  | 🔄 | Refresh | header + update banner |
+  | ☁ | Sync (Gist) | header + fullscreen quizbar |
+  | 🤖 | LLM picker | header |
+  | 📋 | Quiz Questions drawer / Copy | quiz nav + report modal |
+  | 📊 | Outline drawer | mobile filter toolbar |
+  | ↑ | Back to top | Browse floating button |
+
+  Before adding a new emoji to any surface, grep this table; either pick something distinct or reuse the existing entry where the semantic actually matches. Update this table in the same commit as any new emoji.
+
+- **Solution code**: kubectl-driven, exam-focused. Use the `k` alias shorthand. Include short comments at decision points (per the WHY-not-WHAT rule above).
 - **Bilingual exercise content**: English titles + solutions. The CN README and a few in-exercise comments may be Chinese (legacy from corpus origin), but new content should default to English. The webapp itself is English.
 - **Documentation links**: use the full kubernetes.io navigation breadcrumb as the label (e.g. `Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes`). For killer.sh entries, additional breadcrumbs follow under the primary 🔗 link.
 - **Solutions** are wrapped in `<details><summary>show</summary><p>…</p></details>`. Multiple `<details>` blocks per exercise (rare) are allowed.
@@ -235,29 +266,20 @@ State management is in module-scope `State` object; no framework. Persistence vi
 
 ## Changelog discipline
 
-Every change to this repository — **webapp code (`docs/`), exercise content (`exercises/`), documentation (`README*.md`, `WEBAPP_GUIDE*.md`, `EXAM_GUIDE*.md`, `CHANGELOG.md`, `CLAUDE.md`, this file), and tooling (`scripts/`, `.github/`)** — MUST add an entry under `## [Unreleased]` in `CHANGELOG.md` in the same commit that makes the change.
+Format and category split follow [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) — not repeated here.
 
-Categories:
+What this repo adds on top:
 
-- **Added** — new features, new exercises, new docs sections
-- **Changed** — behavior or wording changes that aren't bug fixes
-- **Fixed** — bug fixes
-- **Removed** — deleted features, deprecated docs
-
-**Entry format** — Keep a Changelog + lead-phrase convention:
-
-```
-- **Lead phrase** — one short sentence describing the change. (`abc1234`)
-```
-
-- Lead phrase is a **bold** noun phrase naming what changed (the feature / surface / kind of fix). It should make sense on its own when scanning a long list.
-- One sentence after an em-dash. Target ≤ ~180 characters total per line. No multi-sentence paragraphs, no nested bullet lists.
-- Commit hash in backticks + parens at the end where known (gitSha of the commit that introduced the change). Use `(this commit)` as a placeholder while the entry sits under `[Unreleased]`; the release pipeline does not currently auto-rewrite these — be intentional.
-- **Reasoning, root-cause analysis, migration notes, code-snippet rationale** all live in the **commit message body**, not in the changelog. CHANGELOG is a scannable index pointing at git history, not the explanation.
-
-When the user asks for a code / doc / exercise change WITHOUT mentioning the changelog, add the entry yourself — same commit. Do NOT wait to be reminded.
-
-Exception: pure cosmetic noise (typo in this file's own commit message, fixing a CHANGELOG entry typo within its own commit) doesn't need a changelog entry.
+- **Every commit** touching webapp code (`docs/`), exercise content (`exercises/`), documentation (`README*.md`, `WEBAPP_GUIDE*.md`, `EXAM_GUIDE*.md`, `CHANGELOG.md`, `CLAUDE.md`, this file), or tooling (`scripts/`, `.github/`) MUST add an entry under `## [Unreleased]` in `CHANGELOG.md` in the same commit. When the user asks for a change WITHOUT mentioning the changelog, add the entry yourself; don't wait to be reminded.
+- **Entry format** (bold lead-phrase + one sentence):
+  ```
+  - **Lead phrase** — one short sentence describing the change. (`abc1234`)
+  ```
+  - Lead phrase: a bold noun phrase naming what changed (feature / surface / kind of fix). Scannable on its own in a long list.
+  - Body: one sentence after an em-dash, ≤ ~180 chars total. No multi-sentence paragraphs, no nested bullets.
+  - Trailing commit hash: backticked gitSha that introduced the change, in parens. Use `(this commit)` while the entry is under `[Unreleased]`; `scripts/release.mjs` currently does not auto-rewrite these on release — be intentional.
+- **Reasoning, root-cause, code-snippet rationale all belong in the commit message body**, not the changelog. CHANGELOG is a scannable index pointing at git history, not the explanation.
+- **Exception**: pure cosmetic noise (typo in a commit message, fixing a CHANGELOG entry typo within its own commit) doesn't need a changelog entry.
 
 ## Documentation sync discipline
 
