@@ -3972,6 +3972,7 @@ function openFixReportModal(ex, ctx = {}) {
   const suggestedUrl = $('report-suggested-url');
   const existingLinkPick = $('report-existing-link-pick');
   const addl = $('report-additional');
+  const addlState = $('report-additional-state');
   const includeCtxBox = $('report-include-context');
   const statusEl = $('report-status');
   const saveBtn = $('report-save-draft');
@@ -4175,10 +4176,38 @@ function openFixReportModal(ex, ctx = {}) {
     const t = checked ? getReportType(checked.value, mode) : null;
     renderReportTypeHelp(helpEl, t);
   };
-  const onTypeChange = () => { syncTaskSubBlocks(); syncTypeHelp(); syncHref(); };
-  // Initial paint — render the help block for whatever radio was just
-  // pre-selected (auto-detect / saved draft / 'other' fallback).
+  // Swap the Additional-context label between "(optional)" and
+  // "* required" based on whether the selected type's whatsWrong is null
+  // (which is exactly the `other` row for both solution and task modes,
+  // matching the requireSubmitFields check). Also retunes the textarea's
+  // placeholder so a user who just landed on `other` sees a clearer
+  // prompt than the default "Anything else …".
+  const syncAdditionalContextState = () => {
+    const checked = (mode === 'task' ? taskRadioGroup : solutionRadioGroup)
+      .querySelector('input[type="radio"]:checked');
+    const t = checked ? getReportType(checked.value, mode) : null;
+    const isRequired = !!(t && t.whatsWrong === null);
+    if (!addlState) return;
+    if (isRequired) {
+      addlState.textContent = '* required';
+      addlState.classList.add('is-required');
+      addlState.classList.remove('muted');
+      addl.setAttribute('aria-required', 'true');
+      addl.placeholder = "Describe what's wrong — at least a short sentence so the maintainer can act on it.";
+    } else {
+      addlState.textContent = '(optional)';
+      addlState.classList.remove('is-required');
+      addlState.classList.add('muted');
+      addl.removeAttribute('aria-required');
+      addl.placeholder = 'Anything else the maintainer should know — exact line, observed behaviour, your k8s version, etc.';
+    }
+  };
+  const onTypeChange = () => { syncTaskSubBlocks(); syncTypeHelp(); syncAdditionalContextState(); syncHref(); };
+  // Initial paint — render the help block + Additional-context state for
+  // whatever radio was just pre-selected (auto-detect / saved draft /
+  // 'other' fallback).
   syncTypeHelp();
+  syncAdditionalContextState();
 
   const cleanup = () => {
     overlay.hidden = true;

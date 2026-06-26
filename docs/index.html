@@ -718,7 +718,14 @@
         <label class="report-field-label" for="report-existing-link-pick">Which existing link is wrong?</label>
         <select id="report-existing-link-pick"></select>
       </div>
-      <label class="report-field-label" for="report-additional">Additional context <span class="muted">(optional — required for "Other")</span></label>
+      <!-- "(optional)" / "* required" state and the placeholder are both
+           driven by syncAdditionalContextState() based on the selected
+           type's `whatsWrong` field (null === required, i.e. the `other`
+           type for both solution and task modes). -->
+      <label class="report-field-label" for="report-additional">
+        Additional context
+        <span id="report-additional-state" class="report-additional-state muted">(optional)</span>
+      </label>
       <textarea id="report-additional" rows="2" placeholder="Anything else the maintainer should know — exact line, observed behaviour, your k8s version, etc."></textarea>
       <label class="report-include-toggle solution-mode-only">
         <input id="report-include-context" type="checkbox" checked>
