@@ -218,6 +218,7 @@ State management is in module-scope `State` object; no framework. Persistence vi
 | `cka:sync:beaconedAt` | ISO stamp written after a successful `beforeunload` `beaconPush()`; consumed once on next `bootAutoSync` to refresh `lastSyncedGistUpdatedAt` from the actual current gist `updated_at` (closes the iPhone "self-conflict" loop where the device's own beacon push looked like a remote change next session) |
 | `cka:sync:deviceId` | Random UUID minted once per browser profile on first auto-sync; copied into `payload.meta.lastPushDeviceId` for cross-device logging. Excluded from payload otherwise (per-device) |
 | `cka:sync:lastPollAt` (sessionStorage) | ISO timestamp of the last `maybeAutoPull()` head-check; throttles idle-tab auto-pull to ≤ 1× per 5 min per tab. Cleared on tab close (sessionStorage, not localStorage) |
+| `cka:update:lastCheckAt` (sessionStorage) | ISO timestamp of the last `maybeCheckForUpdate()` head-check against `version.json`; throttles auto-update detection to ≤ 1× per 60 s per tab regardless of trigger (5-min interval / visibilitychange / SW controllerchange). Cleared on tab close (sessionStorage, not localStorage) |
 | `cka:fix-draft:<id>` | Per-exercise answer-fix queued draft — quick flag (`{flagged:true}`) and/or fully-written report payload (`type`, `additional`, etc.). Surfaces in the header 🐛 queue popover; submitted state tracked via optional `submittedAt` |
 | `cka:task-fix-draft:<id>` | Same shape as `cka:fix-draft:` but for task-side reports (docs-link / task-body issues). Listed independently in the queue popover |
 

@@ -2621,6 +2621,36 @@ function installRefreshAffordances() {
   });
   // Run the check after we've yielded so the first paint isn't blocked.
   setTimeout(checkForUpdate, 1500);
+
+  // Periodic head-check every 5 min while the tab is foregrounded. Without
+  // this an idle tab never learns about new deploys until the user manually
+  // hits the 🔄 button or closes/reopens the SPA. Skips when document.hidden
+  // so background tabs don't burn fetches (Chrome throttles background
+  // setInterval to ~1/minute anyway, but an explicit skip is free).
+  setInterval(() => {
+    if (document.hidden) return;
+    maybeCheckForUpdate();
+  }, 5 * 60 * 1000);
+
+  // visibilitychange — catches "user tabbed away, came back hours later".
+  // Subject to the same 60s throttle as the interval so flicking visibility
+  // doesn't hammer Pages.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    maybeCheckForUpdate();
+  });
+}
+
+// Throttled wrapper around checkForUpdate — at most one head-check per 60s
+// per tab regardless of trigger (periodic interval, visibilitychange, SW
+// controllerchange). sessionStorage so each tab has its own counter and a
+// tab close wipes it.
+function maybeCheckForUpdate() {
+  const lastIso = sessionStorage.getItem('cka:update:lastCheckAt');
+  const last = lastIso ? Date.parse(lastIso) : 0;
+  if (Date.now() - last < 60 * 1000) return;
+  try { sessionStorage.setItem('cka:update:lastCheckAt', new Date().toISOString()); } catch {}
+  checkForUpdate();
 }
 
 // Click handler for both the header 🔄 button and the in-banner Refresh button.
@@ -7478,11 +7508,13 @@ async function init() {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.gen.js').catch(() => {});
     });
-    let _reloadingForSW = false;
+    // New SW activated → a fresh build is reachable. Don't silently
+    // reload — the user might be mid-edit or mid-task. Instead, route
+    // through the same banner the periodic head-check uses, so they
+    // get an explicit Refresh / ✕ choice. (controllerchange fires at
+    // most once per SW version transition, no throttle needed.)
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (_reloadingForSW) return;
-      _reloadingForSW = true;
-      window.location.reload();
+      checkForUpdate();
     });
   }
 
