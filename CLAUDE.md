@@ -193,6 +193,8 @@ What this repo adds on top:
   - Body: one sentence after an em-dash, ≤ ~180 chars total. No multi-sentence paragraphs, no nested bullets.
   - Trailing commit hash: backticked gitSha that introduced the change, in parens. Use `(this commit)` while the entry is under `[Unreleased]`; `scripts/release.mjs` currently does not auto-rewrite these on release — be intentional.
 - **Reasoning, root-cause, code-snippet rationale all belong in the commit message body**, not the changelog. CHANGELOG is a scannable index pointing at git history, not the explanation.
+- **Omit empty category sub-sections**: each release block only carries the `### Added / Changed / Fixed / Removed` headings that actually have entries. Don't leave an empty `### Removed` behind just because the template has four. If a category gains its first entry later in the release cycle, add the heading then.
+- **One heading per category per release**: when adding an entry, append into the existing `### Changed` (or matching category) for the current release block — don't add a second `### Changed` heading because the first commit shipped the original. The four-category split is by *kind of change*, not by *commit*.
 - **Exception**: pure cosmetic noise (typo in a commit message, fixing a CHANGELOG entry typo within its own commit) doesn't need a changelog entry.
 
 ## Documentation sync discipline
