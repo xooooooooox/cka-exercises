@@ -2672,10 +2672,17 @@ function maybeCheckForUpdate() {
 // without waiting for the next scroll event.
 //
 // Click target: scrolls BOTH #main and window — covers either scroller.
+// Floating back-to-top button. Visibility is driven by polling the
+// ACTUAL scrollTop position rather than scroll events — iOS Safari
+// emits phantom scroll events from address-bar dance / scroll anchoring
+// even when the user is stationary, which was foiling every event-based
+// idle-timeout we tried. By polling the position itself, phantom events
+// that don't move the cursor don't reset the idle timer, and the
+// button correctly hides ~2s after the user actually stops moving.
 const _BACK_TO_TOP_THRESHOLD = 150;
 const _BACK_TO_TOP_IDLE_MS = 2000;
-let _backToTopTicking = false;
-let _backToTopLastScrollAt = 0;
+let _backToTopLastTop = -1;
+let _backToTopLastChangeAt = 0;
 let _backToTopPollTimer = null;
 function installBackToTop() {
   const btn = document.getElementById('scroll-top-btn');
@@ -2684,59 +2691,36 @@ function installBackToTop() {
     document.getElementById('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
-  const onScroll = () => {
-    _backToTopLastScrollAt = Date.now();
-    if (_backToTopTicking) return;
-    _backToTopTicking = true;
-    requestAnimationFrame(() => {
-      syncBackToTopVisibility({ activeScroll: true });
-      _backToTopTicking = false;
-    });
-  };
-  // Only #main scrolls when the user drags through the card list (the
-  // body's overflow is not what moves the corpus). Skip window scroll —
-  // iOS address-bar events fire on window but don't represent card-list
-  // position, and using them mistakenly kept the button visible at top.
-  document.getElementById('main')?.addEventListener('scroll', onScroll, { passive: true });
-
-  // Periodic idle check — every 500ms, hide the button if no scroll
-  // events have fired in the last _BACK_TO_TOP_IDLE_MS window. Switching
-  // from setTimeout(chain) to this poll because iOS Safari occasionally
-  // fires phantom scroll events (address-bar micro-adjustments, scroll
-  // anchoring) that kept resetting the chained timeout — the button
-  // would stay visible forever even when the user was clearly parked.
-  // A 500ms poll is plenty fast for a 2s threshold and the work is
-  // negligible (one Date.now() compare + maybe a hidden flip).
+  // Also wire a scroll listener for IMMEDIATE response — the 200ms poll
+  // is fine for idle detection but might leave a perceptible delay
+  // between "user starts scrolling" and "button appears". The listener
+  // calls the same evaluator; phantom events are harmless because the
+  // evaluator only updates the timestamp when scrollTop actually moves.
+  document.getElementById('main')?.addEventListener('scroll', evaluateBackToTop, { passive: true });
   if (_backToTopPollTimer) clearInterval(_backToTopPollTimer);
-  _backToTopPollTimer = setInterval(() => {
-    const b = document.getElementById('scroll-top-btn');
-    if (!b || b.hidden) return;
-    if (Date.now() - _backToTopLastScrollAt >= _BACK_TO_TOP_IDLE_MS) {
-      b.hidden = true;
-    }
-  }, 500);
-
-  syncBackToTopVisibility();
+  _backToTopPollTimer = setInterval(evaluateBackToTop, 200);
+  evaluateBackToTop();
 }
 
-// Visibility rule: only visible during ACTIVE scroll past the threshold.
-// Without `opts.activeScroll`, this is a "mode changed / initial paint"
-// call and defaults to hidden (no scroll-in-progress signal). Idle
-// auto-hide is handled by the poll timer in installBackToTop.
-function syncBackToTopVisibility(opts = {}) {
+function evaluateBackToTop() {
   const btn = document.getElementById('scroll-top-btn');
-  if (!btn) return;
-  if (State.mode !== 'browse') {
-    btn.hidden = true;
-    return;
-  }
-  if (!opts.activeScroll) {
-    btn.hidden = true;
-    return;
-  }
   const main = document.getElementById('main');
-  const top = main ? main.scrollTop : 0;
-  btn.hidden = top < _BACK_TO_TOP_THRESHOLD;
+  if (!btn || !main) return;
+  const top = main.scrollTop;
+  if (top !== _backToTopLastTop) {
+    _backToTopLastTop = top;
+    _backToTopLastChangeAt = Date.now();
+  }
+  const inBrowse = State.mode === 'browse';
+  const pastThreshold = top >= _BACK_TO_TOP_THRESHOLD;
+  const recentlyChanged = (Date.now() - _backToTopLastChangeAt) < _BACK_TO_TOP_IDLE_MS;
+  btn.hidden = !(inBrowse && pastThreshold && recentlyChanged);
+}
+
+function syncBackToTopVisibility() {
+  // Mode-change / explicit-call entry point. Re-runs the same evaluator
+  // — which checks State.mode along with scroll position and idle time.
+  evaluateBackToTop();
 }
 
 // Click handler for both the header 🔄 button and the in-banner Refresh button.
