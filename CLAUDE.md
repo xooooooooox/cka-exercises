@@ -223,10 +223,11 @@ State management is in module-scope `State` object; no framework. Persistence vi
 | `cka:fix-draft:<id>` | Per-exercise answer-fix queued draft — quick flag (`{flagged:true}`) and/or fully-written report payload (`type`, `additional`, etc.). Surfaces in the header 🐛 queue popover; submitted state tracked via optional `submittedAt` |
 | `cka:task-fix-draft:<id>` | Same shape as `cka:fix-draft:` but for task-side reports (docs-link / task-body issues). Listed independently in the queue popover |
 
-## Content Conventions
+## Repository conventions
 
+- **Documentation language**: all committed prose in this repo defaults to **English** — `CHANGELOG.md`, `CLAUDE.md`, `README.md`, `EXAM_GUIDE.md`, `WEBAPP_GUIDE.md`, every script under `scripts/`, every `.github/` workflow + aider prompt, every source-code comment, every git commit message. Files with a `_CN` suffix (`README_CN.md`, `EXAM_GUIDE_CN.md`, `WEBAPP_GUIDE_CN.md`) are Chinese translations of their English counterparts — kept in lockstep with the English version, and the only place committed Chinese prose lands. Exercise titles + solutions are English; legacy in-corpus Chinese comments are tolerated but new entries default to English. Interactive chat / plan files under `~/.claude/plans/` / ad-hoc Q&A is session-scoped and may be in any language — it's not committed.
 - **Solution code**: kubectl-driven, exam-focused. Use the `k` alias shorthand. Include short comments at decision points.
-- **Bilingual content**: English titles + solutions. The CN README and a few in-exercise comments may be Chinese (legacy from corpus origin), but new content should default to English. The webapp itself is English.
+- **Bilingual exercise content**: English titles + solutions. The CN README and a few in-exercise comments may be Chinese (legacy from corpus origin), but new content should default to English. The webapp itself is English.
 - **Documentation links**: use the full kubernetes.io navigation breadcrumb as the label (e.g. `Tasks > Administer a Cluster > Operating etcd clusters for Kubernetes`). For killer.sh entries, additional breadcrumbs follow under the primary 🔗 link.
 - **Solutions** are wrapped in `<details><summary>show</summary><p>…</p></details>`. Multiple `<details>` blocks per exercise (rare) are allowed.
 - **External links** (helm.sh, gateway-api.sigs.k8s.io, containerd docs) live under the synthetic `External` bucket in the Docs tree.
@@ -242,7 +243,16 @@ Categories:
 - **Fixed** — bug fixes
 - **Removed** — deleted features, deprecated docs
 
-Each entry references the commit hash in parens (`[abc1234]`) so the changelog stays traceable to git history. Reasoning, root-cause analysis, and migration notes belong in the commit message body; the changelog entry stays single-line and user-visible.
+**Entry format** — Keep a Changelog + lead-phrase convention:
+
+```
+- **Lead phrase** — one short sentence describing the change. (`abc1234`)
+```
+
+- Lead phrase is a **bold** noun phrase naming what changed (the feature / surface / kind of fix). It should make sense on its own when scanning a long list.
+- One sentence after an em-dash. Target ≤ ~180 characters total per line. No multi-sentence paragraphs, no nested bullet lists.
+- Commit hash in backticks + parens at the end where known (gitSha of the commit that introduced the change). Use `(this commit)` as a placeholder while the entry sits under `[Unreleased]`; the release pipeline does not currently auto-rewrite these — be intentional.
+- **Reasoning, root-cause analysis, migration notes, code-snippet rationale** all live in the **commit message body**, not in the changelog. CHANGELOG is a scannable index pointing at git history, not the explanation.
 
 When the user asks for a code / doc / exercise change WITHOUT mentioning the changelog, add the entry yourself — same commit. Do NOT wait to be reminded.
 
