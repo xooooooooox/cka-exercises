@@ -2779,11 +2779,31 @@ async function manualRefresh() {
           at: Date.now(),
         }));
       } catch {}
-      setTimeout(() => {
-        const u = new URL(location.href);
-        u.searchParams.set('_rev', String(Date.now()));
-        location.replace(u.toString());
-      }, 1200);
+      // Two parallel waits both have to complete before reload:
+      //   - minimum 1.2s so the user can read the toast
+      //   - SW activation if a new SW is waiting (iOS PWA standalone
+      //     skipWaiting() from inside install() does NOT reliably
+      //     activate; explicit postMessage from the page is required,
+      //     and the OLD SW keeps serving the stale shell otherwise)
+      const minDelay = new Promise((r) => setTimeout(r, 1200));
+      const swActivation = (async () => {
+        try {
+          if (!('serviceWorker' in navigator)) return;
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (!reg) return;
+          await reg.update().catch(() => {});
+          if (!reg.waiting) return;
+          const activated = new Promise((resolve) => {
+            navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+          });
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          await Promise.race([activated, new Promise((r) => setTimeout(r, 2000))]);
+        } catch {}
+      })();
+      await Promise.all([minDelay, swActivation]);
+      const u = new URL(location.href);
+      u.searchParams.set('_rev', String(Date.now()));
+      location.replace(u.toString());
     } else {
       showRefreshToast(`✓ Already on ${hereLabel}`, 'ok');
       btn?.classList.remove('refreshing');

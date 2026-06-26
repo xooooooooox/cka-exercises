@@ -61,6 +61,18 @@ self.addEventListener('install', (event) => {
   })());
 });
 
+// Page-driven skip-waiting. Critical for iOS PWA standalone mode where
+// `self.skipWaiting()` from inside install() does NOT reliably activate
+// the new SW on its own — `controllerchange` simply never fires, and
+// the old SW keeps serving the stale shell. The Refresh path in
+// docs/app.js posts {type:'SKIP_WAITING'} explicitly, then waits for
+// controllerchange before reloading.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
