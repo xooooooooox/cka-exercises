@@ -1029,6 +1029,7 @@ function installSettingsOverlay() {
   const toggle = document.getElementById('settings-toggle');
   const close = document.getElementById('settings-close');
   const save = document.getElementById('settings-save');
+  const saveAndUse = document.getElementById('settings-save-and-use');
   const clearBtn = document.getElementById('settings-clear');
   const status = document.getElementById('settings-status');
   const providerInputs = document.querySelectorAll('input[name="llm-provider"]');
@@ -1113,6 +1114,7 @@ function installSettingsOverlay() {
     autoDoneSelect.value = String(v2.autoDoneThreshold ?? -1);
     loadSlotIntoForm(v2.active);
     refreshProviderBadges();
+    refreshSaveAndUseVisibility();
   }
 
   // Subtab switching inside the Settings dialog.
@@ -1142,10 +1144,19 @@ function installSettingsOverlay() {
   // Radio change: switch the form view to the clicked provider's saved slot.
   // No save happens until the user hits Save explicitly.
   providerInputs.forEach(r => r.addEventListener('change', () => {
-    if (r.checked) loadSlotIntoForm(r.value);
+    if (r.checked) {
+      loadSlotIntoForm(r.value);
+      refreshSaveAndUseVisibility();
+    }
   }));
 
-  save?.addEventListener('click', () => {
+  // Persist the form into the selected provider's slot — NOTHING ELSE.
+  // Switching the active provider is a separate intent (use the ⚡ Use
+  // button on a row, or the secondary `⚡ Save & use` action below).
+  // Decoupling these two actions fixes the previous "Save also silently
+  // hijacks active" UX that confused users staring at a Selected ≠ Active
+  // situation.
+  function persistCurrentForm() {
     const provider = currentProvider();
     const v2 = readLLMConfig();
     v2.providers[provider] = {
@@ -1155,24 +1166,63 @@ function installSettingsOverlay() {
       baseUrl: baseUrlInput.value.trim(),
       // Don't drop persisted .models on save — Test refreshes them.
     };
-    v2.active = provider;
     v2.autoDoneThreshold = parseInt(autoDoneSelect.value, 10);
     writeLLMConfig(v2);
-    // Defensive: re-anchor the form DOM to the freshly-saved active slot in
-    // case anything in the click path drifted.
-    providerInputs.forEach(r => { r.checked = (r.value === v2.active); });
-    loadSlotIntoForm(v2.active);
+    return provider;
+  }
+
+  function activateProvider(provider) {
+    const v2 = readLLMConfig();
+    v2.active = provider;
+    writeLLMConfig(v2);
+    providerInputs.forEach(r => { r.checked = (r.value === provider); });
+    loadSlotIntoForm(provider);
     refreshProviderBadges();
-    // Make activation explicit in the confirmation so the user can never wonder
-    // "which provider just became active?"
-    status.textContent = `✓ Saved — ${provider} is now active`;
-    setTimeout(() => { status.textContent = ''; }, 1800);
-    // Notify already-rendered widgets so the "Using X (Y)" hint refreshes in
-    // place — works in Quiz mode where renderBrowse() never runs.
+    refreshSaveAndUseVisibility();
     emitLLMSettingsChange();
-    // Refresh the visible cards so the answer-box hint reflects the new provider/key state.
+    if (State.mode === 'browse') renderBrowse();
+  }
+
+  save?.addEventListener('click', () => {
+    const provider = persistCurrentForm();
+    refreshProviderBadges();
+    refreshSaveAndUseVisibility();
+    status.textContent = `✓ Saved ${provider}`;
+    setTimeout(() => { status.textContent = ''; }, 1800);
+    emitLLMSettingsChange();
     if (State.mode === 'browse') renderBrowse();
   });
+
+  // Secondary action — Save + activate in one click. Only visible when
+  // the form's provider is NOT the current active one (otherwise this
+  // collapses to plain Save and has no extra value).
+  saveAndUse?.addEventListener('click', () => {
+    const provider = persistCurrentForm();
+    activateProvider(provider);
+    status.textContent = `⚡ Saved ${provider} and made it active`;
+    setTimeout(() => { status.textContent = ''; }, 1800);
+  });
+
+  // Per-row ⚡ Use button — switch active without touching the form.
+  // Wires once (provider list is static HTML); each card decides via CSS
+  // whether to show its button based on .configured + :not(.active).
+  document.querySelectorAll('.provider-card .use-active-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();   // don't bubble to the <label> (would toggle radio)
+      const target = btn.dataset.use;
+      if (!target) return;
+      activateProvider(target);
+      status.textContent = `⚡ ${target} is now active`;
+      setTimeout(() => { status.textContent = ''; }, 1800);
+    });
+  });
+
+  function refreshSaveAndUseVisibility() {
+    if (!saveAndUse) return;
+    const v2 = readLLMConfig();
+    saveAndUse.hidden = (currentProvider() === v2.active);
+  }
 
   // Clear *only* the currently-selected provider's slot. If that was the
   // active one, the active selector falls back to the first remaining

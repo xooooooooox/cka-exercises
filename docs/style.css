@@ -2000,11 +2000,19 @@ body.answer-fullscreen-active { overflow: hidden; }
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
+/* Provider card — three independent visual signals:
+   1. Active (the one LLM Check actually uses) — gold left bar + tinted bg + ★ Active pill
+   2. Configured (has saved credentials) — small green dot top-right
+   3. Selected for editing (which slot the form below is bound to) — subtle outline only
+   Previously these three were conveyed with overlapping borders / backgrounds / icons
+   (blue bg for selected, green border for configured, "★ active" text for active) which
+   was the "fragmented" UX the user flagged. */
 .provider-card {
   position: relative;
   display: flex; align-items: center; gap: 8px;
   padding: 10px 12px 10px 12px;
   border: 1px solid var(--border);
+  border-left: 3px solid transparent;
   border-radius: var(--radius);
   cursor: pointer;
   background: var(--bg);
@@ -2013,25 +2021,61 @@ body.answer-fullscreen-active { overflow: hidden; }
 .provider-card input { margin: 0; }
 .provider-card > span:not(.provider-badge) { font-weight: 600; }
 .provider-card small { color: var(--fg-muted); font-size: 11px; }
+
+/* (1) Selected for editing — subtle outline ring only, no full-row tint */
 .provider-card:has(input:checked) {
-  border-color: var(--accent);
-  background: rgba(9, 105, 218, 0.08);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
-/* "✓" appears when a provider's slot has been saved. */
-.provider-card.configured { border-color: var(--success); }
-.provider-card .provider-badge {
+
+/* (2) Configured — small green dot top-right */
+.provider-card.configured::after {
+  content: "";
   position: absolute;
-  top: 6px;
-  right: 8px;
-  font-size: 10px;
+  top: 8px; right: 8px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+/* (3) Active — left-edge gold bar + tinted background + ★ Active pill at right */
+.provider-card.active {
+  background: color-mix(in srgb, var(--warning) 8%, var(--bg));
+  border-left-color: var(--warning);
+}
+.provider-card .provider-badge {
+  margin-left: auto;
+  font-size: 11px;
   line-height: 1;
-  color: var(--success);
   white-space: nowrap;
+  color: transparent;            /* default: invisible — only painted on active */
 }
-.provider-card .provider-badge.is-active {
+.provider-card.active .provider-badge {
+  color: var(--warning);
+  font-weight: 700;
+}
+.provider-card.active .provider-badge::before { content: "★ Active"; }
+
+/* "⚡ Use" button — only renders for configured non-active providers,
+   gives a one-click way to switch active without going through the
+   form below. */
+.provider-card .use-active-btn {
+  font-size: 11px;
+  padding: 3px 9px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
   color: var(--accent);
-  font-weight: 600;
+  cursor: pointer;
+  display: none;                 /* default hidden — JS only shows on configured non-active */
 }
+.provider-card .use-active-btn:hover {
+  background: var(--bg-elev);
+}
+.provider-card.configured:not(.active) .use-active-btn { display: inline-block; }
+.provider-card.configured.active .provider-badge { margin-left: auto; }
+/* When active row shows its ★ Active pill, the (hidden) Use button still
+   eats no width thanks to display:none. */
 #settings-providers-count,
 #settings-grading-count {
   font-size: 11px;

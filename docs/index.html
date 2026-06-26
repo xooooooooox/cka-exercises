@@ -516,13 +516,13 @@
       <div class="settings-section">
         <label class="settings-label">Provider</label>
         <div class="provider-grid">
-          <label class="provider-card"><input type="radio" name="llm-provider" value="anthropic"> <span>Anthropic</span><small>Claude</small><span class="provider-badge"></span></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="openai"> <span>OpenAI</span><small>GPT-4o</small><span class="provider-badge"></span></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="deepseek"> <span>DeepSeek</span><small>cheapest cloud</small><span class="provider-badge"></span></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="qwen"> <span>Qwen</span><small>Alibaba DashScope</small><span class="provider-badge"></span></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="doubao"> <span>Doubao</span><small>ByteDance Ark</small><span class="provider-badge"></span></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="glm"> <span>GLM</span><small>Zhipu BigModel</small><span class="provider-badge"></span></label>
-          <label class="provider-card"><input type="radio" name="llm-provider" value="ollama"> <span>Ollama</span><small>local · free</small><span class="provider-badge"></span></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="anthropic"> <span>Anthropic</span><small>Claude</small><span class="provider-badge"></span><button type="button" class="use-active-btn" data-use="anthropic" title="Make Anthropic the active provider">⚡ Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="openai"> <span>OpenAI</span><small>GPT-4o</small><span class="provider-badge"></span><button type="button" class="use-active-btn" data-use="openai" title="Make OpenAI the active provider">⚡ Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="deepseek"> <span>DeepSeek</span><small>cheapest cloud</small><span class="provider-badge"></span><button type="button" class="use-active-btn" data-use="deepseek" title="Make DeepSeek the active provider">⚡ Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="qwen"> <span>Qwen</span><small>Alibaba DashScope</small><span class="provider-badge"></span><button type="button" class="use-active-btn" data-use="qwen" title="Make Qwen the active provider">⚡ Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="doubao"> <span>Doubao</span><small>ByteDance Ark</small><span class="provider-badge"></span><button type="button" class="use-active-btn" data-use="doubao" title="Make Doubao the active provider">⚡ Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="glm"> <span>GLM</span><small>Zhipu BigModel</small><span class="provider-badge"></span><button type="button" class="use-active-btn" data-use="glm" title="Make GLM the active provider">⚡ Use</button></label>
+          <label class="provider-card"><input type="radio" name="llm-provider" value="ollama"> <span>Ollama</span><small>local · free</small><span class="provider-badge"></span><button type="button" class="use-active-btn" data-use="ollama" title="Make Ollama the active provider">⚡ Use</button></label>
         </div>
       </div>
 
@@ -565,7 +565,8 @@
       </div>
 
       <div class="settings-actions">
-        <button id="settings-save" type="button" class="primary" title="Save the current form into this provider's slot AND make this provider the active LLM">💾 Save &amp; set as active</button>
+        <button id="settings-save" type="button" class="primary" title="Save the form into the selected provider's slot. Switching the active provider is separate — click ⚡ Use on the row you want active.">💾 Save</button>
+        <button id="settings-save-and-use" type="button" title="Save the form into this provider's slot AND make it the active LLM in one action" hidden>⚡ Save &amp; use</button>
         <button id="settings-clear-one" type="button" title="Wipe just the currently-selected provider's API key, model and baseUrl">🧽 Clear this provider</button>
         <button id="settings-clear" type="button" class="danger" title="Wipe every provider's saved config (API keys, models, baseUrls)">🗑 Clear all</button>
         <span id="settings-status" class="muted"></span>
