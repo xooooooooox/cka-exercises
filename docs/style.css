@@ -1713,14 +1713,21 @@ body.answer-fullscreen-active { overflow: hidden; }
    when openFixReportModal opens; CSS hides whichever blocks don't apply. */
 #report-overlay[data-report-mode="task"] .solution-mode-only { display: none; }
 #report-overlay:not([data-report-mode="task"]) .task-mode-only { display: none; }
-.report-suggested-url-block {
+/* `:not([hidden])` is load-bearing — without it the `display: flex` rule
+   ties on specificity with [hidden] and wins by cascade order, defeating
+   `block.hidden = true` from syncTaskSubBlocks. Symptom that prompted
+   this: user picked unclear-task and still saw Suggested URL + Existing
+   link fields. */
+.report-suggested-url-block:not([hidden]),
+.report-existing-link-block:not([hidden]) {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin-top: 8px;
 }
 .report-suggested-url-block input[type="url"],
-.report-suggested-url-block select {
+.report-suggested-url-block select,
+.report-existing-link-block select {
   width: 100%;
   padding: 6px 8px;
   background: var(--bg-code);

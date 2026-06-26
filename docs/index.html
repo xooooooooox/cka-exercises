@@ -704,11 +704,19 @@
       <div id="report-type-help" class="report-type-help solution-mode-only" aria-live="polite"></div>
       <div id="report-task-type-group" class="report-type-group task-mode-only" role="radiogroup" aria-label="Task issue type" hidden></div>
       <div id="report-task-type-help" class="report-type-help task-mode-only" aria-live="polite" hidden></div>
+      <!-- These two blocks are independently shown/hidden by syncTaskSubBlocks
+           per the selected type — Suggested URL appears for missing /
+           incorrect / outdated-breadcrumb; Existing-link picker only for
+           incorrect / outdated-breadcrumb. CSS uses :not([hidden]) so the
+           hidden attribute actually wins over the .report-*-block flex
+           rule (would-be no-op without the :not()). -->
       <div id="report-suggested-url-block" class="report-suggested-url-block task-mode-only" hidden>
         <label class="report-field-label" for="report-suggested-url">Suggested kubernetes.io URL</label>
         <input id="report-suggested-url" type="url" placeholder="https://kubernetes.io/docs/…" autocomplete="off">
-        <label class="report-field-label" for="report-existing-link-pick">Which existing link is wrong? <span class="muted">(only for "incorrect" / "outdated breadcrumb")</span></label>
-        <select id="report-existing-link-pick" hidden></select>
+      </div>
+      <div id="report-existing-link-block" class="report-existing-link-block task-mode-only" hidden>
+        <label class="report-field-label" for="report-existing-link-pick">Which existing link is wrong?</label>
+        <select id="report-existing-link-pick"></select>
       </div>
       <label class="report-field-label" for="report-additional">Additional context <span class="muted">(optional — required for "Other")</span></label>
       <textarea id="report-additional" rows="2" placeholder="Anything else the maintainer should know — exact line, observed behaviour, your k8s version, etc."></textarea>

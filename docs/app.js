@@ -3938,6 +3938,7 @@ function openFixReportModal(ex, ctx = {}) {
   const taskBody = $('report-task-body');
   const docsList = $('report-docs-list');
   const suggestedUrlBlock = $('report-suggested-url-block');
+  const existingLinkBlock = $('report-existing-link-block');
   const suggestedUrl = $('report-suggested-url');
   const existingLinkPick = $('report-existing-link-pick');
   const addl = $('report-additional');
@@ -4076,13 +4077,17 @@ function openFixReportModal(ex, ctx = {}) {
   const URL_TYPES = new Set(['missing-docs-link', 'incorrect-docs-link', 'outdated-breadcrumb']);
   const PICKER_TYPES = new Set(['incorrect-docs-link', 'outdated-breadcrumb']);
   const syncTaskSubBlocks = () => {
-    if (mode !== 'task' || !suggestedUrlBlock) return;
+    if (mode !== 'task') return;
     const checked = taskRadioGroup.querySelector('input[type="radio"]:checked');
     const tval = checked ? checked.value : 'other';
-    suggestedUrlBlock.hidden = !URL_TYPES.has(tval);
-    if (existingLinkPick) {
-      existingLinkPick.hidden = !PICKER_TYPES.has(tval);
-    }
+    // Toggle the WRAPPER blocks so label + input/select hide together.
+    // The CSS rule on .report-suggested-url-block / .report-existing-link-block
+    // uses :not([hidden]) so the hidden attribute actually wins over the
+    // block's `display: flex` (without :not it tied on specificity and the
+    // flex rule won, leaving Suggested URL / Existing-link fields stuck
+    // visible for non-docs-link types — bug user reported).
+    if (suggestedUrlBlock) suggestedUrlBlock.hidden = !URL_TYPES.has(tval);
+    if (existingLinkBlock) existingLinkBlock.hidden = !PICKER_TYPES.has(tval);
   };
   syncTaskSubBlocks();
 
