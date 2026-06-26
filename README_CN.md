@@ -19,6 +19,26 @@
 
 进度（✓ 已完成、⭐ 收藏、主题、Docs 上次选中页）通过 `localStorage` 持久化。Markdown 由 CDN 加载的 Marked.js 渲染，运行时无需构建。
 
+## 📸 截图
+
+### 电脑端
+
+![Browse 模式 —— 左侧目录树、顶部筛选条、中部题目卡片。](assets/screenshots/desktop-browse.png)
+
+![Quiz 模式 —— 答题中的会话，含答题编辑器与 LLM 评分卡（Got it / ◐ Partial / ✗ Missed 三档自评）。](assets/screenshots/desktop-quiz.png)
+
+![Docs 模式 —— 左侧 kubernetes.io 导航树，右侧叶子页详情 + 反向链接到对应练习。](assets/screenshots/desktop-docs.png)
+
+### 手机端
+
+<p align="center">
+  <img src="assets/screenshots/mobile-browse.png" width="240" alt="iPhone 上的 Browse —— 底部固定 mode-tabs（Browse / Quiz / Docs / Help / Tools / Nodes），紧凑的筛选工具栏。">
+  <img src="assets/screenshots/mobile-quiz.png" width="240" alt="iPhone 上的 Quiz —— 三档自评行（Got it / Partial / Missed）当前状态高亮，下面是工具行（Prev / Flag / Reveal / Skip / Next）。">
+  <img src="assets/screenshots/mobile-docs.png" width="240" alt="iPhone 上的 Docs 树，分类可折叠。">
+</p>
+
+> `assets/screenshots/` 下目前是 1×1 占位图，等真实截图提交后替换 —— 抓图规范与每个文件应展示的画面见 [`assets/screenshots/README.md`](assets/screenshots/README.md)。
+
 ## 项目结构
 
 ```

@@ -18,7 +18,8 @@ Currently 271 exercises across 5 domains. The repo has a small Node-based build 
 ├── package.json                        # npm run build / serve / preserve / lint / link-check
 ├── assets/
 │   ├── killer-sh/                      # killer.sh Simulator A/B PDFs
-│   └── killercoda/                     # KillerCoda CKA mock exam PDFs (per-domain)
+│   ├── killercoda/                     # KillerCoda CKA mock exam PDFs (per-domain)
+│   └── screenshots/                    # README screenshots (desktop + mobile) — see its own README.md for capture spec
 ├── exercises/                          # 5 markdown files, one per curriculum domain
 │   ├── cluster-architecture.md         # 25% — 114 exercises
 │   ├── scheduling.md                   # 15% —  49 exercises
