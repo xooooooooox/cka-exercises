@@ -2675,7 +2675,8 @@ function maybeCheckForUpdate() {
 const _BACK_TO_TOP_THRESHOLD = 150;
 const _BACK_TO_TOP_IDLE_MS = 2000;
 let _backToTopTicking = false;
-let _backToTopIdleTimer = null;
+let _backToTopLastScrollAt = 0;
+let _backToTopPollTimer = null;
 function installBackToTop() {
   const btn = document.getElementById('scroll-top-btn');
   if (!btn) return;
@@ -2684,18 +2685,11 @@ function installBackToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
   const onScroll = () => {
+    _backToTopLastScrollAt = Date.now();
     if (_backToTopTicking) return;
     _backToTopTicking = true;
     requestAnimationFrame(() => {
-      // On every scroll: re-evaluate visibility (which is now also
-      // gated on "actively scrolling"). Reset the idle timer so the
-      // button hides ~2s after the last scroll event.
       syncBackToTopVisibility({ activeScroll: true });
-      if (_backToTopIdleTimer) clearTimeout(_backToTopIdleTimer);
-      _backToTopIdleTimer = setTimeout(() => {
-        const b = document.getElementById('scroll-top-btn');
-        if (b) b.hidden = true;
-      }, _BACK_TO_TOP_IDLE_MS);
       _backToTopTicking = false;
     });
   };
@@ -2704,13 +2698,31 @@ function installBackToTop() {
   // iOS address-bar events fire on window but don't represent card-list
   // position, and using them mistakenly kept the button visible at top.
   document.getElementById('main')?.addEventListener('scroll', onScroll, { passive: true });
+
+  // Periodic idle check — every 500ms, hide the button if no scroll
+  // events have fired in the last _BACK_TO_TOP_IDLE_MS window. Switching
+  // from setTimeout(chain) to this poll because iOS Safari occasionally
+  // fires phantom scroll events (address-bar micro-adjustments, scroll
+  // anchoring) that kept resetting the chained timeout — the button
+  // would stay visible forever even when the user was clearly parked.
+  // A 500ms poll is plenty fast for a 2s threshold and the work is
+  // negligible (one Date.now() compare + maybe a hidden flip).
+  if (_backToTopPollTimer) clearInterval(_backToTopPollTimer);
+  _backToTopPollTimer = setInterval(() => {
+    const b = document.getElementById('scroll-top-btn');
+    if (!b || b.hidden) return;
+    if (Date.now() - _backToTopLastScrollAt >= _BACK_TO_TOP_IDLE_MS) {
+      b.hidden = true;
+    }
+  }, 500);
+
   syncBackToTopVisibility();
 }
 
 // Visibility rule: only visible during ACTIVE scroll past the threshold.
 // Without `opts.activeScroll`, this is a "mode changed / initial paint"
 // call and defaults to hidden (no scroll-in-progress signal). Idle
-// auto-hide is handled by the timer in installBackToTop's onScroll.
+// auto-hide is handled by the poll timer in installBackToTop.
 function syncBackToTopVisibility(opts = {}) {
   const btn = document.getElementById('scroll-top-btn');
   if (!btn) return;
