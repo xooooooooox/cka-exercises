@@ -50,6 +50,7 @@ jobs:
           # ── answer-fix family ───────────────────────────────────────────
           create "answer-fix"                "Reference solution mismatch reported via the SPA" "d73a4a"
           create "kind/verification-bundled" "Reference solution bundles verification commands" "fbca04"
+          create "kind/over-prescriptive"    "Reference includes details the task didn't specify" "fbca04"
           create "kind/wrong-resource"       "Reference uses wrong resource details"            "fbca04"
           create "kind/outdated-flag"        "Reference uses deprecated kubectl flag / syntax"  "fbca04"
           create "kind/missing-step"         "Reference is incomplete (missing required step)"  "fbca04"
@@ -66,4 +67,4 @@ jobs:
           create "kind/other"                "Other (described in issue body)"                  "fbca04"
           # ── curriculum watcher ─────────────────────────────────────────
           create "curriculum-watch"          "Auto-filed by .github/workflows/curriculum-watch.yml" "1d76db"
-          echo "✓ Seeded 15 labels."
+          echo "✓ Seeded 16 labels."

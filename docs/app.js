@@ -3541,14 +3541,21 @@ function extractReferenceCode(solutionMd) {
 // to auto-pre-select the type from a low-score LLM verdict's "missed" list.
 // `whatsWrong: null` marks "Other" — it forces the user to put a note in the
 // Additional Context field before they can submit.
+// Labels are subject-less ("Reference" is in the modal header) so each
+// option reads as the FAULT itself: "Bundles ...", "Wrong ...", etc.
+// Order = autoDetectType priority (first match wins) — over-prescriptive
+// sits between verification-bundled and wrong-resource because it's the
+// same flavour as verification-bundled ("reference adds stuff not in task")
+// but for parameter values rather than verification commands.
 const REPORT_TYPES = [
   {
     id: 'verification-bundled',
-    label: 'Reference bundles verification commands with the actual answer',
+    label: 'Bundles verification commands not asked by the task',
     ghLabel: 'kind/verification-bundled',
     autoMissedKeywords: [
       'auth can-i', 'can-i', 'verify', 'verification', 'verifying',
       'kubectl get', 'kubectl describe', 'kubectl logs', 'check ',
+      'verification step', 'verify with', 'extra command',
     ],
     whatsWrong:
       "The reference solution's code-block includes verification commands " +
@@ -3561,10 +3568,35 @@ const REPORT_TYPES = [
       "supplementary. Keep only the commands that directly satisfy the task.",
   },
   {
-    id: 'wrong-resource',
-    label: 'Reference uses a wrong resource name / namespace / kind',
-    ghLabel: 'kind/wrong-resource',
+    id: 'over-prescriptive',
+    label: "Includes details the task didn't specify",
+    ghLabel: 'kind/over-prescriptive',
+    // Keyword-based detection here is unreliable — typical verdict phrasing
+    // ("omitted the --cluster flag") overlaps with missing-step. We bias
+    // selection via the score+missed.length heuristic in autoDetectType
+    // instead. Keep keywords empty.
     autoMissedKeywords: [],
+    whatsWrong:
+      "The task leaves a detail open (e.g. cluster name, namespace, flag " +
+      "value, resource name choice) — but the reference solution picks a " +
+      "specific value anyway. The LLM grader treats that picked value as " +
+      "required and penalises legitimate answers that omit it or pick " +
+      "something else.",
+    suggested:
+      "Drop the over-specified detail from the reference, or move it to a " +
+      "comment / `> ℹ️` note so the grader treats it as illustrative. " +
+      "Alternatively, tighten the task body to pin the detail down.",
+  },
+  {
+    id: 'wrong-resource',
+    label: 'Wrong resource name / namespace / kind',
+    ghLabel: 'kind/wrong-resource',
+    autoMissedKeywords: [
+      'wrong namespace', 'wrong resource', 'wrong kind',
+      "name doesn't match", 'name does not match',
+      'expected namespace', 'expected name', 'expected resource',
+      'should be in namespace', 'should be named', 'kind should be',
+    ],
     whatsWrong:
       "The reference solution's resource details (name, namespace, kind, " +
       "label, etc.) don't match what the task asks for, so even a literally " +
@@ -3575,9 +3607,13 @@ const REPORT_TYPES = [
   },
   {
     id: 'outdated-flag',
-    label: 'Reference uses an outdated or wrong kubectl flag / syntax',
+    label: 'Outdated kubectl flag / syntax',
     ghLabel: 'kind/outdated-flag',
-    autoMissedKeywords: ['deprecated', 'unknown flag'],
+    autoMissedKeywords: [
+      'deprecated', 'unknown flag',
+      'removed in v1', 'no longer supported', 'no such flag',
+      'invalid flag', 'unknown command',
+    ],
     whatsWrong:
       "The reference uses a kubectl flag or syntax that's been deprecated, " +
       "renamed, or doesn't exist in the targeted k8s version.",
@@ -3587,9 +3623,14 @@ const REPORT_TYPES = [
   },
   {
     id: 'missing-step',
-    label: 'Reference is incomplete (missing a required step)',
+    label: 'Missing a required step',
     ghLabel: 'kind/missing-step',
-    autoMissedKeywords: [],
+    autoMissedKeywords: [
+      'missing step', 'incomplete', 'stops short',
+      'did not apply', 'did not create',
+      "didn't apply", "didn't create",
+      'not applied', 'not created',
+    ],
     whatsWrong:
       "The reference solution doesn't actually fulfil the task — at least " +
       "one required step is missing or stops short.",
@@ -3693,7 +3734,23 @@ function getReportType(id, mode = 'solution') {
 
 function autoDetectType(ctx) {
   if (!ctx || !ctx.verdict || !Array.isArray(ctx.verdict.missed)) return null;
-  const haystack = ctx.verdict.missed.join(' ').toLowerCase();
+  const v = ctx.verdict;
+  const haystack = v.missed.join(' ').toLowerCase();
+
+  // Score-based heuristic for over-prescriptive: a high verdict score
+  // with a small `missed` list typically means "you basically got it,
+  // just didn't replicate a detail the reference picked." Keyword
+  // matching would mis-bucket this as missing-step (verdicts often say
+  // "omitted the --cluster flag"). Score signal is the cleaner cue.
+  if (
+    typeof v.score === 'number'
+    && v.score >= 85
+    && v.missed.length > 0
+    && v.missed.length <= 2
+  ) {
+    return 'over-prescriptive';
+  }
+
   for (const t of REPORT_TYPES) {
     if (t.autoMissedKeywords && t.autoMissedKeywords.some(k => haystack.includes(k))) {
       return t.id;
@@ -3808,6 +3865,23 @@ function buildIssueUrl(ex, draft, mode = 'solution') {
   return u.toString();
 }
 
+// Build radio rows from a REPORT_TYPES / TASK_REPORT_TYPES catalogue and
+// inject them into the given `<div role="radiogroup">` container. Replaces
+// the previously-hardcoded <label> rows in docs/index.html so the JS
+// catalogue is the single source of truth for the picker.
+function renderReportRadioRows(groupEl, types, name) {
+  if (!groupEl) return;
+  groupEl.innerHTML = '';
+  for (const t of types) {
+    groupEl.appendChild(
+      el('label', {},
+        el('input', { type: 'radio', name, value: t.id }),
+        ' ' + t.label
+      )
+    );
+  }
+}
+
 function openFixReportModal(ex, ctx = {}) {
   const overlay = document.getElementById('report-overlay');
   if (!overlay) return;
@@ -3841,6 +3915,15 @@ function openFixReportModal(ex, ctx = {}) {
   const cancelBtn = $('report-cancel');
   const closeBtn = $('report-close');
   const titlePreview = $('report-title-preview');
+
+  // Render radio rows from REPORT_TYPES / TASK_REPORT_TYPES (single source
+  // of truth). The HTML used to hardcode the same <label> rows and they
+  // drifted out of sync — the first solution-mode label even had inline
+  // <code>auth can-i</code> that broke the row layout on phone widths.
+  // Generated rows track REPORT_TYPES.label exactly, so adding / renaming
+  // types only touches the JS catalogue.
+  renderReportRadioRows(solutionRadioGroup, REPORT_TYPES, 'report-type');
+  renderReportRadioRows(taskRadioGroup, TASK_REPORT_TYPES, 'report-task-type');
 
   // Swap radio groups based on mode; pick from the visible group only.
   solutionRadioGroup.hidden = (mode === 'task');

@@ -25,6 +25,9 @@ Apply a minimal surgical edit to `snippet.md` to fix the issue. Do nothing else.
 - `verification-bundled` — Remove or relocate verification-only commands (`kubectl auth can-i`, `kubectl get`, `kubectl describe`, `kubectl logs`) from the main solution bash code-block. Two acceptable shapes:
   1. Delete the verification lines outright.
   2. Move them into a SECOND bash code-block under a `> 💡 **Verify (optional)**:` blockquote that follows the main code-block but stays inside the same `<details>` element.
+- `over-prescriptive` — The reference baked in a task-unrequired detail (cluster name, namespace, flag value, resource name) that the grader now treats as required. Two acceptable fixes:
+  1. Drop the over-specified detail from the main solution code-block. If keeping it as an illustrative default helps readers, move it to a `> ℹ️` note explicitly marked optional, or to a code-comment inside the block.
+  2. If the detail is genuinely required by the task, tighten the task body (above the `<details>` block) to specify it explicitly. Prefer fix #1 unless the task clearly requires the choice.
 - `wrong-resource` — Align the resource details (name, namespace, kind, label) in the reference with the task wording. Cross-reference the kubernetes.io docs link already cited in the exercise.
 - `outdated-flag` — Replace the deprecated or wrong flag/syntax with the current one for the targeted k8s version. Don't introduce a new dependency.
 - `missing-step` — Add the smallest sufficient step to make the reference end-to-end correct. Keep style consistent with the surrounding solution.

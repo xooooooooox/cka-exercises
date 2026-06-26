@@ -692,23 +692,12 @@
         <ul id="report-docs-list" class="report-task-docs-list"></ul>
       </details>
       <div class="report-field-label">Issue type <span class="muted">(pick the closest one)</span></div>
-      <div id="report-type-group" class="report-type-group solution-mode-only" role="radiogroup" aria-label="Issue type">
-        <label><input type="radio" name="report-type" value="verification-bundled"> Reference bundles verification commands (e.g. <code>auth can-i</code>) with the actual answer</label>
-        <label><input type="radio" name="report-type" value="wrong-resource"> Reference uses a wrong resource name / namespace / kind</label>
-        <label><input type="radio" name="report-type" value="outdated-flag"> Reference uses an outdated or wrong kubectl flag / syntax</label>
-        <label><input type="radio" name="report-type" value="missing-step"> Reference is incomplete (missing a required step)</label>
-        <label><input type="radio" name="report-type" value="typo"> Typo / formatting issue</label>
-        <label><input type="radio" name="report-type" value="other"> Other (describe below)</label>
-      </div>
-      <div id="report-task-type-group" class="report-type-group task-mode-only" role="radiogroup" aria-label="Task issue type" hidden>
-        <label><input type="radio" name="report-task-type" value="missing-docs-link"> Task is missing a relevant kubernetes.io docs link</label>
-        <label><input type="radio" name="report-task-type" value="incorrect-docs-link"> An existing docs link points to the wrong kubernetes.io page</label>
-        <label><input type="radio" name="report-task-type" value="outdated-breadcrumb"> Docs link's breadcrumb text drifted from kubernetes.io</label>
-        <label><input type="radio" name="report-task-type" value="unclear-task"> Task wording is ambiguous or unclear</label>
-        <label><input type="radio" name="report-task-type" value="factual-error"> Task contains a factual error about Kubernetes behaviour</label>
-        <label><input type="radio" name="report-task-type" value="typo"> Typo / formatting issue in the task body</label>
-        <label><input type="radio" name="report-task-type" value="other"> Other (describe below)</label>
-      </div>
+      <!-- Radio rows are JS-generated from REPORT_TYPES / TASK_REPORT_TYPES
+           (single source of truth in docs/app.js). DO NOT hardcode <label>
+           rows here — they would drift out of sync with the JS catalogue
+           and we'd lose any new types added there. -->
+      <div id="report-type-group" class="report-type-group solution-mode-only" role="radiogroup" aria-label="Issue type"></div>
+      <div id="report-task-type-group" class="report-type-group task-mode-only" role="radiogroup" aria-label="Task issue type" hidden></div>
       <div id="report-suggested-url-block" class="report-suggested-url-block task-mode-only" hidden>
         <label class="report-field-label" for="report-suggested-url">Suggested kubernetes.io URL</label>
         <input id="report-suggested-url" type="url" placeholder="https://kubernetes.io/docs/…" autocomplete="off">

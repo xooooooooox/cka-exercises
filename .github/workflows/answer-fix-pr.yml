@@ -59,14 +59,15 @@ jobs:
           create() {
             gh label create "$1" --description "$2" --color "$3" --force >/dev/null 2>&1 || true
           }
-          # answer-fix is red; the six kind/* dispatch labels share a yellow hue.
-          create "answer-fix"                "Reference solution mismatch reported via the SPA" "d73a4a"
-          create "kind/verification-bundled" "Reference solution bundles verification commands" "fbca04"
-          create "kind/wrong-resource"       "Reference uses wrong resource details"            "fbca04"
-          create "kind/outdated-flag"        "Reference uses deprecated kubectl flag / syntax"  "fbca04"
-          create "kind/missing-step"         "Reference is incomplete (missing required step)"  "fbca04"
-          create "kind/typo"                 "Typo / formatting issue"                          "fbca04"
-          create "kind/other"                "Other (described in issue body)"                  "fbca04"
+          # answer-fix is red; the seven kind/* dispatch labels share a yellow hue.
+          create "answer-fix"                "Reference solution mismatch reported via the SPA"  "d73a4a"
+          create "kind/verification-bundled" "Reference solution bundles verification commands"  "fbca04"
+          create "kind/over-prescriptive"    "Reference includes details the task didn't specify" "fbca04"
+          create "kind/wrong-resource"       "Reference uses wrong resource details"             "fbca04"
+          create "kind/outdated-flag"        "Reference uses deprecated kubectl flag / syntax"   "fbca04"
+          create "kind/missing-step"         "Reference is incomplete (missing required step)"   "fbca04"
+          create "kind/typo"                 "Typo / formatting issue"                           "fbca04"
+          create "kind/other"                "Other (described in issue body)"                   "fbca04"
       - id: list
         env:
           GH_TOKEN: ${{ github.token }}
