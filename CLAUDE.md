@@ -240,14 +240,19 @@ Don't reinvent — link out, treat as binding:
 - **Documentation language**: all committed prose in this repo defaults to **English** — `CHANGELOG.md`, `CLAUDE.md`, `README.md`, `EXAM_GUIDE.md`, `WEBAPP_GUIDE.md`, every script under `scripts/`, every `.github/` workflow + aider prompt, every source-code comment, every git commit message. Files with a `_CN` suffix (`README_CN.md`, `EXAM_GUIDE_CN.md`, `WEBAPP_GUIDE_CN.md`) are Chinese translations of their English counterparts — kept in lockstep with the English version, and the only place committed Chinese prose lands. Exercise titles + solutions are English; legacy in-corpus Chinese comments are tolerated but new entries default to English. Interactive chat / plan files under `~/.claude/plans/` / ad-hoc Q&A is session-scoped and may be in any language — it's not committed.
 - **Prose concision — calibrate to the reader's context**: every doc sits in a specific context. The same sentence can be essential in one doc and pure padding in another. A `cp … && git add && git commit` example belongs in a contributing guide for newcomers; the same block in a per-folder README aimed at someone already in the codebase is noise. Closing lines that restate the heading, and "this is a placeholder until X" pointers when the placeholder state is visually obvious, are usually padding in *most* contexts but can be the right call elsewhere. Before writing a sentence, ask: who is reading this, what do they already know from being here, what does this add. If removing it loses information the reader needed, keep it; if not, cut.
 - **Code comments — explain WHY, never WHAT**: default to no comments. Add one only when *why* is non-obvious: a hidden constraint, a subtle invariant, a workaround for a specific bug, behavior that would surprise a reader. Don't narrate *what* the code does (well-named identifiers handle that). Don't reference the current task / fix / caller — that belongs in the commit message and rots as the codebase evolves. No JSDoc / multi-paragraph block comments unless documenting a public API for external consumers (this repo currently has none).
-- **Emoji UI semantics — single fixed registry**: each emoji in the SPA UI has one assigned meaning across all surfaces. Reusing an emoji for a different semantic risks the icon-collision class of bug that triggered the `🔧 Tools / 🔧 Solution issue` fix during the v0.2.0 cycle. Current registry:
+- **Emoji UI semantics — single fixed registry**: each emoji has one assigned semantic across all SPA surfaces. The same emoji may appear in multiple surfaces only when those surfaces share that semantic (e.g. 🔧 = "Tools / kubectl reference" both as the mode tab and as the in-editor drawer button). Reusing an emoji for a *different* semantic — the collision class that triggered the v0.2.0 flag-scope picker rewrite — is what this registry exists to prevent. Current registry:
 
-  | Emoji | Meaning | Where it appears |
-  |-------|---------|------------------|
+  | Emoji | Semantic | Where it appears |
+  |-------|----------|------------------|
+  | 📚 | Browse mode | mode tab (header + mobile bottom bar) |
+  | 🎯 | Quiz mode | mode tab |
+  | 📖 | Docs mode | mode tab |
+  | ❓ | Help mode | mode tab |
+  | 🔧 | Tools mode / Tools drawer (same semantic) | mode tab + fullscreen answer-box label row |
+  | 🖥 | Nodes mode | mode tab |
+  | 📝 | Task drawer | fullscreen answer-box label row |
   | 🐞 | Flag-scope toggle button | Browse card + fullscreen quizbar |
   | 🐛 | Inline issue link / Issues queue header | "Suggest a fix" / header popover |
-  | 🔧 | Tools drawer | fullscreen answer-box label row |
-  | 📝 | Task drawer | fullscreen answer-box label row |
   | 🚩 | Quiz "Flag this question" | active quiz session |
   | 🔄 | Refresh | header + update banner |
   | ☁ | Sync (Gist) | header + fullscreen quizbar |
@@ -255,6 +260,7 @@ Don't reinvent — link out, treat as binding:
   | 📋 | Quiz Questions drawer / Copy | quiz nav + report modal |
   | 📊 | Outline drawer | mobile filter toolbar |
   | ↑ | Back to top | Browse floating button |
+  | ⭐ | Bookmark | Browse card |
 
   Before adding a new emoji to any surface, grep this table; either pick something distinct or reuse the existing entry where the semantic actually matches. Update this table in the same commit as any new emoji.
 

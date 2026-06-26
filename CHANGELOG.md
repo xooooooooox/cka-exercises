@@ -19,10 +19,12 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 ### Changed
 - **CHANGELOG rewritten for readability** — every historical entry compressed to a bold-lead one-liner; `## Repository conventions` in CLAUDE.md grows a **Documentation language** rule (everything English except `_CN`-suffixed files); `## Changelog discipline` spells out the new entry format. (`2c0bdbd`)
 - **README Project Structure refreshed** to include `WEBAPP_GUIDE*`, `CHANGELOG.md`, `assets/screenshots/`, the `tools/` directory, and the full set of `docs/` / `scripts/` / workflow files; points readers at CLAUDE.md for the comprehensive inventory. (this commit)
-- **CLAUDE.md adds `Prose concision` rule** under `## Repository conventions` — calibrate doc density to the specific reader's context; the same sentence can be essential in one doc and padding in another. ((`569bc4c`, refined this commit))
+- **CLAUDE.md adds `Prose concision` rule** under `## Repository conventions` — calibrate doc density to the specific reader's context. (`569bc4c`)
 - **CLAUDE.md `## Repository conventions` restructured** into "External standards we follow" (Conventional Commits / SemVer / Keep a Changelog / Google dev docs style / Diátaxis) + repo-specific rules (code-comment WHY-not-WHAT, emoji UI registry); `## Changelog discipline` slimmed by dropping content duplicated from Keep a Changelog. (this commit)
+- **Emoji UI registry extended** in CLAUDE.md to cover all mode-tab icons (📚 🎯 📖 ❓ 🔧 🖥) and ⭐ Bookmark; 🔧 explicitly documented as Tools-mode + Tools-drawer sharing the same semantic. Closes the gap surfaced by the docs audit. (this commit)
 
 ### Fixed
+- **CHANGELOG entries cleaned** to comply with `## Changelog discipline` — fixed double-parens around one commit hash, compressed the two entries that exceeded ~180 chars (over-prescriptive kind, back-to-top fix) to one-sentence form. (this commit)
 
 ### Removed
 - **Placeholder explainer note** stripped from README + README_CN (`> Images at assets/screenshots/ are 1×1 placeholders…`) and the `## Replacing a placeholder` boilerplate section from `assets/screenshots/README.md` — both fell into the kind of obvious-step padding the new Prose concision rule now forbids. (this commit)
@@ -36,7 +38,7 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 - **Floating back-to-top button** in Browse mode — bottom-right, scrollY-threshold + idle-hide.
 - **Auto-detect new SPA deploys** — 5-min interval + visibilitychange head-check surfaces the existing update banner without a manual 🔄.
 - **Inline "What this means / Suggested fix" panel** in the report modal, live-updated as the issue-type radio changes.
-- **New solution-fix kind `over-prescriptive`** — captures "task didn't ask for this, reference picked one anyway" (the sandra cluster example). Adds `kind/over-prescriptive` label + aider prompt + score-based auto-detect. (`75feed3`)
+- **New solution-fix kind `over-prescriptive`** — flags "task didn't ask for this, reference picked one anyway" (sandra cluster example); seeds label + aider prompt + auto-detect. (`75feed3`)
 - **Auto-sync `maybeAutoPull()`** — HEAD-checks the gist on boot + visibilitychange-restore so idle tabs catch up to other devices, 5-min throttle. (`0713f4d`)
 
 ### Changed
@@ -53,7 +55,7 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 - **Footer hidden on mobile** — body rubber-band exposed it under the fixed mode-tabs at random scroll positions.
 
 ### Fixed
-- **Back-to-top button (multi-iteration fix)** — final form: visible only after scrolling past ~150px in Browse, idle-hides ~2s after stop via scrollTop polling. Earlier attempts misread the scroll container (`#main`, not `window`), set the threshold too high, and didn't handle iOS phantom scroll events.
+- **Back-to-top button** — appears in Browse after ~150px scroll, idle-hides ~2s after stop via scrollTop polling.
 - **Mode-switch jank** resolved as a side effect of dropping the per-mode-tab rAF chain the original back-to-top install registered.
 - **Update-banner mobile layout** — version tokens nowrap (no `v0.1.0` / `+dev` / `17` fragments); banner stacks vertically under 480px. (`404f094`)
 - **Task-fix modal hides docs-link fields for non-docs-link types** — `[hidden]` vs `display:flex` CSS specificity tie; wrapped with `:not([hidden])`. (`bf28a10`)
