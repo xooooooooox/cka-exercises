@@ -29,7 +29,7 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 - **WEBAPP_GUIDE §10 (now §9) Persistence Model** orphaned `### What happens on a GitHub Pages update` flattened to inline `**…**` paragraph emphasis (its parent section had no other `###` siblings, so an isolated subsection broke the visual rhythm). EN + CN mirrored. (this commit)
 
 ### Changed
-- **Help-mode TOC sidebar rebuilt as proper nested `<ul>`** — each h2's child h3 entries now live inside a child `<ul>`, and the parent/child distinction renders via a single continuous left guide line spanning all h3 siblings (was per-h3 disconnected stubs). Leading emojis are stripped from TOC text (body still renders them) so the outline reads clean. (this commit)
+- **Help-mode TOC sidebar rebuilt as proper nested `<ul>`** — each h2's child h3 entries now live inside a child `<ul>`, and the parent/child distinction renders via a single continuous left guide line spanning all h3 siblings (was per-h3 disconnected stubs). (this commit)
 
 ### Fixed
 - **Shell asset cache reliability after a fresh deploy** — `style.css` / `app.js` / `sync.js` / `llm.js` would occasionally stay pinned to the previous deploy's bytes after the version chip already flipped, because the service worker's precache fetched from the same path the CDN was still serving cached. Precache now appends `?v=<build>` to each shell URL so the CDN edge is forced to revalidate, while the cache key stays on the bare path so the runtime cache-first lookup still hits. (this commit)

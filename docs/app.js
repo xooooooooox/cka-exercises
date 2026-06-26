@@ -6344,16 +6344,15 @@ function renderHelpView(opts = {}) {
     items.push({ level: h.tagName === 'H2' ? 2 : 3, id: unique, text });
   });
 
-  // Strip the leading emoji (and trailing space) from a heading's text so
-  // the TOC reads as a clean outline. Numbered prefix like "1. " is kept.
-  // The body's section heading still renders the emoji — this only affects
-  // the navigation sidebar.
-  const stripEmoji = (s) => s.replace(/[^\p{L}\p{N}\s.]+\s*/u, '');
-
   // Build a TRUE nested <ul>: each h2 <li> contains its own child <ul> with
   // the h3 entries that follow it. That lets CSS draw a single continuous
   // border-left across all child entries (the previous flat structure gave
   // every h3 its own disconnected 1-px line, which looked fragmented).
+  // Emoji from the original heading text is kept — it's a visual landmark
+  // the user reads as part of section identity; stripping it left the TOC
+  // looking like plain monochrome outline. A previous attempt also had a
+  // regex without `^` anchor that accidentally cut '&' out of headings
+  // like "Backup & restore (local file)" — gone now too.
   const rootUl = document.createElement('ul');
   let currentH2Li = null;
   let currentSubUl = null;
@@ -6361,7 +6360,7 @@ function renderHelpView(opts = {}) {
     const li = document.createElement('li');
     const a = document.createElement('a');
     a.href = `#help-section-${it.id}`;
-    a.textContent = stripEmoji(it.text);
+    a.textContent = it.text;
     a.dataset.target = it.id;
     a.addEventListener('click', (e) => {
       e.preventDefault();
