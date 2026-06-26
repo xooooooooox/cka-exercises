@@ -14,6 +14,16 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [v0.3.0] - 2026-06-26
+
+### Added
 - **Real iPhone 17 Pro mobile screenshots** in `assets/screenshots/` replace the placeholder PNGs for `mobile-browse` / `mobile-quiz` / `mobile-docs`; desktop placeholders still pending. (`18dfa45`)
 
 ### Changed
@@ -140,6 +150,7 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 
 ---
 
+[v0.3.0]: https://github.com/xooooooooox/cka-exercises/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/xooooooooox/cka-exercises/compare/v0.1.0...v0.2.0
 [v0.1.0]: https://github.com/xooooooooox/cka-exercises/releases/tag/v0.1.0
 [da57e8f]: https://github.com/xooooooooox/cka-exercises/commit/da57e8f
