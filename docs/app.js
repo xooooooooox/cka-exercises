@@ -2653,19 +2653,27 @@ function maybeCheckForUpdate() {
   checkForUpdate();
 }
 
-// Floating back-to-top button. Visibility is purely mode-driven: visible
-// whenever Browse is the active mode, hidden everywhere else. No scroll
-// threshold — user explicitly asked for the lowest-friction discovery
-// (no waiting until they've scrolled N px). Dropping the scroll listener
-// + per-mode-tab-click setTimeout(update) was also the most likely
-// suspect for the mode-switch jank reported alongside this fix.
+// Floating back-to-top button. Visible when:
+//   - State.mode === 'browse' (always hidden in other modes), AND
+//   - the user has actually scrolled down past a small threshold
+//     (~150px, roughly half an exercise card). At the top of the page
+//     the button is hidden — no need to offer "back to top" when you're
+//     already there, and it would otherwise overlap the first card's
+//     Check button on phone widths.
 //
-// Click target: scrolls BOTH the #main container and the window. On
-// desktop #main is the actual scroller (style.css:494 sets overflow-y:
-// auto + max-height: calc(100vh - 110px)); on iOS Safari the body can
-// be the scroller while the address bar is collapsing/expanding. Both
-// calls are safe no-ops when the corresponding container is already
-// at the top.
+// Listening on BOTH window scroll AND #main scroll: on desktop the
+// scroll container is #main (style.css:494 sets overflow-y: auto +
+// max-height: calc(100vh - 110px)); on iOS Safari the body can become
+// the scroller during address-bar collapse/expand. We avoid picking
+// one and use Math.max of both scrollTops.
+//
+// rAF-throttled. setMode also calls syncBackToTopVisibility directly,
+// so switching INTO Browse mid-scroll surfaces the button immediately
+// without waiting for the next scroll event.
+//
+// Click target: scrolls BOTH #main and window — covers either scroller.
+const _BACK_TO_TOP_THRESHOLD = 150;
+let _backToTopTicking = false;
 function installBackToTop() {
   const btn = document.getElementById('scroll-top-btn');
   if (!btn) return;
@@ -2673,13 +2681,29 @@ function installBackToTop() {
     document.getElementById('main')?.scrollTo({ top: 0, behavior: 'smooth' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
+  const onScroll = () => {
+    if (_backToTopTicking) return;
+    _backToTopTicking = true;
+    requestAnimationFrame(() => {
+      syncBackToTopVisibility();
+      _backToTopTicking = false;
+    });
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  document.getElementById('main')?.addEventListener('scroll', onScroll, { passive: true });
   syncBackToTopVisibility();
 }
 
 function syncBackToTopVisibility() {
   const btn = document.getElementById('scroll-top-btn');
   if (!btn) return;
-  btn.hidden = (State.mode !== 'browse');
+  if (State.mode !== 'browse') {
+    btn.hidden = true;
+    return;
+  }
+  const mainTop = document.getElementById('main')?.scrollTop || 0;
+  const winTop = window.scrollY || document.scrollingElement?.scrollTop || 0;
+  btn.hidden = Math.max(mainTop, winTop) < _BACK_TO_TOP_THRESHOLD;
 }
 
 // Click handler for both the header 🔄 button and the in-banner Refresh button.
