@@ -2654,27 +2654,29 @@ function maybeCheckForUpdate() {
 }
 
 // Floating back-to-top button — Browse mode only, threshold ~600px.
-// Companion path: repeat-tap on the active Browse mode-tab also scrolls
-// to top (wired alongside the .mode-tab click handler). Both exist
-// because the explicit ↑ button is the discoverable one; the tap-tab
-// gesture is the muscle-memory one for iOS users.
+// CRITICAL: the actual scroll container is #main (style.css:494 sets
+// `overflow-y: auto; max-height: calc(100vh - 110px)`), NOT window.
+// Listening on window or calling window.scrollTo did nothing because
+// the body itself never scrolls. First version of this feature was
+// broken for exactly that reason — fixed by using #main throughout.
 function installBackToTop() {
   const btn = document.getElementById('scroll-top-btn');
-  if (!btn) return;
+  const main = document.getElementById('main');
+  if (!btn || !main) return;
   btn.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    main.scrollTo({ top: 0, behavior: 'smooth' });
   });
   let _ticking = false;
   const update = () => {
     if (_ticking) return;
     _ticking = true;
     requestAnimationFrame(() => {
-      const show = State.mode === 'browse' && window.scrollY > 600;
+      const show = State.mode === 'browse' && main.scrollTop > 600;
       btn.hidden = !show;
       _ticking = false;
     });
   };
-  window.addEventListener('scroll', update, { passive: true });
+  main.addEventListener('scroll', update, { passive: true });
   // Re-evaluate on mode change — switching INTO browse while already
   // scrolled deep should surface the button immediately.
   document.querySelectorAll('.mode-tab').forEach(t =>
@@ -7431,21 +7433,14 @@ async function init() {
     applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   });
 
-  // Mode tabs. Repeat-tap on the already-active Browse tab scrolls to top
-  // (iOS-pattern; saves hunting through 100+ exercise cards or opening
-  // the Outline modal just to jump back to the first section). Other
-  // modes have their own layouts where this gesture is less obvious, so
-  // we only do it for Browse.
-  document.querySelectorAll('.mode-tab').forEach(t => {
-    t.addEventListener('click', () => {
-      const targetMode = t.dataset.mode;
-      if (State.mode === targetMode && targetMode === 'browse') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
-      setMode(targetMode);
-    });
-  });
+  // Mode tabs. The "repeat-tap active Browse to scroll to top" gesture
+  // was tried and dropped — too easy to misfire when the user just
+  // wanted to confirm they were in browse mode (or accidentally
+  // re-tapped). Back-to-top now lives only in the floating ↑ button
+  // (installBackToTop), which is discoverable and intent-gated.
+  document.querySelectorAll('.mode-tab').forEach(t =>
+    t.addEventListener('click', () => setMode(t.dataset.mode))
+  );
 
   // Esc exits any fullscreen answer editor.
   document.addEventListener('keydown', (e) => {
