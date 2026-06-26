@@ -10,77 +10,7 @@ Currently 271 exercises across 5 domains. The repo has a small Node-based build 
 
 ## Repository Layout
 
-```
-.
-├── CLAUDE.md
-├── README.md / README_CN.md            # engineering README (corpus + build + CI)
-├── EXAM_GUIDE.md / EXAM_GUIDE_CN.md    # study index for CKA exam takers
-├── package.json                        # npm run build / serve / preserve / lint / link-check
-├── assets/
-│   ├── killer-sh/                      # killer.sh Simulator A/B PDFs
-│   ├── killercoda/                     # KillerCoda CKA mock exam PDFs (per-domain)
-│   └── screenshots/                    # README screenshots (desktop + mobile) — see its own README.md for capture spec
-├── exercises/                          # 5 markdown files, one per curriculum domain
-│   ├── cluster-architecture.md         # 25% — 114 exercises
-│   ├── scheduling.md                   # 15% —  49 exercises
-│   ├── networking.md                   # 20% —  32 exercises
-│   ├── storage.md                      # 10% —  28 exercises
-│   └── troubleshooting.md              # 30% —  48 exercises
-├── docs/                               # GitHub Pages source (the SPA)
-│   ├── index.html
-│   ├── app.js                          # ~1500 LOC, no framework
-│   ├── sync.js                         # Gist sync engine (PAT + merge-state machinery)
-│   ├── llm.js                          # LLM-as-judge grading (Anthropic / OpenAI / DeepSeek / Ollama)
-│   ├── sw.js                           # service worker source (templated; sw.gen.js is the built artifact)
-│   ├── style.css                       # light/dark theme + print, ~1100 LOC
-│   ├── manifest.webmanifest            # PWA manifest (installable app icon)
-│   ├── icons/                          # PWA icons (180/192/512 PNG + maskable + SVG)
-│   ├── exercises.json                  # gitignored — generated artifact
-│   ├── version.json                    # gitignored — { generatedAt, version, channel, commitsAhead, gitSha }
-│   ├── tools-versions.json             # gitignored — Tools manifest (default + per-minor entries)
-│   ├── tools-*.json                    # gitignored — per-version Tools bundle
-│   ├── nodes-*.json                    # gitignored — per-version Nodes snapshot
-│   └── sw.gen.js                       # gitignored — service worker with build version baked in
-├── tools/
-│   └── nodes/snapshot/                 # source files + versions.json for Nodes mode build
-├── scripts/
-│   ├── build-exercises.mjs             # MD → exercises.json + version.json (used by CI)
-│   ├── build-sw.mjs                    # stamps version into docs/sw.js → docs/sw.gen.js
-│   ├── build-tools-bundle.mjs          # orchestrator: per-minor Tools + Nodes bundles
-│   ├── build-kubectl-tools.mjs         # low-level: OpenAPI walk + Tools JSON per minor
-│   ├── build-kubectl-help.mjs          # low-level: kubectl -h text extraction per minor
-│   ├── build-nodes-snapshot.mjs        # Nodes mode: filesystem snapshot per minor
-│   ├── lint-exercises.mjs              # exercise-format linter (used by CI)
-│   ├── check-links.mjs                 # kubernetes.io URL ping (used by weekly CI)
-│   ├── check-curriculum.mjs            # CNCF curriculum PDF drift watcher (used by weekly CI)
-│   ├── release.mjs                     # semver bump + CHANGELOG rewrite + tag + GH Release
-│   ├── verify-quiz-order.mjs           # ad-hoc verification (quiz ordering invariants)
-│   ├── verify-llm-settings.mjs         # ad-hoc verification (LLM settings schema)
-│   ├── verify-grader-parse.mjs         # ad-hoc verification (grader parse)
-│   ├── apply-enriched-tasks.mjs        # one-shot: killer.sh task-body enrichment
-│   ├── apply-killersh-polish.mjs       # one-shot: docs hints + title rewrites
-│   ├── apply-killercoda-import.mjs     # one-shot: import KillerCoda PDFs → exercises/*.md
-│   ├── k8s-docs-map.json               # kubernetes.io breadcrumb → URL lookup
-│   └── answer-fix/                     # aider helpers shared by answer-fix-pr.yml + task-fix-pr.yml
-│       ├── extract-context.mjs         # issue body → env + prompt
-│       └── h3-range.mjs                # extract / splice a single exercise H3
-└── .github/
-    ├── answer-fix/prompt.md            # aider prompt for solution-fix issues
-    ├── task-fix/prompt.md              # aider prompt for task / docs-fix issues
-    └── workflows/
-        ├── build-and-deploy-docs.yml   # CI: lint + build + deploy to Pages (push to main)
-        ├── lint.yml                    # PR-check: lint exercises markdown
-        ├── link-check.yml              # weekly: ping every kubernetes.io URL
-        ├── curriculum-watch.yml        # weekly: CNCF curriculum PDF drift watcher
-        ├── release.yml                 # manual dispatch: bump version + tag + GH Release
-        ├── answer-fix-pr.yml           # manual: answer-fix issue → draft PR (aider)
-        ├── task-fix-pr.yml             # manual: task-fix issue → draft PR (aider)
-        └── seed-labels.yml             # idempotent label bootstrap (auto on file edit + manual)
-```
-
-`build-exercises.mjs`, `build-sw.mjs`, `lint-exercises.mjs`, and `check-links.mjs` run in CI on every push. The three `apply-*.mjs` scripts are idempotent one-shots kept for provenance. `answer-fix-pr.yml` and `task-fix-pr.yml` are manual-dispatch — a maintainer triggers each from the Actions tab against a specific labelled issue. `release.yml` is also manual-dispatch (Actions UI → Release → Run workflow); it owns `package.json.version` + `CHANGELOG.md` → `[vX.Y.Z]` rename + git tag + GH Release. `curriculum-watch.yml` runs weekly (cron) and opens a labelled issue when the upstream CNCF curriculum PDFs drift. `seed-labels.yml` runs once on first deploy and again whenever its own file is edited; it pre-creates the 16 issue labels both fix workflows + the curriculum watcher expect so the SPA's pre-filled `?labels=…` and the auto-opened curriculum issue both resolve at creation time.
-
-The split between `README.md` (engineering) and `EXAM_GUIDE.md` (study index) is intentional: anyone hitting the repo from a code/contribute angle reads README; anyone landing here to study for the CKA exam reads EXAM_GUIDE. Don't move exam-prep content (dotfiles, sync script, practice-lab links, curriculum table) back into README.
+See **[`README.md` → Project Structure](README.md#project-structure)** for the authoritative per-file inventory. Detailed maintainer-side notes about which scripts run in CI, what each workflow does, and which artifacts are gitignored vs committed live below under `## Build Pipeline`, `## CI / Deployment`, and `## Release workflow`.
 
 ## Exercise File Format
 
@@ -240,29 +170,7 @@ Don't reinvent — link out, treat as binding:
 - **Documentation language**: all committed prose in this repo defaults to **English** — `CHANGELOG.md`, `CLAUDE.md`, `README.md`, `EXAM_GUIDE.md`, `WEBAPP_GUIDE.md`, every script under `scripts/`, every `.github/` workflow + aider prompt, every source-code comment, every git commit message. Files with a `_CN` suffix (`README_CN.md`, `EXAM_GUIDE_CN.md`, `WEBAPP_GUIDE_CN.md`) are Chinese translations of their English counterparts — kept in lockstep with the English version, and the only place committed Chinese prose lands. Exercise titles + solutions are English; legacy in-corpus Chinese comments are tolerated but new entries default to English. Interactive chat / plan files under `~/.claude/plans/` / ad-hoc Q&A is session-scoped and may be in any language — it's not committed.
 - **Prose concision — calibrate to the reader's context**: every doc sits in a specific context. The same sentence can be essential in one doc and pure padding in another. A `cp … && git add && git commit` example belongs in a contributing guide for newcomers; the same block in a per-folder README aimed at someone already in the codebase is noise. Closing lines that restate the heading, and "this is a placeholder until X" pointers when the placeholder state is visually obvious, are usually padding in *most* contexts but can be the right call elsewhere. Before writing a sentence, ask: who is reading this, what do they already know from being here, what does this add. If removing it loses information the reader needed, keep it; if not, cut.
 - **Code comments — explain WHY, never WHAT**: default to no comments. Add one only when *why* is non-obvious: a hidden constraint, a subtle invariant, a workaround for a specific bug, behavior that would surprise a reader. Don't narrate *what* the code does (well-named identifiers handle that). Don't reference the current task / fix / caller — that belongs in the commit message and rots as the codebase evolves. No JSDoc / multi-paragraph block comments unless documenting a public API for external consumers (this repo currently has none).
-- **Emoji UI semantics — single fixed registry**: each emoji has one assigned semantic across all SPA surfaces. The same emoji may appear in multiple surfaces only when those surfaces share that semantic (e.g. 🔧 = "Tools / kubectl reference" both as the mode tab and as the in-editor drawer button). Reusing an emoji for a *different* semantic — the collision class that triggered the v0.2.0 flag-scope picker rewrite — is what this registry exists to prevent. Current registry:
-
-  | Emoji | Semantic | Where it appears |
-  |-------|----------|------------------|
-  | 📚 | Browse mode | mode tab (header + mobile bottom bar) |
-  | 🎯 | Quiz mode | mode tab |
-  | 📖 | Docs mode | mode tab |
-  | ❓ | Help mode | mode tab |
-  | 🔧 | Tools mode / Tools drawer (same semantic) | mode tab + fullscreen answer-box label row |
-  | 🖥 | Nodes mode | mode tab |
-  | 📝 | Task drawer | fullscreen answer-box label row |
-  | 🐞 | Flag-scope toggle button | Browse card + fullscreen quizbar |
-  | 🐛 | Inline issue link / Issues queue header | "Suggest a fix" / header popover |
-  | 🚩 | Quiz "Flag this question" | active quiz session |
-  | 🔄 | Refresh | header + update banner |
-  | ☁ | Sync (Gist) | header + fullscreen quizbar |
-  | 🤖 | LLM picker | header |
-  | 📋 | Quiz Questions drawer / Copy | quiz nav + report modal |
-  | 📊 | Outline drawer | mobile filter toolbar |
-  | ↑ | Back to top | Browse floating button |
-  | ⭐ | Bookmark | Browse card |
-
-  Before adding a new emoji to any surface, grep this table; either pick something distinct or reuse the existing entry where the semantic actually matches. Update this table in the same commit as any new emoji.
+- **Emoji UI semantics — single fixed registry**: each emoji has one assigned semantic across all SPA surfaces. The same emoji on multiple surfaces is only allowed when those surfaces share that semantic (e.g. 🔧 = "Tools / kubectl reference" both as the mode tab and as the in-editor drawer button). Reusing an emoji for a *different* semantic is the collision class that triggered the v0.2.0 flag-scope picker rewrite. **Authoritative registry lives in [WEBAPP_GUIDE.md → §8 Emoji glossary](WEBAPP_GUIDE.md#8-emoji-glossary)** (and the CN mirror). Before introducing a new emoji to any UI surface, grep that table; pick something distinct or reuse the existing entry where the semantic matches. Update the WEBAPP_GUIDE table (EN + CN) in the same commit as any new emoji.
 
 - **Solution code**: kubectl-driven, exam-focused. Use the `k` alias shorthand. Include short comments at decision points (per the WHY-not-WHAT rule above).
 - **Bilingual exercise content**: English titles + solutions. The CN README and a few in-exercise comments may be Chinese (legacy from corpus origin), but new content should default to English. The webapp itself is English.

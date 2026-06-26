@@ -335,7 +335,33 @@ Both flagged 的题在 popover 里渲染成**两条独立条目**（一条 answe
 
 ---
 
-## 8. 版本发布节奏 + dev build
+## 8. Emoji 语义表
+
+SPA 中每个 emoji 都有一个固定的 UI 语义 —— 同一个 emoji 在多个 surface 出现时含义不变。
+
+| Emoji | 语义 | 出现位置 |
+|-------|------|---------|
+| 📚 | Browse 模式 | mode tab（顶栏 + 手机底部栏）|
+| 🎯 | Quiz 模式 | mode tab |
+| 📖 | Docs 模式 | mode tab |
+| ❓ | Help 模式 | mode tab |
+| 🔧 | Tools 模式 / Tools 抽屉（同语义） | mode tab + 全屏答题框 label 行 |
+| 🖥 | Nodes 模式 | mode tab |
+| 📝 | Task 抽屉 | 全屏答题框 label 行 |
+| 🐞 | Flag-scope 切换按钮 | Browse 卡片 + 全屏 quizbar |
+| 🐛 | 内联问题链接 / Issues 队列入口 | "Suggest a fix" 链接 / 顶栏弹窗 |
+| 🚩 | Quiz "标记此题待复盘" | active quiz session |
+| 🔄 | Refresh | 顶栏 + 更新提示横幅 |
+| ☁ | Sync（Gist） | 顶栏 + 全屏 quizbar |
+| 🤖 | LLM picker | 顶栏 |
+| 📋 | Quiz Questions 抽屉 / Copy | quiz nav + 报告 modal |
+| 📊 | Outline 抽屉 | 手机端 filter toolbar |
+| ↑ | 回到顶部 | Browse 浮动按钮 |
+| ⭐ | 收藏 | Browse 卡片 |
+
+---
+
+## 9. 版本发布节奏 + dev build
 
 webapp 显式打了版本号标签，两种状态：
 
@@ -356,7 +382,7 @@ webapp 显式打了版本号标签，两种状态：
 
 ---
 
-## 9. 持久化机制
+## 10. 持久化机制
 
 所有状态都在浏览器的 `localStorage`，前缀 `cka:`。**任何数据都不会被发送到任何服务器，除非你主动点击 Check / Test / Push / Pull。** 清除站点数据 = 全部丢失（Settings → Clear all 只会清除 LLM 设置）。
 
@@ -400,7 +426,7 @@ DevTools 中你会看到的 keys：
 
 ---
 
-## 10. 安全与隐私
+## 11. 安全与隐私
 
 这个 SPA **没有后端**。当成任何"自带 key 的 web 工具"对待。
 
@@ -418,7 +444,7 @@ DevTools 中你会看到的 keys：
 
 ---
 
-## 11. 键盘快捷键
+## 12. 键盘快捷键
 
 | 键 | 作用 |
 |---|---|
@@ -436,7 +462,7 @@ DevTools 中你会看到的 keys：
 
 ---
 
-## 12. 常见问题
+## 13. 常见问题
 
 **Q. 部署更新后我的进度会丢吗？**
 不会。`localStorage` 独立于站点静态资源。只要维护者遵循 append-only ID 规则（在 `CLAUDE.md` 里写明了），每道现有题保留 ID。

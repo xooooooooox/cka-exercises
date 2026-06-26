@@ -41,37 +41,77 @@ Progress (✓ Done, ⭐ Bookmark, theme, last-selected docs page) persists in `l
 
 ```
 .
-├── README.md / README_CN.md           # this file — engineering README
-├── EXAM_GUIDE.md / EXAM_GUIDE_CN.md   # study index for CKA exam takers
+├── CLAUDE.md                           # Claude Code guidance (contributor rules + maintainer ops)
+├── README.md / README_CN.md            # this file — engineering README
+├── EXAM_GUIDE.md / EXAM_GUIDE_CN.md    # study index for CKA exam takers
 ├── WEBAPP_GUIDE.md / WEBAPP_GUIDE_CN.md # webapp usage guide
-├── CHANGELOG.md                       # all repo changes; also readable in Help mode
-├── CLAUDE.md                          # Claude Code guidance for this repo
-├── package.json                       # npm run build / lint / serve / link-check / release
+├── CHANGELOG.md                        # all repo changes; also readable in Help mode → 📜 Changelog
+├── package.json                        # npm run build / serve / preserve / lint / link-check / release
 ├── assets/
-│   ├── killer-sh/                     # killer.sh Simulator A/B PDFs
-│   ├── killercoda/                    # KillerCoda CKA mock-exam PDFs (per domain)
-│   └── screenshots/                   # README screenshots (desktop + mobile)
-├── docs/                              # Practice SPA (GitHub Pages source)
-│   ├── index.html / app.js / style.css
-│   ├── llm.js / sync.js               # LLM grader + Gist sync engine
-│   ├── sw.js                          # service worker source (sw.gen.js is the built artifact)
-│   ├── manifest.webmanifest + icons/  # PWA install + app icon
-│   └── *.json / sw.gen.js             # gitignored — generated artifacts (exercises / version / tools / nodes)
-├── exercises/                         # Source markdown — one file per CKA domain
-│   ├── cluster-architecture.md        # 25% — 114 exercises
-│   ├── scheduling.md                  # 15% —  49 exercises
-│   ├── networking.md                  # 20% —  32 exercises
-│   ├── storage.md                     # 10% —  28 exercises
-│   └── troubleshooting.md             # 30% —  48 exercises
+│   ├── killer-sh/                      # killer.sh Simulator A/B PDFs
+│   ├── killercoda/                     # KillerCoda CKA mock exam PDFs (per-domain)
+│   └── screenshots/                    # README screenshots (desktop + mobile) — see its own README.md
+├── exercises/                          # 5 markdown files, one per curriculum domain
+│   ├── cluster-architecture.md         # 25% — 114 exercises
+│   ├── scheduling.md                   # 15% —  49 exercises
+│   ├── networking.md                   # 20% —  32 exercises
+│   ├── storage.md                      # 10% —  28 exercises
+│   └── troubleshooting.md              # 30% —  48 exercises
+├── docs/                               # GitHub Pages source (the SPA)
+│   ├── index.html
+│   ├── app.js                          # main SPA entry, no framework
+│   ├── sync.js                         # Gist sync engine (PAT + per-key merge state machinery)
+│   ├── llm.js                          # LLM-as-judge grading (Anthropic / OpenAI / DeepSeek / Ollama)
+│   ├── sw.js                           # service worker source (templated; sw.gen.js is the built artifact)
+│   ├── style.css                       # light/dark theme + print
+│   ├── manifest.webmanifest            # PWA manifest (installable app icon)
+│   ├── icons/                          # PWA icons (180/192/512 PNG + maskable + SVG)
+│   ├── exercises.json                  # gitignored — generated artifact (built from exercises/*.md)
+│   ├── version.json                    # gitignored — { generatedAt, version, channel, commitsAhead, gitSha }
+│   ├── tools-versions.json             # gitignored — Tools manifest (default + per-minor entries)
+│   ├── tools-*.json                    # gitignored — per-version Tools bundle
+│   ├── nodes-*.json                    # gitignored — per-version Nodes snapshot
+│   └── sw.gen.js                       # gitignored — service worker with build version baked in
 ├── tools/
-│   └── nodes/snapshot/                # Nodes-mode filesystem snapshot sources + versions.json
-├── scripts/                           # build / lint / release / verify / one-shot enrichment scripts
+│   └── nodes/snapshot/                 # source files + versions.json for Nodes mode build
+├── scripts/
+│   ├── build-exercises.mjs             # MD → exercises.json + version.json (used by CI)
+│   ├── build-sw.mjs                    # stamps version into docs/sw.js → docs/sw.gen.js
+│   ├── build-tools-bundle.mjs          # orchestrator: per-minor Tools + Nodes bundles
+│   ├── build-kubectl-tools.mjs         # low-level: OpenAPI walk + Tools JSON per minor
+│   ├── build-kubectl-help.mjs          # low-level: kubectl -h text extraction per minor
+│   ├── build-nodes-snapshot.mjs        # Nodes mode: filesystem snapshot per minor
+│   ├── lint-exercises.mjs              # exercise-format linter (used by CI)
+│   ├── check-links.mjs                 # kubernetes.io URL ping (used by weekly CI)
+│   ├── check-curriculum.mjs            # CNCF curriculum PDF drift watcher (used by weekly CI)
+│   ├── release.mjs                     # semver bump + CHANGELOG rewrite + tag + GH Release
+│   ├── verify-quiz-order.mjs           # ad-hoc verification (quiz ordering invariants)
+│   ├── verify-llm-settings.mjs         # ad-hoc verification (LLM settings schema)
+│   ├── verify-grader-parse.mjs         # ad-hoc verification (grader parse)
+│   ├── apply-enriched-tasks.mjs        # one-shot: killer.sh task-body enrichment
+│   ├── apply-killersh-polish.mjs       # one-shot: docs hints + title rewrites
+│   ├── apply-killercoda-import.mjs     # one-shot: import KillerCoda PDFs → exercises/*.md
+│   ├── k8s-docs-map.json               # kubernetes.io breadcrumb → URL lookup
+│   └── answer-fix/                     # aider helpers shared by answer-fix-pr.yml + task-fix-pr.yml
+│       ├── extract-context.mjs        # issue body → env + prompt
+│       └── h3-range.mjs                # extract / splice a single exercise H3
 └── .github/
-    ├── answer-fix/prompt.md / task-fix/prompt.md  # aider prompts for fix-PR workflows
-    └── workflows/                     # build-and-deploy / lint / link-check / curriculum-watch / release / fix-PR / seed-labels
+    ├── answer-fix/prompt.md            # aider prompt for solution-fix issues
+    ├── task-fix/prompt.md              # aider prompt for task / docs-fix issues
+    └── workflows/
+        ├── build-and-deploy-docs.yml   # CI: lint + build + deploy to Pages (push to main)
+        ├── lint.yml                    # PR-check: lint exercises markdown
+        ├── link-check.yml              # weekly: ping every kubernetes.io URL
+        ├── curriculum-watch.yml        # weekly: CNCF curriculum PDF drift watcher
+        ├── release.yml                 # manual dispatch: bump version + tag + GH Release
+        ├── answer-fix-pr.yml           # manual: answer-fix issue → draft PR (aider)
+        ├── task-fix-pr.yml             # manual: task-fix issue → draft PR (aider)
+        └── seed-labels.yml             # idempotent label bootstrap (auto on file edit + manual)
 ```
 
-`CLAUDE.md` carries the comprehensive per-file inventory for contributors. `apply-*.mjs` scripts under `scripts/` are idempotent one-shots kept as provenance. Only `build-exercises.mjs`, `build-sw.mjs`, `lint-exercises.mjs`, and `check-links.mjs` run in CI.
+`build-exercises.mjs`, `build-sw.mjs`, `lint-exercises.mjs`, and `check-links.mjs` run in CI on every push. The three `apply-*.mjs` scripts are idempotent one-shots kept for provenance. `release.yml`, `answer-fix-pr.yml`, `task-fix-pr.yml` are manual-dispatch via the Actions tab. `curriculum-watch.yml` runs weekly via cron and opens a labelled issue when upstream PDFs drift. `seed-labels.yml` runs once on first deploy + whenever its own file is edited, pre-creating the 16 labels both fix workflows + the curriculum watcher expect.
+
+The split between `README.md` (engineering) and `EXAM_GUIDE.md` (study index) is intentional: anyone hitting the repo from a code / contribute angle reads README; anyone landing to study for the CKA exam reads EXAM_GUIDE. Don't move exam-prep content (dotfiles, sync script, practice-lab links, curriculum table) back into README.
 
 ## Running Locally
 

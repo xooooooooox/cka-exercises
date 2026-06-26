@@ -21,7 +21,8 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 - **README Project Structure refreshed** to include `WEBAPP_GUIDE*`, `CHANGELOG.md`, `assets/screenshots/`, the `tools/` directory, and the full set of `docs/` / `scripts/` / workflow files; points readers at CLAUDE.md for the comprehensive inventory. (this commit)
 - **CLAUDE.md adds `Prose concision` rule** under `## Repository conventions` — calibrate doc density to the specific reader's context. (`569bc4c`)
 - **CLAUDE.md `## Repository conventions` restructured** into "External standards we follow" (Conventional Commits / SemVer / Keep a Changelog / Google dev docs style / Diátaxis) + repo-specific rules (code-comment WHY-not-WHAT, emoji UI registry); `## Changelog discipline` slimmed by dropping content duplicated from Keep a Changelog. (this commit)
-- **Emoji UI registry extended** in CLAUDE.md to cover all mode-tab icons (📚 🎯 📖 ❓ 🔧 🖥) and ⭐ Bookmark; 🔧 explicitly documented as Tools-mode + Tools-drawer sharing the same semantic. Closes the gap surfaced by the docs audit. (this commit)
+- **Emoji UI registry extended** in CLAUDE.md to cover all mode-tab icons (📚 🎯 📖 ❓ 🔧 🖥) and ⭐ Bookmark; 🔧 explicitly documented as Tools-mode + Tools-drawer sharing the same semantic. Closes the gap surfaced by the docs audit. (`7048267`)
+- **Information ownership rebalanced** — Project Structure tree moved out of CLAUDE.md into README's `## Project Structure` (its natural user-facing home); Emoji UI registry moved out of CLAUDE.md into `WEBAPP_GUIDE.md §8 Emoji glossary`; CLAUDE.md keeps short pointers to both. Doc-sync drift between authoritative + duplicated copies eliminated. (this commit)
 
 ### Fixed
 - **CHANGELOG entries cleaned** to comply with `## Changelog discipline` — fixed double-parens around one commit hash, compressed the two entries that exceeded ~180 chars (over-prescriptive kind, back-to-top fix) to one-sentence form. (this commit)

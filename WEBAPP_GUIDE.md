@@ -335,7 +335,33 @@ Both reported `answer-fix` and `task-fix` issues can be triaged via dedicated Gi
 
 ---
 
-## 8. Release cadence + dev builds
+## 8. Emoji glossary
+
+The SPA uses these emoji as UI signals. Each has one assigned semantic — the same emoji on multiple surfaces always means the same thing.
+
+| Emoji | Semantic | Where it appears |
+|-------|----------|------------------|
+| 📚 | Browse mode | mode tab (header + mobile bottom bar) |
+| 🎯 | Quiz mode | mode tab |
+| 📖 | Docs mode | mode tab |
+| ❓ | Help mode | mode tab |
+| 🔧 | Tools mode / Tools drawer (same semantic) | mode tab + fullscreen answer-box label row |
+| 🖥 | Nodes mode | mode tab |
+| 📝 | Task drawer | fullscreen answer-box label row |
+| 🐞 | Flag-scope toggle button | Browse card + fullscreen quizbar |
+| 🐛 | Inline issue link / Issues queue header | "Suggest a fix" link / header popover |
+| 🚩 | Quiz "Flag this question" | active quiz session |
+| 🔄 | Refresh | header + update banner |
+| ☁ | Sync (Gist) | header + fullscreen quizbar |
+| 🤖 | LLM picker | header |
+| 📋 | Quiz Questions drawer / Copy | quiz nav + report modal |
+| 📊 | Outline drawer | mobile filter toolbar |
+| ↑ | Back to top | Browse floating button |
+| ⭐ | Bookmark | Browse card |
+
+---
+
+## 9. Release cadence + dev builds
 
 The webapp ships with an explicit version label. Two states matter:
 
@@ -356,7 +382,7 @@ Maintainers can override via `bump=major|minor|patch` in the workflow input; `bu
 
 ---
 
-## 9. Persistence Model
+## 10. Persistence Model
 
 All state is in your browser's `localStorage` under the `cka:` prefix. **Nothing is sent to any server unless you explicitly trigger Check / Test / Push / Pull.** Clearing site data wipes everything (Settings → Clear all does the same for LLM settings only).
 
@@ -400,7 +426,7 @@ Exercise IDs (e.g. `ca-1-005`) are sequence-based per section. Contributors foll
 
 ---
 
-## 10. Security & Privacy
+## 11. Security & Privacy
 
 This SPA has **no backend**. Treat it like any other BYO-key web tool.
 
@@ -418,7 +444,7 @@ This SPA has **no backend**. Treat it like any other BYO-key web tool.
 
 ---
 
-## 11. Keyboard Shortcuts
+## 12. Keyboard Shortcuts
 
 | Key | Action |
 |---|---|
@@ -436,7 +462,7 @@ Shortcuts are ignored while typing in input fields.
 
 ---
 
-## 12. FAQ
+## 13. FAQ
 
 **Q. Will my progress survive a deploy?**
 Yes. `localStorage` is independent of the site's static assets. As long as contributors follow the append-only ID rule (they do — it's documented in `CLAUDE.md`), every existing exercise keeps its ID.
