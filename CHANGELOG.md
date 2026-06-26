@@ -14,6 +14,16 @@ Each entry references the commit hash in parens for traceability to git history.
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## [v0.2.0] - 2026-06-26
+
+### Added
 - README + README_CN now have a `📸 Screenshots / 截图` section showing the webapp on desktop (Browse / Quiz / Docs full-width) and mobile (3 phone shots inline at 240px). Files live under `assets/screenshots/` (committed as 1×1 transparent PNG placeholders + a per-folder README documenting capture spec + per-file expected content). Replacing a screenshot is now just `cp <new>.png assets/screenshots/<same-name>.png` — README references don't change. `CLAUDE.md` Repository Layout updated to list the new subdirectory. (this commit)
 - Quiz mode now has a third manual grade button `◐ Partial` (between `✓ Got it` and `✗ Missed`), mirroring the three-way verdict the LLM Check already produces (`v.correct ? 'got' : v.verdict === 'partial' ? 'partial' : 'missed'`). Picking it writes `'partial'` to `State.quiz.status` but does NOT toggle the global Done mark — Done stays reserved for "fully mastered" (= `got`). Surfaced in the regular Quiz controls and mirrored into the fullscreen-answer quizbar via the existing proxy mechanism. (this commit)
 - Quiz grade row now visually highlights which of `Got it / Partial / Missed` matches the current question's status (`.is-current` modifier sets a filled green/amber/red background respectively). `syncQuizGradeButtons` runs on every quiz-card render and immediately after an LLM Check, so a user who Checks and gets `Partial 80/100` sees the Partial button fill in — answers the previously-confusing "Partial, which button do I click?" UX question by showing them the answer is already recorded; tap `Next →` to continue or pick a different button to override. The 📋 Questions nav drawer's per-row icon now also renders `◐` for partial entries (previously folded into `↷ Skipped`). (this commit)
@@ -120,6 +130,7 @@ Each entry references the commit hash in parens for traceability to git history.
 
 ---
 
+[v0.2.0]: https://github.com/xooooooooox/cka-exercises/compare/v0.1.0...v0.2.0
 [v0.1.0]: https://github.com/xooooooooox/cka-exercises/releases/tag/v0.1.0
 [da57e8f]: https://github.com/xooooooooox/cka-exercises/commit/da57e8f
 [d8e2ccc]: https://github.com/xooooooooox/cka-exercises/commit/d8e2ccc
