@@ -703,6 +703,25 @@ pre .copy-btn.copied { color: var(--success); }
 }
 .quiz-end-row { margin-top: 14px; text-align: right; }
 
+/* "Start new quiz" confirmation modal — reuses .overlay + .overlay-card,
+   compact card with three stacked action buttons. */
+#quiz-confirm-start-overlay { z-index: 1020; }
+#quiz-confirm-start-overlay .quiz-confirm-start-card {
+  max-width: 420px;
+  width: 100%;
+}
+#quiz-confirm-start-overlay .quiz-confirm-start-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+#quiz-confirm-start-overlay .quiz-confirm-start-actions button {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
 /* Quiz navigator drawer (📋 Questions) — reuses .overlay + .overlay-card. */
 #quiz-nav-overlay { z-index: 1010; }
 #quiz-nav-overlay .quiz-nav-card {

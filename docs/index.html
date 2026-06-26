@@ -675,6 +675,28 @@
     </div>
   </div>
 
+  <!-- "A quiz is already in progress" — start-new-quiz confirmation
+       with three explicit actions: snapshot the active session and
+       start new, discard and start new, or cancel. Replaces a native
+       confirm() that only offered Cancel / OK (= discard) and made
+       the "preserve the in-progress session" path a 5-step detour
+       through Resume → Save snapshot → start fresh. -->
+  <div id="quiz-confirm-start-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="quiz-confirm-start-title">
+    <div class="overlay-card quiz-confirm-start-card">
+      <header>
+        <h2 id="quiz-confirm-start-title">A quiz is already in progress</h2>
+        <button id="quiz-confirm-start-close" type="button" class="overlay-close" aria-label="Close">✕</button>
+      </header>
+      <p id="quiz-confirm-start-progress" class="muted"></p>
+      <p>Start a new quiz session — what should happen to the current one?</p>
+      <div class="quiz-confirm-start-actions">
+        <button id="quiz-confirm-start-snapshot" type="button" class="primary">💾 Snapshot &amp; start new</button>
+        <button id="quiz-confirm-start-discard" type="button" class="danger">⚠ Discard &amp; start new</button>
+        <button id="quiz-confirm-start-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Report-a-reference-solution dialog -->
   <div id="report-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="report-title">
     <div class="overlay-card report-card">

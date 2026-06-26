@@ -5228,6 +5228,66 @@ function clearActiveQuiz() {
   markSyncDirty();
 }
 
+// Direct localStorage → snapshots-list promotion. `KEY.quizActive` is
+// already a serialiseQuiz() output, schema-identical to a snapshots
+// entry — we just stamp a name + id and prepend it. Used by the
+// "Snapshot & start new" path so the user doesn't have to first
+// Resume → Save snapshot before starting a new session.
+function promoteActiveToSnapshot() {
+  const payload = storageGet(KEY.quizActive, null);
+  if (!payload) return false;
+  payload.name = `In-progress — ${new Date().toLocaleString()}`.slice(0, 80);
+  payload.id = `snap-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const list = getSnapshots();
+  list.unshift(payload);
+  try { setSnapshots(list); }
+  catch (e) {
+    alert(`Couldn't save snapshot: ${e.message}`);
+    return false;
+  }
+  return true;
+}
+
+// 3-button confirmation when ▶ Start quiz is pressed while a session
+// is already in progress. Replaces a native confirm() that only
+// offered Cancel / OK (= discard) and forced users to a 5-step
+// detour through Resume → Save snapshot if they wanted to preserve
+// the in-progress session.
+function openStartNewQuizConfirm(saved) {
+  const overlay = document.getElementById('quiz-confirm-start-overlay');
+  if (!overlay) return;
+  const answered = (saved.status || []).length;
+  const total = (saved.ids || []).length;
+  document.getElementById('quiz-confirm-start-progress').textContent =
+    `Current session: ${answered} / ${total} answered.`;
+  overlay.hidden = false;
+
+  const close = () => {
+    overlay.hidden = true;
+    snapshotBtn.onclick = null;
+    discardBtn.onclick = null;
+    cancelBtn.onclick = null;
+    closeBtn.onclick = null;
+  };
+  const snapshotBtn = document.getElementById('quiz-confirm-start-snapshot');
+  const discardBtn  = document.getElementById('quiz-confirm-start-discard');
+  const cancelBtn   = document.getElementById('quiz-confirm-start-cancel');
+  const closeBtn    = document.getElementById('quiz-confirm-start-close');
+  snapshotBtn.onclick = () => {
+    if (!promoteActiveToSnapshot()) return;
+    clearActiveQuiz();
+    close();
+    startQuiz();
+  };
+  discardBtn.onclick = () => {
+    clearActiveQuiz();
+    close();
+    startQuiz();
+  };
+  cancelBtn.onclick = close;
+  closeBtn.onclick  = close;
+}
+
 function refreshQuizTabDot() {
   // Update both the top-header dot and the bottom-bar (mobile) dot.
   const dots = document.querySelectorAll('.mode-tab[data-mode="quiz"] .tab-dot');
@@ -7685,11 +7745,8 @@ async function init() {
   document.getElementById('quiz-start-btn').addEventListener('click', () => {
     const saved = storageGet(KEY.quizActive, null);
     if (saved) {
-      const answered = (saved.status || []).length;
-      const total = (saved.ids || []).length;
-      const ok = confirm(`A quiz is already in progress (${answered}/${total} answered). Discard it and start a new one?\n\nTip: cancel this dialog and click 💾 Save snapshot first if you want to keep it.`);
-      if (!ok) return;
-      clearActiveQuiz();
+      openStartNewQuizConfirm(saved);
+      return;
     }
     startQuiz();
   });
