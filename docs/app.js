@@ -6344,23 +6344,44 @@ function renderHelpView(opts = {}) {
     items.push({ level: h.tagName === 'H2' ? 2 : 3, id: unique, text });
   });
 
-  const ul = document.createElement('ul');
+  // Strip the leading emoji (and trailing space) from a heading's text so
+  // the TOC reads as a clean outline. Numbered prefix like "1. " is kept.
+  // The body's section heading still renders the emoji — this only affects
+  // the navigation sidebar.
+  const stripEmoji = (s) => s.replace(/[^\p{L}\p{N}\s.]+\s*/u, '');
+
+  // Build a TRUE nested <ul>: each h2 <li> contains its own child <ul> with
+  // the h3 entries that follow it. That lets CSS draw a single continuous
+  // border-left across all child entries (the previous flat structure gave
+  // every h3 its own disconnected 1-px line, which looked fragmented).
+  const rootUl = document.createElement('ul');
+  let currentH2Li = null;
+  let currentSubUl = null;
   items.forEach(it => {
     const li = document.createElement('li');
-    if (it.level === 3) li.className = 'h3';
     const a = document.createElement('a');
     a.href = `#help-section-${it.id}`;
-    a.textContent = it.text;
+    a.textContent = stripEmoji(it.text);
     a.dataset.target = it.id;
     a.addEventListener('click', (e) => {
       e.preventDefault();
       document.getElementById(it.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
     li.appendChild(a);
-    ul.appendChild(li);
+    if (it.level === 2) {
+      currentH2Li = li;
+      currentSubUl = null;
+      rootUl.appendChild(li);
+    } else {
+      if (currentH2Li && !currentSubUl) {
+        currentSubUl = document.createElement('ul');
+        currentH2Li.appendChild(currentSubUl);
+      }
+      (currentSubUl || rootUl).appendChild(li);
+    }
   });
   toc.innerHTML = '';
-  toc.appendChild(ul);
+  toc.appendChild(rootUl);
 
   // Spy-scroll: highlight the TOC entry whose section is in view
   if ('IntersectionObserver' in window && items.length) {

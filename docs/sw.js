@@ -37,11 +37,20 @@ const SHELL_FILES = [
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(SHELL_CACHE);
-    // Use no-cache fetches so install pulls the latest bytes from the
-    // server even when the browser's HTTP cache has older copies pinned.
+    // Precache fetches go via a cache-busted URL (?v=__BUILD__) so neither
+    // the browser HTTP cache nor the GitHub Pages CDN edge can serve a
+    // stale file under the new SHELL_CACHE key. Without this we saw the
+    // chip flip to a new vX.Y.Z+dev.N while style.css / app.js / etc.
+    // remained the previous deploy's bytes — CDN propagation lag inside
+    // the install window pinned the wrong bytes into the new cache.
+    //
+    // The cache itself keys on the un-versioned `path` so the fetch
+    // handler's cache-first lookup against the bare URL still hits.
     await Promise.all(SHELL_FILES.map(async (path) => {
       try {
-        const req = new Request(path, { cache: 'no-cache' });
+        const sep = path.includes('?') ? '&' : '?';
+        const bustedUrl = path + sep + 'v=__BUILD__';
+        const req = new Request(bustedUrl, { cache: 'no-cache' });
         const resp = await fetch(req);
         if (resp && resp.ok) await cache.put(path, resp.clone());
       } catch {
