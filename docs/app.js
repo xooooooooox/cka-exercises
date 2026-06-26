@@ -2653,6 +2653,35 @@ function maybeCheckForUpdate() {
   checkForUpdate();
 }
 
+// Floating back-to-top button — Browse mode only, threshold ~600px.
+// Companion path: repeat-tap on the active Browse mode-tab also scrolls
+// to top (wired alongside the .mode-tab click handler). Both exist
+// because the explicit ↑ button is the discoverable one; the tap-tab
+// gesture is the muscle-memory one for iOS users.
+function installBackToTop() {
+  const btn = document.getElementById('scroll-top-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  let _ticking = false;
+  const update = () => {
+    if (_ticking) return;
+    _ticking = true;
+    requestAnimationFrame(() => {
+      const show = State.mode === 'browse' && window.scrollY > 600;
+      btn.hidden = !show;
+      _ticking = false;
+    });
+  };
+  window.addEventListener('scroll', update, { passive: true });
+  // Re-evaluate on mode change — switching INTO browse while already
+  // scrolled deep should surface the button immediately.
+  document.querySelectorAll('.mode-tab').forEach(t =>
+    t.addEventListener('click', () => setTimeout(update, 0))
+  );
+}
+
 // Click handler for both the header 🔄 button and the in-banner Refresh button.
 // Pre-checks `version.json` against the bundled `generatedAt`:
 //   - unchanged  → toast "✓ Already up to date" and DO NOT reload
@@ -3880,8 +3909,15 @@ function renderReportMarkdown(ex, draft, ctx, mode = 'solution') {
   return lines.join('\n');
 }
 
-function buildIssueTitle(ex, mode = 'solution') {
-  const tag = mode === 'task' ? 'Task / docs issue' : 'Reference solution mismatch';
+// Conventional-commits style: `type(scope): description`. Maintainer
+// triage benefits from seeing the kind directly in the title (email
+// notifications, issue lists, Slack alerts) instead of having to open
+// the issue to read its labels. Falls back to `other` if draft.type is
+// missing (e.g. flag-only entry Open'd straight from the queue) —
+// matches the buildIssueUrl label fallback path.
+function buildIssueTitle(ex, draft, mode = 'solution') {
+  const kind = (draft && draft.type) ? draft.type : 'other';
+  const tag = mode === 'task' ? `task-fix(${kind})` : `solution-fix(${kind})`;
   return `[${ex.id}] ${tag}: ${truncate(ex.title || ex.displayTitle || ex.fullTitle || '', 60)}`;
 }
 
@@ -3893,7 +3929,7 @@ function buildIssueTitle(ex, mode = 'solution') {
 function buildIssueUrl(ex, draft, mode = 'solution') {
   const t = getReportType(draft.type, mode);
   const u = new URL(`https://github.com/${GH_REPO}/issues/new`);
-  u.searchParams.set('title', buildIssueTitle(ex, mode));
+  u.searchParams.set('title', buildIssueTitle(ex, draft, mode));
   const topLabel = mode === 'task' ? 'task-fix' : 'answer-fix';
   u.searchParams.set('labels', `${topLabel},${t.ghLabel}`);
   return u.toString();
@@ -4161,7 +4197,7 @@ function openFixReportModal(ex, ctx = {}) {
   // navigate via the anchor's native default behaviour (no popup blocker).
   const syncHref = () => {
     openBtn.href = buildIssueUrl(ex, collect(), mode);
-    titlePreview.value = buildIssueTitle(ex, mode);
+    titlePreview.value = buildIssueTitle(ex, collect(), mode);
   };
   // Refresh the inline "What this means / Suggested fix" block under the
   // radio group whenever the selection changes. Pulls whatsWrong +
@@ -4288,7 +4324,7 @@ function openFixReportModal(ex, ctx = {}) {
     const d = collect();
     if (!requireSubmitFields(d)) return;
     try {
-      await navigator.clipboard.writeText(buildIssueTitle(ex, mode));
+      await navigator.clipboard.writeText(buildIssueTitle(ex, d, mode));
       statusEl.textContent = '✓ Title copied — paste it into the issue title on GitHub.';
     } catch {
       statusEl.textContent = '✗ Clipboard blocked. Long-press the title field to copy manually.';
@@ -7368,8 +7404,21 @@ async function init() {
     applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   });
 
-  // Mode tabs
-  document.querySelectorAll('.mode-tab').forEach(t => t.addEventListener('click', () => setMode(t.dataset.mode)));
+  // Mode tabs. Repeat-tap on the already-active Browse tab scrolls to top
+  // (iOS-pattern; saves hunting through 100+ exercise cards or opening
+  // the Outline modal just to jump back to the first section). Other
+  // modes have their own layouts where this gesture is less obvious, so
+  // we only do it for Browse.
+  document.querySelectorAll('.mode-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      const targetMode = t.dataset.mode;
+      if (State.mode === targetMode && targetMode === 'browse') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      setMode(targetMode);
+    });
+  });
 
   // Esc exits any fullscreen answer editor.
   document.addEventListener('keydown', (e) => {
@@ -7424,6 +7473,12 @@ async function init() {
 
   // Header 🔄 refresh + auto-detect "new content" banner
   installRefreshAffordances();
+
+  // Floating back-to-top button — surfaces in Browse mode after the
+  // user has scrolled past ~600px. Lets phone users escape a deep
+  // scroll position (e.g. exercise #150 of 271) without hunting up
+  // through the Outline modal.
+  installBackToTop();
 
   // Reflect saved quiz state on the Quiz tab badge
   refreshQuizTabDot();

@@ -441,6 +441,12 @@
     </span>
   </div>
 
+  <!-- Floating back-to-top button — appears in Browse mode once the user
+       has scrolled past the threshold (handled by installBackToTop in
+       docs/app.js). Hidden on wide desktop where the sidebar tree gives
+       direct jump-to-anywhere navigation. -->
+  <button id="scroll-top-btn" class="scroll-top-btn" hidden aria-label="Back to top" title="Back to top">↑</button>
+
   <!-- Install hint — one-time dismissable banner for users on mobile
        browsers who haven't yet added the SPA to their home screen.
        Hidden in standalone mode (already installed) and after dismiss. -->

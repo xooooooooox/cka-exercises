@@ -2901,6 +2901,39 @@ body.answer-fullscreen-active { overflow: hidden; }
 }
 @media print { .update-banner { display: none !important; } }
 
+/* Floating Back-to-top button. Wired up by installBackToTop() in
+   docs/app.js, which toggles `hidden` based on scrollY + current mode.
+   Bottom offset lifts it above the mobile mode-tabs row + home
+   indicator. z-index sits above install-hint (90) but below
+   update-banner (200) so a deploy-time update notice can still get the
+   user's attention. */
+.scroll-top-btn {
+  position: fixed;
+  right: 16px;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--bg-elev);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  z-index: 199;
+  opacity: 0.85;
+  padding: 0;
+}
+.scroll-top-btn:hover, .scroll-top-btn:active { opacity: 1; }
+.scroll-top-btn[hidden] { display: none; }
+@media (min-width: 1024px) {
+  /* Desktop has the always-visible sidebar tree — back-to-top button
+     adds noise without enough benefit; hide it. */
+  .scroll-top-btn { display: none !important; }
+}
+@media print { .scroll-top-btn { display: none !important; } }
+
 /* Install-to-home-screen hint banner — same visual family as the
    .update-banner but stacked further off the bottom edge so they
    don't collide if both appear in the same session. Hidden in
