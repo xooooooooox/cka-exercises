@@ -1989,6 +1989,12 @@ function bootAutoSync() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     if (!isAutoSyncEnabled()) return;
+    // Idle-tab auto-pull: also check whether another device pushed updates
+    // while we were in the background. Independent of dirty state — this
+    // is the path that catches the "client B left the tab open all night
+    // while client A studied on another device" scenario. Throttled in
+    // maybeAutoPull itself so flicking visibility doesn't hammer GitHub.
+    maybeAutoPull();
     const dirtyIso = storageGet(KEY.syncDirtyAt, null);
     if (!dirtyIso) return;
     const elapsed = Date.now() - Date.parse(dirtyIso);
@@ -2005,6 +2011,63 @@ function bootAutoSync() {
       notifyAutoSyncState();
     }
   });
+
+  // Initial head-check on boot. Async; doesn't block init. Covers the
+  // "user reopened the SPA after another device pushed" case.
+  maybeAutoPull();
+}
+
+// Head-check whether the gist advanced beyond our baseline and pull-merge
+// if so. Independent of the dirty-flag-driven push path — that path only
+// fires when this device has edits, leaving idle-tab clients (no local
+// edits) blind to changes from other devices. doGistPush already does a
+// pre-flight pull-merge before push (commit 3d482ed), so we skip the
+// head-check entirely when a push is armed/pending; otherwise it's
+// redundant network.
+async function maybeAutoPull() {
+  if (!isAutoSyncEnabled()) return;
+  if (!navigator.onLine) return;
+  if (Sync.getState().inFlight) return;
+  if (_autoSyncTimer || storageGet(KEY.syncDirtyAt, null)) return;
+
+  const token = getGistToken();
+  const id = getGistId();
+  if (!token || !id) return;
+
+  // Session-scoped throttle: ≤ 1 head-check per 5 min per tab. Stops
+  // visibility-flick from hammering the API; cross-tab is naturally
+  // independent (each tab has its own sessionStorage).
+  const lastIso = sessionStorage.getItem('cka:sync:lastPollAt');
+  const last = lastIso ? Date.parse(lastIso) : 0;
+  if (Date.now() - last < 5 * 60 * 1000) return;
+  try { sessionStorage.setItem('cka:sync:lastPollAt', new Date().toISOString()); } catch {}
+
+  let meta;
+  try {
+    meta = await window.GistSync.getGistMeta(token, id);
+  } catch (e) {
+    console.warn('[auto-pull] head-check failed:', e.message);
+    return;
+  }
+  if (!meta?.updated_at) return;
+  const baseline = (storageGet(KEY.syncMeta, {}) || {}).lastSyncedGistUpdatedAt;
+  if (baseline && meta.updated_at <= baseline) return;
+
+  try {
+    const remotePayload = await Sync.runPull({ origin: 'auto-poll' });
+    if (!remotePayload) return;
+    // mergePayload handles cross-device concurrent edits — set union for
+    // done/bookmark, take-newer for answers, tombstone-aware for queue
+    // drafts. Mutations inside withSyncDirtySuppressed so the merge
+    // doesn't re-arm the auto-push timer.
+    // doGistPull already stamps lastSyncedGistUpdatedAt internally;
+    // mergePayload applies the remote payload to local state.
+    withSyncDirtySuppressed(() => mergePayload(remotePayload, { source: 'auto-pull' }));
+    showRefreshToast('✨ Synced changes from another device', 'ok');
+    notifyAutoSyncState();
+  } catch (e) {
+    console.warn('[auto-pull] pull failed:', e.message);
+  }
 }
 
 // Compact "2 min ago" / "just now" formatter used by the sync surfaces.

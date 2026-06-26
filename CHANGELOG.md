@@ -14,6 +14,7 @@ Each entry references the commit hash in parens for traceability to git history.
 ## [Unreleased]
 
 ### Added
+- Auto-sync now also **pulls** without waiting for a local edit. Previously the only path that pulled was `doGistPush`'s pre-flight (commit `3d482ed`), which by definition only fires when this device has dirty state — leaving an idle tab on device B blind to anything device A pushed. New `maybeAutoPull()` does a HEAD on the gist's `updated_at` (a) once on SPA boot and (b) on every `visibilitychange → visible`. If the gist advanced past the local `lastSyncedGistUpdatedAt` baseline, it pulls + merges (via the existing per-key merge engine, lossless on local pending edits) and shows `✨ Synced changes from another device`. Throttled to ≤ 1 head-check per 5 min per tab via the new sessionStorage key `cka:sync:lastPollAt`. Skipped entirely when a push is already armed or pending (the push's own pre-flight pull handles that case — no redundant network). (this commit)
 
 ### Changed
 - Refresh toast (header 🔄 + ✨ banner Refresh button) now reports version-number deltas (`✨ New version v0.1.0+dev.2 → v0.1.0+dev.5 — reloading…` / `✓ Already on v0.1.0+dev.5`) instead of `(built <date>)` timestamps — matches the header chip + Refresh banner format already introduced and gives the user a concrete vX.Y.Z signal of what they're moving between. Reuses the existing `composeBuildLabel()` helper so the three surfaces stay in sync. (this commit)

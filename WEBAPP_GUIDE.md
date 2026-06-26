@@ -243,10 +243,14 @@ Local edits this device hasn't pushed yet never get clobbered by a Pull. Manual 
 
 **Pre-pull backup + Restore.** Before any Pull (or Backup-file Import) runs, the SPA snapshots your current state to `cka:sync:prepull-backup` so the import is reversible. The Restore button (Settings → Sync) uses an integral overwrite — it puts back exactly what Pull replaced; the regular Pull / auto-merge paths use the merge engine.
 
+### Idle-tab auto-pull
+
+Auto-**push** only fires when you've edited something on this device. That leaves a gap when an *idle* tab is open and another device (or another tab on another device) makes changes — without manual ⬇ Pull or another local edit, the idle tab wouldn't see them. To close that gap, the SPA does a head-check of the gist's `updated_at` on **(a)** SPA boot and **(b)** every `visibilitychange → visible` (when you tab back to it). If the gist advanced past this device's baseline, it auto-pulls + merges + shows `✨ Synced changes from another device`. Throttled to ≤ 1 head-check per 5 min per tab (via the per-session `cka:sync:lastPollAt` key) so flicking visibility doesn't hammer GitHub's API. Skipped entirely when a push is already armed/pending — `doGistPush`'s pre-flight pull-merge handles that case.
+
 ### Tab-close + background-tab safety nets
 
 - **Tab close**: if you close the browser within the 30 s debounce window, a best-effort `keepalive:true` PATCH fires on `beforeunload` so your last burst of edits doesn't get lost. The next session refreshes the baseline from the actual gist `updated_at` so this device never argues with its own past beacon pushes.
-- **Background tab**: browsers throttle `setTimeout` aggressively in background tabs (Chrome ≈ 1/minute, Safari even less). A `visibilitychange` handler fires immediately when the tab returns to the foreground if a pending edit is already past its 30 s window. Net: you'll never lose a sync just because you switched to a different tab during the debounce.
+- **Background tab**: browsers throttle `setTimeout` aggressively in background tabs (Chrome ≈ 1/minute, Safari even less). A `visibilitychange` handler fires immediately when the tab returns to the foreground if a pending edit is already past its 30 s window. The same handler also kicks off the idle-tab auto-pull described above. Net: you'll never lose a sync just because you switched to a different tab during the debounce, and you also won't get stuck on stale state when another device pushed while this tab was idle.
 
 ### How to confirm auto-sync is working
 
