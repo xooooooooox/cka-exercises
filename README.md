@@ -21,8 +21,6 @@ Progress (✓ Done, ⭐ Bookmark, theme, last-selected docs page) persists in `l
 
 ## 📸 Screenshots
 
-### Desktop
-
 ![Browse mode — sidebar tree on the left, filter bar at the top, exercise cards in the centre.](assets/screenshots/desktop-browse.png)
 
 ![Quiz mode — active session with answer editor and an LLM-graded verdict card (Got it / ◐ Partial / ✗ Missed three-way grading).](assets/screenshots/desktop-quiz.png)
@@ -30,14 +28,6 @@ Progress (✓ Done, ⭐ Bookmark, theme, last-selected docs page) persists in `l
 ![Docs mode — kubernetes.io navigation tree on the left, selected page details + reverse-linked exercises on the right.](assets/screenshots/desktop-docs.png)
 
 ![Tools mode — kubectl explain schema browser on the left, selected resource's fields + descriptions on the right; the 📋 kubectl -h and 📑 api-resources subtabs above.](assets/screenshots/desktop-tools.png)
-
-### Mobile
-
-<p align="center">
-  <img src="assets/screenshots/mobile-browse.png" width="240" alt="Browse on iPhone — fixed bottom tab bar (Browse / Quiz / Docs / Help / Tools / Nodes), compact filter toolbar.">
-  <img src="assets/screenshots/mobile-quiz.png" width="240" alt="Quiz on iPhone — three-way grade row (Got it / Partial / Missed) with the current state highlighted, then a utility row (Prev / Flag / Reveal / Skip / Next).">
-  <img src="assets/screenshots/mobile-docs.png" width="240" alt="Docs tree on iPhone with collapsible categories.">
-</p>
 
 ## Project Structure
 

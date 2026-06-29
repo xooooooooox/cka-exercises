@@ -21,8 +21,6 @@
 
 ## 📸 截图
 
-### 电脑端
-
 ![Browse 模式 —— 左侧目录树、顶部筛选条、中部题目卡片。](assets/screenshots/desktop-browse.png)
 
 ![Quiz 模式 —— 答题中的会话，含答题编辑器与 LLM 评分卡（Got it / ◐ Partial / ✗ Missed 三档自评）。](assets/screenshots/desktop-quiz.png)
@@ -30,14 +28,6 @@
 ![Docs 模式 —— 左侧 kubernetes.io 导航树，右侧叶子页详情 + 反向链接到对应练习。](assets/screenshots/desktop-docs.png)
 
 ![Tools 模式 —— 左侧 kubectl explain schema 浏览器，右侧选中资源的字段与说明；上方有 📋 kubectl -h 与 📑 api-resources 子标签。](assets/screenshots/desktop-tools.png)
-
-### 手机端
-
-<p align="center">
-  <img src="assets/screenshots/mobile-browse.png" width="240" alt="iPhone 上的 Browse —— 底部固定 mode-tabs（Browse / Quiz / Docs / Help / Tools / Nodes），紧凑的筛选工具栏。">
-  <img src="assets/screenshots/mobile-quiz.png" width="240" alt="iPhone 上的 Quiz —— 三档自评行（Got it / Partial / Missed）当前状态高亮，下面是工具行（Prev / Flag / Reveal / Skip / Next）。">
-  <img src="assets/screenshots/mobile-docs.png" width="240" alt="iPhone 上的 Docs 树，分类可折叠。">
-</p>
 
 ## 项目结构
 

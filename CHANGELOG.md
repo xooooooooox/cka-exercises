@@ -17,9 +17,11 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 - **Resume button now lands the user directly on the active session** instead of below a still-visible Quiz home — `resumeActiveQuiz` and `resumeSnapshot` were toggling setup/active/summary but missed hiding `#quiz-home`, so the answer card rendered below the resume panel and forced a manual scroll. (this commit)
 
 ### Changed
-- **Desktop quiz grade buttons no longer stretch full-width** — `.quiz-grades` columns become `minmax(140px, 180px)` at viewport ≥769px (was `1fr` always), so each Got it / Partial / Missed pill sits around 180px on desktop instead of ~290px. Mobile (`max-width: 768px`) keeps the full-stretch `repeat(3, 1fr)` layout for touch friendliness. (this commit)
+- **Desktop quiz controls now match the mobile structure** — `.quiz-grades` keeps `repeat(3, 1fr)` full-stretch on every viewport (the fd9d3f1 desktop cap to ~180px was reverted), `.quiz-controls` becomes `repeat(5, 1fr)` everywhere (was a desktop flex / mobile grid split), and `.quiz-end-row` is 2-col grid on desktop with the existing single-column stack on `≤768px` phones. (this commit)
+- **README screenshots: mobile section removed** — `### Mobile` (3 inline iPhone images) dropped from both `README.md` and `README_CN.md` because the iPhone long-screenshot aspect ratio rendered awkwardly next to the 16:10 desktop captures. The `mobile-*.png` files stay in `assets/screenshots/` for archival use; the `### Desktop` heading also goes away (only one category remained, so the heading was redundant). (this commit)
 
 ### Added
+- **Updated mobile Quiz screenshots** — `mobile-quiz.png` refreshed and a new `mobile-quiz-home.png` added (Saved-quiz-session card + per-domain progress + quick-start buttons). Both converted from the user's iPhone long-screenshot PDFs via `sips -s format png`; spec table in `assets/screenshots/README.md` lists the new file. (this commit)
 - **Real desktop screenshots** in `assets/screenshots/` — `desktop-browse.png` / `desktop-quiz.png` / `desktop-docs.png` replace the 1×1 placeholders, plus a new `desktop-tools.png` showing the kubectl explain schema browser. README + README_CN each get the Tools-mode entry alongside the existing three. (this commit)
 
 ### Removed
