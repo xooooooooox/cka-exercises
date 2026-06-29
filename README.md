@@ -29,6 +29,8 @@ Progress (✓ Done, ⭐ Bookmark, theme, last-selected docs page) persists in `l
 
 ![Docs mode — kubernetes.io navigation tree on the left, selected page details + reverse-linked exercises on the right.](assets/screenshots/desktop-docs.png)
 
+![Tools mode — kubectl explain schema browser on the left, selected resource's fields + descriptions on the right; the 📋 kubectl -h and 📑 api-resources subtabs above.](assets/screenshots/desktop-tools.png)
+
 ### Mobile
 
 <p align="center">

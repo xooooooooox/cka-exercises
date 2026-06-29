@@ -13,6 +13,9 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 
 ## [Unreleased]
 
+### Added
+- **Real desktop screenshots** in `assets/screenshots/` — `desktop-browse.png` / `desktop-quiz.png` / `desktop-docs.png` replace the 1×1 placeholders, plus a new `desktop-tools.png` showing the kubectl explain schema browser. README + README_CN each get the Tools-mode entry alongside the existing three. (this commit)
+
 ### Removed
 - **☁ Sync indicator dropped from the fullscreen answer-box quizbar** — clicking it opened the header sync popover, but the popover anchors via `position: absolute` to its `.sync-menu-wrap` parent in the header, which is visually behind the fullscreen overlay. Result: "click does nothing" from the user's POV. Auto-sync runs unchanged; the header ☁ chip is one tap away after exiting fullscreen. (this commit)
 

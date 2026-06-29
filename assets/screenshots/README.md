@@ -32,6 +32,7 @@ without also updating both README files.
 | `desktop-browse.png` | Browse mode, sidebar tree + filter bar + several visible exercise cards                      |
 | `desktop-quiz.png`   | Quiz mode mid-session: answer editor + LLM verdict card + three-way grade row (Got / Partial / Missed) |
 | `desktop-docs.png`   | Docs mode: kubernetes.io navigation tree on the left, leaf detail + reverse-linked exercises on the right |
+| `desktop-tools.png`  | Tools mode: 📘 Explain schema browser + kinds list + subtab strip (Explain / kubectl -h / api-resources) |
 | `mobile-browse.png`  | Browse on iPhone, fixed bottom mode-tabs row visible                                         |
 | `mobile-quiz.png`    | Quiz on iPhone with the `◐ Partial` grade button highlighted (post-Check state)              |
 | `mobile-docs.png`    | Docs tree on iPhone, or the `📊 Outline` drawer open                                          |

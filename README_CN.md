@@ -29,6 +29,8 @@
 
 ![Docs 模式 —— 左侧 kubernetes.io 导航树，右侧叶子页详情 + 反向链接到对应练习。](assets/screenshots/desktop-docs.png)
 
+![Tools 模式 —— 左侧 kubectl explain schema 浏览器，右侧选中资源的字段与说明；上方有 📋 kubectl -h 与 📑 api-resources 子标签。](assets/screenshots/desktop-tools.png)
+
 ### 手机端
 
 <p align="center">
