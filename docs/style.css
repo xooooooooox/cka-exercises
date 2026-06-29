@@ -773,6 +773,21 @@ pre .copy-btn.copied { color: var(--success); }
 }
 .quiz-end-row { margin-top: 14px; text-align: right; }
 
+/* Desktop quiz controls — cap button width so the 3 grade chips
+   don't stretch to ~290px each across the full .quiz-screen
+   container. Mobile (`@media (max-width: 768px)` further below in
+   this file) keeps the `repeat(3, 1fr)` full-stretch grid since
+   phone widths benefit from full-width touch targets. */
+@media (min-width: 769px) {
+  .quiz-grades {
+    grid-template-columns: repeat(3, minmax(140px, 180px));
+    justify-content: start;
+  }
+  .quiz-controls {
+    justify-content: flex-start;
+  }
+}
+
 /* "Start new quiz" confirmation modal — reuses .overlay + .overlay-card,
    compact card with three stacked action buttons. */
 #quiz-confirm-start-overlay { z-index: 1020; }

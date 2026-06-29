@@ -5472,6 +5472,12 @@ function resumeActiveQuiz() {
   const restored = deserialiseQuiz(saved);
   if (!restored) { alert("Saved session couldn't be loaded (schema mismatch). Discarding."); clearActiveQuiz(); renderQuizResumePanel(); return; }
   State.quiz = restored;
+  // Hide the Quiz home (Resume panel + Start-new + proficiency strip)
+  // along with setup/summary — otherwise the active session renders
+  // BELOW the still-visible home and the user has to manually scroll
+  // down to find it. `startQuizFromConfig` already hides home; this
+  // brings the two resume paths in line.
+  document.getElementById('quiz-home').hidden = true;
   document.getElementById('quiz-setup').hidden = true;
   document.getElementById('quiz-active').hidden = false;
   document.getElementById('quiz-summary').hidden = true;
@@ -5497,6 +5503,9 @@ function resumeSnapshot(id) {
   setSnapshots(snaps);
   State.quiz = restored;
   saveActiveQuiz();
+  // Same rationale as resumeActiveQuiz: hide Quiz home so the active
+  // session lands at viewport top instead of below the resume panel.
+  document.getElementById('quiz-home').hidden = true;
   document.getElementById('quiz-setup').hidden = true;
   document.getElementById('quiz-active').hidden = false;
   document.getElementById('quiz-summary').hidden = true;

@@ -13,6 +13,12 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 
 ## [Unreleased]
 
+### Fixed
+- **Resume button now lands the user directly on the active session** instead of below a still-visible Quiz home — `resumeActiveQuiz` and `resumeSnapshot` were toggling setup/active/summary but missed hiding `#quiz-home`, so the answer card rendered below the resume panel and forced a manual scroll. (this commit)
+
+### Changed
+- **Desktop quiz grade buttons no longer stretch full-width** — `.quiz-grades` columns become `minmax(140px, 180px)` at viewport ≥769px (was `1fr` always), so each Got it / Partial / Missed pill sits around 180px on desktop instead of ~290px. Mobile (`max-width: 768px`) keeps the full-stretch `repeat(3, 1fr)` layout for touch friendliness. (this commit)
+
 ### Added
 - **Real desktop screenshots** in `assets/screenshots/` — `desktop-browse.png` / `desktop-quiz.png` / `desktop-docs.png` replace the 1×1 placeholders, plus a new `desktop-tools.png` showing the kubectl explain schema browser. README + README_CN each get the Tools-mode entry alongside the existing three. (this commit)
 
