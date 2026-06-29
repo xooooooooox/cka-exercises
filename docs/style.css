@@ -1535,15 +1535,25 @@ body.answer-fullscreen-active { overflow: hidden; }
 .answer-fullscreen-quizbar { display: none; }
 .answer-box.answer-fullscreen .answer-fullscreen-quizbar {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
   padding: 10px 0 4px 0;
   border-top: 1px solid var(--border);
   margin-top: 8px;
+}
+.answer-fullscreen-quizbar .qbar-grade-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.answer-fullscreen-quizbar .qbar-util-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
 }
 .answer-fullscreen-quizbar button {
-  padding: 6px 12px;
+  padding: 7px 12px;
   font-size: 13px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -1551,14 +1561,33 @@ body.answer-fullscreen-active { overflow: hidden; }
   color: var(--fg);
   cursor: pointer;
 }
+.answer-fullscreen-quizbar .qbar-grade-row button {
+  font-weight: 600;
+  padding: 9px 8px;
+}
 .answer-fullscreen-quizbar button:hover { background: var(--bg); }
 .answer-fullscreen-quizbar button.grade-got {
-  border-color: var(--success); color: var(--success); font-weight: 600;
+  border-color: var(--success); color: var(--success);
+}
+.answer-fullscreen-quizbar button.grade-partial {
+  border-color: var(--warning); color: var(--warning);
 }
 .answer-fullscreen-quizbar button.grade-miss {
-  border-color: var(--danger);  color: var(--danger);  font-weight: 600;
+  border-color: var(--danger);  color: var(--danger);
 }
-.answer-fullscreen-quizbar .qbar-spacer { flex: 1; min-width: 8px; }
+/* `.is-current` fills the matching grade button when the current
+   question's quiz status equals that grade — mirrors the regular
+   Quiz controls' filled-pill highlight (see `.quiz-grades` rules
+   above). syncQuizGradeButtons() applies/removes this class. */
+.answer-fullscreen-quizbar button.grade-got.is-current {
+  background: var(--success); color: #fff; border-color: var(--success);
+}
+.answer-fullscreen-quizbar button.grade-partial.is-current {
+  background: var(--warning); color: #fff; border-color: var(--warning);
+}
+.answer-fullscreen-quizbar button.grade-miss.is-current {
+  background: var(--danger); color: #fff; border-color: var(--danger);
+}
 
 /* Tools drawer — slides above the fullscreen answer overlay (z-index 1000)
    so the user can pull up kubectl explain / kubectl -h without exiting

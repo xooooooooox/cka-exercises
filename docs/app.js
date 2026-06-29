@@ -3437,18 +3437,26 @@ function renderAnswerBox(ex, opts = {}) {
       e.stopPropagation();
       _openSyncMenuExternal?.();
     });
+    // Two sub-rows so the layout matches the regular Quiz controls
+    // (grade row prominent + utility row underneath). The previous
+    // single flex-wrap row mixed grade buttons into the middle of
+    // navigation buttons on phone widths, breaking the visual rhythm
+    // the user saw in non-fullscreen mode.
     const quizbar = el('div', { class: 'answer-fullscreen-quizbar' },
-      proxy('quiz-nav-toggle', '📋 Questions'),
-      proxy('quiz-prev',       '← Prev'),
-      proxy('quiz-flag',       '🚩 Flag'),
-      revealProxy,
-      el('span', { class: 'qbar-spacer' }),
-      proxy('quiz-grade-got',     '✓ Got it',  'grade-got'),
-      proxy('quiz-grade-partial', '◐ Partial', 'grade-partial'),
-      proxy('quiz-grade-miss',    '✗ Missed',  'grade-miss'),
-      proxy('quiz-skip',       '↷ Skip'),
-      proxy('quiz-next',       'Next →'),
-      syncDot,
+      el('div', { class: 'qbar-grade-row' },
+        proxy('quiz-grade-got',     '✓ Got it',  'grade-got'),
+        proxy('quiz-grade-partial', '◐ Partial', 'grade-partial'),
+        proxy('quiz-grade-miss',    '✗ Missed',  'grade-miss'),
+      ),
+      el('div', { class: 'qbar-util-row' },
+        proxy('quiz-nav-toggle', '📋 Questions'),
+        proxy('quiz-prev',       '← Prev'),
+        proxy('quiz-flag',       '🚩 Flag'),
+        revealProxy,
+        proxy('quiz-skip',       '↷ Skip'),
+        proxy('quiz-next',       'Next →'),
+        syncDot,
+      ),
     );
     box.appendChild(quizbar);
   }
@@ -5781,15 +5789,23 @@ function quizGrade(verdict) {
 // verdict but no indication that the quiz already recorded it — the bug
 // behind "which button do I click for Partial?".
 function syncQuizGradeButtons() {
-  const ids = ['quiz-grade-got', 'quiz-grade-partial', 'quiz-grade-miss'];
-  ids.forEach(elId => document.getElementById(elId)?.classList.remove('is-current'));
+  // Toggle .is-current on BOTH the regular Quiz controls (one button
+  // per id) AND any fullscreen quizbar proxies (same class, no id).
+  // Selector covers both surfaces.
+  const allGrade = document.querySelectorAll(
+    '#quiz-grade-got, #quiz-grade-partial, #quiz-grade-miss, ' +
+    '.answer-fullscreen-quizbar .grade-got, .answer-fullscreen-quizbar .grade-partial, .answer-fullscreen-quizbar .grade-miss'
+  );
+  allGrade.forEach(b => b.classList.remove('is-current'));
   const q = State.quiz;
   if (!q) return;
   const exId = q.ids[q.idx];
   const s = q.status.get(exId);   // 'got' | 'partial' | 'missed' | 'skipped' | undefined
-  if (s === 'got')     document.getElementById('quiz-grade-got')?.classList.add('is-current');
-  if (s === 'partial') document.getElementById('quiz-grade-partial')?.classList.add('is-current');
-  if (s === 'missed')  document.getElementById('quiz-grade-miss')?.classList.add('is-current');
+  if (!s || s === 'skipped') return;
+  const cls = s === 'got' ? 'grade-got' : s === 'partial' ? 'grade-partial' : 'grade-miss';
+  // Original button is by id; proxies share the class
+  document.getElementById('quiz-grade-' + (s === 'got' ? 'got' : s === 'partial' ? 'partial' : 'miss'))?.classList.add('is-current');
+  document.querySelectorAll(`.answer-fullscreen-quizbar .${cls}`).forEach(b => b.classList.add('is-current'));
 }
 
 function quizSkip() {
