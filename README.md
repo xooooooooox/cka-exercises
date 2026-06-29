@@ -25,6 +25,8 @@ Progress (✓ Done, ⭐ Bookmark, theme, last-selected docs page) persists in `l
 
 ![Quiz mode — active session with answer editor and an LLM-graded verdict card (Got it / ◐ Partial / ✗ Missed three-way grading).](assets/screenshots/desktop-quiz.png)
 
+![Quiz setup screen — pick source filters (domain / tags / bookmarks / not-yet-done), question count, time limit, order, and solution visibility before starting a session.](assets/screenshots/desktop-quiz-setup.png)
+
 ![Docs mode — kubernetes.io navigation tree on the left, selected page details + reverse-linked exercises on the right.](assets/screenshots/desktop-docs.png)
 
 ![Tools mode — kubectl explain schema browser on the left, selected resource's fields + descriptions on the right; the 📋 kubectl -h and 📑 api-resources subtabs above.](assets/screenshots/desktop-tools.png)

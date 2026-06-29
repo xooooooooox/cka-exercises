@@ -300,7 +300,7 @@ const screenshotsSrc = path.join(ROOT, 'assets', 'screenshots');
 const screenshotsDst = path.join(ROOT, 'docs', 'assets', 'screenshots');
 fs.mkdirSync(screenshotsDst, { recursive: true });
 const screenshotsCopied = [];
-for (const name of ['desktop-browse.png', 'desktop-quiz.png', 'desktop-docs.png', 'desktop-tools.png']) {
+for (const name of ['desktop-browse.png', 'desktop-quiz.png', 'desktop-quiz-setup.png', 'desktop-docs.png', 'desktop-tools.png']) {
   const src = path.join(screenshotsSrc, name);
   const dst = path.join(screenshotsDst, name);
   if (fs.existsSync(src)) {

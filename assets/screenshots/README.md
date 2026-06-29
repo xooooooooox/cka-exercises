@@ -30,7 +30,8 @@ without also updating both README files.
 | File                 | Surface to capture                                                                           |
 |----------------------|----------------------------------------------------------------------------------------------|
 | `desktop-browse.png` | Browse mode, sidebar tree + filter bar + several visible exercise cards                      |
-| `desktop-quiz.png`   | Quiz mode mid-session: answer editor + LLM verdict card + three-way grade row (Got / Partial / Missed) |
+| `desktop-quiz.png`       | Quiz mode mid-session: answer editor + LLM verdict card + three-way grade row (Got / Partial / Missed) |
+| `desktop-quiz-setup.png` | Quiz setup form: Source filters + Count + Time limit + Order + Solutions chip groups, Start quiz button |
 | `desktop-docs.png`   | Docs mode: kubernetes.io navigation tree on the left, leaf detail + reverse-linked exercises on the right |
 | `desktop-tools.png`  | Tools mode: 📘 Explain schema browser + kinds list + subtab strip (Explain / kubectl -h / api-resources) |
 | `mobile-browse.png`     | Browse on iPhone, fixed bottom mode-tabs row visible                                         |

@@ -61,6 +61,8 @@ Random-draw practice under exam-like conditions.
 - A **per-domain progress strip** — five rows showing `done / total · pct` with a progress bar per domain. The 1-2 domains with the lowest done % (and pct < 100) get a `💡 weak` chip + subtle orange accent so you can see at a glance where you're behind.
 - Action paths: **▶ Start a new quiz** (opens the full configure form) or **three one-click quick-starts**: **🎲 10 random**, **🎯 17-question mock**, and **🩺 Drill weak spots** (auto-targets the same weak domains the strip highlights, restricted to not-yet-done exercises, 10 questions random). If you've finished every domain at 100 %, Drill weak spots alerts and aborts instead of starting an empty round.
 
+![Quiz setup screen — pick source filters (domain / tags / bookmarks / not-yet-done), question count, time limit, order, and solution visibility before starting a session.](assets/screenshots/desktop-quiz-setup.png)
+
 **Setup screen** — when you click **▶ Start a new quiz**, pick:
 
 - Source filters (domain, tags, only bookmarks, only not-yet-done)

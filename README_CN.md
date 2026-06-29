@@ -25,6 +25,8 @@
 
 ![Quiz 模式 —— 答题中的会话，含答题编辑器与 LLM 评分卡（Got it / ◐ Partial / ✗ Missed 三档自评）。](assets/screenshots/desktop-quiz.png)
 
+![Quiz 配置页 —— 开始会话前选择 Source（domain / 标签 / 收藏 / 未完成）、题量、时间、顺序、答案可见性。](assets/screenshots/desktop-quiz-setup.png)
+
 ![Docs 模式 —— 左侧 kubernetes.io 导航树，右侧叶子页详情 + 反向链接到对应练习。](assets/screenshots/desktop-docs.png)
 
 ![Tools 模式 —— 左侧 kubectl explain schema 浏览器，右侧选中资源的字段与说明；上方有 📋 kubectl -h 与 📑 api-resources 子标签。](assets/screenshots/desktop-tools.png)

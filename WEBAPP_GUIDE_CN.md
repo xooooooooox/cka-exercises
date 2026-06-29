@@ -61,6 +61,8 @@
 - **域熟练度横条** —— 五行展示每个 domain 的 `done / total · pct` + 进度条。 done % 最低的 1-2 个域（且未到 100 %）会带 `💡 weak` chip + 橙色提示，一眼看清薄弱在哪。
 - 三条入口：**▶ Start a new quiz**（进完整配置表）或**三个一键预设**：**🎲 10 random**、**🎯 17-question mock**、**🩺 Drill weak spots**（自动选上面提示的弱域，限定未完成题，10 题随机）。若全部 100 % 完成，Drill weak spots 会弹提示并中止而不是发空轮。
 
+![Quiz 配置页 —— 开始会话前选择 Source（domain / 标签 / 收藏 / 未完成）、题量、时间、顺序、答案可见性。](assets/screenshots/desktop-quiz-setup.png)
+
 **配置页面** —— 点 **▶ Start a new quiz** 后，选择：
 
 - 来源过滤（domain、标签、只看收藏、只看未完成）
