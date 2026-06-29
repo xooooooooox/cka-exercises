@@ -14,6 +14,7 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 ## [Unreleased]
 
 ### Fixed
+- **Fullscreen quizbar utility row now matches the grade row + regular Quiz controls** — `.qbar-util-row` switched from `display: flex; flex-wrap: wrap` (buttons sized to content) to `display: grid; grid-template-columns: repeat(6, 1fr)`, so the six buttons (📋 Questions / Prev / Flag / Reveal / Skip / Next) sit in 6 equal columns full-stretch just like the 3-col grade row above and the 5-col regular Quiz utility row. (this commit)
 - **Help mode → Webapp Guide screenshots no longer overflow the content column** — `.help-body img` gained `max-width: 100%; height: auto; display: block; margin: 14px auto` plus a subtle border + radius + soft shadow so the 2× retina PNGs (3840×1870) scale to fit and read as screenshots instead of flat blocks. Applies to every markdown image inside Help mode, not just WEBAPP_GUIDE. (this commit)
 - **Resume button now lands the user directly on the active session** instead of below a still-visible Quiz home — `resumeActiveQuiz` and `resumeSnapshot` were toggling setup/active/summary but missed hiding `#quiz-home`, so the answer card rendered below the resume panel and forced a manual scroll. (this commit)
 

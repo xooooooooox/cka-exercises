@@ -1561,9 +1561,14 @@ body.answer-fullscreen-active { overflow: hidden; }
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
+/* Utility row mirrors the regular Quiz controls' grid full-stretch
+   pattern (and the grade row above) — 6 buttons (📋 Questions / Prev /
+   Flag / Reveal / Skip / Next) each take 1/6 of the container.
+   Was `flex-wrap` which left desktop buttons sized to content and
+   visually disagreed with the full-stretch grade row above it. */
 .answer-fullscreen-quizbar .qbar-util-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
   gap: 6px;
   align-items: center;
 }
