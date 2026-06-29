@@ -292,10 +292,31 @@ fs.writeFileSync(
   }) + '\n'
 );
 
+// Mirror the desktop screenshots into docs/ so the WEBAPP_GUIDE images
+// resolve in the deployed SPA — GitHub Pages serves `docs/` only, while
+// the source PNGs live under `assets/screenshots/` (kept there so they
+// also work from README + the assets directory's own spec).
+const screenshotsSrc = path.join(ROOT, 'assets', 'screenshots');
+const screenshotsDst = path.join(ROOT, 'docs', 'assets', 'screenshots');
+fs.mkdirSync(screenshotsDst, { recursive: true });
+const screenshotsCopied = [];
+for (const name of ['desktop-browse.png', 'desktop-quiz.png', 'desktop-docs.png', 'desktop-tools.png']) {
+  const src = path.join(screenshotsSrc, name);
+  const dst = path.join(screenshotsDst, name);
+  if (fs.existsSync(src)) {
+    fs.copyFileSync(src, dst);
+    screenshotsCopied.push(name);
+  }
+}
+
 const totalExercises = result.domains.reduce(
   (s, d) => s + d.sections.reduce((ss, sec) => ss + sec.exercises.length, 0), 0,
 );
 const totalSections = result.domains.reduce((s, d) => s + d.sections.length, 0);
+
+if (screenshotsCopied.length) {
+  console.log(`Mirrored ${screenshotsCopied.length} screenshot(s) into ${path.relative(ROOT, screenshotsDst)}/`);
+}
 
 console.log(`Wrote ${path.relative(ROOT, OUTPUT)}`);
 console.log(`  domains:   ${result.domains.length}`);

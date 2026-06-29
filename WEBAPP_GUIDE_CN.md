@@ -35,7 +35,11 @@
 
 ## 2. 🗂 各种模式
 
+> 📸 下面每个模式开头都附了一张电脑端截图。完整截图集（含 iPhone 长图）请到 [`assets/screenshots/`](assets/screenshots/) 浏览 —— 各文件对应的画面详见目录下 [spec table](assets/screenshots/README.md)。
+
 ### 📚 Browse
+
+![Browse 模式 —— 左侧目录树、顶部筛选条、中部题目卡片。](assets/screenshots/desktop-browse.png)
 
 默认模式。约 271 道题一个滚动列表。
 
@@ -45,6 +49,8 @@
 - 在 **✏️ Your answer** 编辑器输入答案，点 **✓ Check** 由 LLM 批改（详见 §5）。编辑器是 CodeMirror（首次聚焦时按需懒加载），**bash 语法高亮**（kubectl / openssl / heredoc 关键词正确着色；`<<EOF` 里的 YAML 显示为纯文本），Tab 缩进，右上角 **⛶** 按钮可一键全屏。全屏后答题框标签行会显示四个抽屉按钮 —— **🛠 Tools**、**📝 Task**、**💡 Solution**、**🐞**（打开 flag scope 选择器）—— 无需退出全屏就能查语法、偷看解答、标记问题。移动端字号为 16px，避免 iOS Safari 聚焦时自动放大。
 
 ### 🎯 Quiz
+
+![Quiz 模式 —— 答题中的会话，含答题编辑器与 LLM 评分卡（Got it / ◐ Partial / ✗ Missed 三档自评）。](assets/screenshots/desktop-quiz.png)
 
 模拟考场环境的随机抽题练习。
 
@@ -89,6 +95,8 @@
 
 ### 📖 Docs
 
+![Docs 模式 —— 左侧 kubernetes.io 导航树，右侧叶子页详情 + 反向链接到对应练习。](assets/screenshots/desktop-docs.png)
+
 镜像 kubernetes.io 的文档导航树，并对题库做了反向索引。
 
 - 左侧浏览 docs 层级
@@ -96,6 +104,8 @@
 - 用于反向打开思路："想刷 ConfigMap 相关的题 — 题目分布在哪？"
 
 ### 🔧 Tools
+
+![Tools 模式 —— 左侧 kubectl explain schema 浏览器，右侧选中资源的字段与说明；上方有 📋 kubectl -h 与 📑 api-resources 子标签。](assets/screenshots/desktop-tools.png)
 
 三个工具，对标考试时在终端里最常用的三个动作，离线打包进 SPA。
 

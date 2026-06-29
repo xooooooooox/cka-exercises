@@ -9,5 +9,6 @@ docs/version.json
 docs/tools*.json
 docs/nodes*.json
 docs/sw.gen.js
+docs/assets/screenshots/
 tools/kubectl-help*.json
 tools/.bin/

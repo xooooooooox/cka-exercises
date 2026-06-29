@@ -35,7 +35,11 @@ The installed app ships with a **service worker** (registered automatically on f
 
 ## 2. 🗂 The Modes
 
+> 📸 Each mode below opens with a desktop screenshot. For the full set (including iPhone captures), browse [`assets/screenshots/`](assets/screenshots/) — the [spec table](assets/screenshots/README.md) explains what each file shows.
+
 ### 📚 Browse
+
+![Browse mode — sidebar tree on the left, filter bar at the top, exercise cards in the centre.](assets/screenshots/desktop-browse.png)
 
 The default mode. All ~271 exercises in a scrollable list.
 
@@ -45,6 +49,8 @@ The default mode. All ~271 exercises in a scrollable list.
 - Type into the **✏️ Your answer** box and click **✓ Check** to ask the LLM grader for feedback (see §5). The editor is a real CodeMirror instance (lazy-loaded on first focus) with **bash syntax highlighting** (kubectl / openssl / heredoc keywords coloured correctly; YAML inside `<<EOF` renders as plain text — that's intentional), Tab indent, and a **⛶** button that expands it to fullscreen. In fullscreen the answer-box label row reveals four drawer triggers — **🛠 Tools** (kubectl explain / kubectl -h), **📝 Task** (the task body), **💡 Solution** (the reference solution), and **🐞** (open the flag-scope picker) — so you can look up syntax / peek the answer / flag the exercise without exiting fullscreen. On mobile the editor uses a 16 px font so iOS Safari doesn't auto-zoom when you tap it.
 
 ### 🎯 Quiz
+
+![Quiz mode — active session with answer editor and an LLM-graded verdict card (Got it / ◐ Partial / ✗ Missed three-way grading).](assets/screenshots/desktop-quiz.png)
 
 Random-draw practice under exam-like conditions.
 
@@ -89,6 +95,8 @@ Click **▶ Start quiz** to begin. The header shows a live timer (if a limit is 
 
 ### 📖 Docs
 
+![Docs mode — kubernetes.io navigation tree on the left, selected page details + reverse-linked exercises on the right.](assets/screenshots/desktop-docs.png)
+
 Mirror of the kubernetes.io documentation tree, reverse-indexed against the exercise corpus.
 
 - Browse the docs hierarchy on the left.
@@ -96,6 +104,8 @@ Mirror of the kubernetes.io documentation tree, reverse-indexed against the exer
 - Useful for **the other direction**: "I want to drill ConfigMaps — where are the questions?"
 
 ### 🔧 Tools
+
+![Tools mode — kubectl explain schema browser on the left, selected resource's fields + descriptions on the right; the 📋 kubectl -h and 📑 api-resources subtabs above.](assets/screenshots/desktop-tools.png)
 
 Three reference tools that mirror what you reach for in the real exam terminal — bundled into the SPA so they work offline once loaded.
 
