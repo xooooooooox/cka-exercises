@@ -13,6 +13,8 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 
 ## [Unreleased]
 
+## [v0.4.0] - 2026-06-29
+
 ### Fixed
 - **Modal close `✕` button now visible at rest, not just on hover** — the previous version used transparent background + transparent border with hover-only fill, which on mobile (no hover) read as a tiny floating glyph. Default state now carries `var(--bg-elev)` background + `var(--border)` outline + larger glyph so it reads as a button immediately. (this commit)
 - **Modal close `✕` button stays reachable when the user has scrolled** — every overlay's `<header>` is now `position: sticky` at the top of the scrolling card, so the close button no longer scrolls away with the title. Previously a long Settings / Report / Quiz-nav modal required scrolling back to the top to find the close button. (this commit)
@@ -153,6 +155,7 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 
 ---
 
+[v0.4.0]: https://github.com/xooooooooox/cka-exercises/compare/v0.3.0...v0.4.0
 [v0.3.0]: https://github.com/xooooooooox/cka-exercises/compare/v0.2.0...v0.3.0
 [v0.2.0]: https://github.com/xooooooooox/cka-exercises/compare/v0.1.0...v0.2.0
 [v0.1.0]: https://github.com/xooooooooox/cka-exercises/releases/tag/v0.1.0
