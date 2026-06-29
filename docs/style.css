@@ -2934,6 +2934,20 @@ body.answer-fullscreen-active { overflow: hidden; }
 .help-body :not(pre) > code { overflow-wrap: anywhere; word-break: break-word; }
 .help-body pre { background: var(--bg-code); padding: 12px; border-radius: 6px; overflow-x: auto; max-width: 100%; }
 .help-body pre code { background: none; padding: 0; }
+/* WEBAPP_GUIDE / EXAM_GUIDE inline screenshots. Source PNGs are 2×
+   retina (3840×1870) so without a constraint they blow past the help
+   column. The border + radius + soft shadow makes them read as
+   screenshots rather than flat inline blocks. */
+.help-body img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 14px auto;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: var(--bg-elev);
+}
 /* `display: block` + `overflow-x: auto` is the responsive-table pattern:
    wide tables get their own horizontal scroll inside the box instead of
    pushing the help column wider than the viewport. */
