@@ -13,6 +13,9 @@ Each entry follows the format `- **Lead phrase** — one short sentence describi
 
 ## [Unreleased]
 
+### Removed
+- **☁ Sync indicator dropped from the fullscreen answer-box quizbar** — clicking it opened the header sync popover, but the popover anchors via `position: absolute` to its `.sync-menu-wrap` parent in the header, which is visually behind the fullscreen overlay. Result: "click does nothing" from the user's POV. Auto-sync runs unchanged; the header ☁ chip is one tap away after exiting fullscreen. (this commit)
+
 ## [v0.4.0] - 2026-06-29
 
 ### Fixed

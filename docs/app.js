@@ -3419,29 +3419,19 @@ function renderAnswerBox(ex, opts = {}) {
       document.getElementById('quiz-reveal')?.click();
       openSolutionDrawer(ex);
     });
-    // Tiny ☁ sync indicator at the right end of the quizbar — clicking opens
-    // the header sync popover so the user can confirm auto-push state without
-    // exiting fullscreen.
-    const syncDot = el('button', {
-      type: 'button',
-      class: 'quizbar-sync-dot',
-      title: 'Show sync status (auto-push, last push)',
-      'aria-label': 'Show sync status',
-    }, '☁');
-    syncDot.addEventListener('click', (e) => {
-      // Open the popover directly via the closure exposed by installSyncMenu,
-      // not via sync-toggle.click() — the synthetic-click indirection turned
-      // out to be unreliable on mobile Safari (touch→click conversion timing
-      // collides with the document-level click-outside handler). stopPropagation
-      // still keeps the user's original click from reaching that handler.
-      e.stopPropagation();
-      _openSyncMenuExternal?.();
-    });
     // Two sub-rows so the layout matches the regular Quiz controls
     // (grade row prominent + utility row underneath). The previous
     // single flex-wrap row mixed grade buttons into the middle of
     // navigation buttons on phone widths, breaking the visual rhythm
     // the user saw in non-fullscreen mode.
+    //
+    // The ☁ sync indicator that used to live at the right of the
+    // utility row was removed — its popover (anchored to the header's
+    // .sync-menu-wrap via `position: absolute`) renders off-screen
+    // when triggered from fullscreen mode, so "click does nothing"
+    // was the user-visible result. Auto-sync runs unchanged in the
+    // background, and the header ☁ chip is one tap away after
+    // exiting fullscreen.
     const quizbar = el('div', { class: 'answer-fullscreen-quizbar' },
       el('div', { class: 'qbar-grade-row' },
         proxy('quiz-grade-got',     '✓ Got it',  'grade-got'),
@@ -3455,7 +3445,6 @@ function renderAnswerBox(ex, opts = {}) {
         revealProxy,
         proxy('quiz-skip',       '↷ Skip'),
         proxy('quiz-next',       'Next →'),
-        syncDot,
       ),
     );
     box.appendChild(quizbar);
