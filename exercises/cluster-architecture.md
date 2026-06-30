@@ -476,9 +476,9 @@ systemctl status kubelet
 
 > 🔗 [Reference > API Overview > Kubernetes API health endpoints](https://kubernetes.io/docs/reference/using-api/health-checks/)
 
-Query all three Kubernetes API health endpoints — `/livez`, `/readyz`, and `/healthz` — using `curl -k` against the API server (port 6443) or `kubectl get --raw`. Add `?verbose` for the per-component breakdown.
+**Task:**
 
-> ℹ️ Modern Kubernetes (≥ v1.16) splits health into `/livez` (liveness — is the API server up?) and `/readyz` (readiness — is it serving traffic, are dependencies healthy?). `/healthz` is the legacy single-endpoint form kept for backwards compatibility. Querying any one of them is enough to confirm the API server responds; this exercise asks for all three so you've seen the full picture.
+Check the Kubernetes API server health by querying the `/livez`, `/readyz`, and `/healthz` endpoints with `?verbose`.
 
 <details><summary>show</summary>
 <p>
